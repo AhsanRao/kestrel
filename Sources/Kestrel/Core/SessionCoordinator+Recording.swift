@@ -17,6 +17,7 @@ extension SessionCoordinator {
         panel.model.answer = ""
         panel.model.permissionURL = nil
         panel.show()
+        sounds.play(.listening, config: config)
         listeningStartedAt = Date()
 
         AudioCapture.requestPermission { [weak self] granted in
@@ -35,6 +36,7 @@ extension SessionCoordinator {
     func finishRecording(intent: SessionIntent) {
         focusRegion = dragTracker.end()
         selection.hide()
+        sounds.play(.heard, config: config)
         let wav = audio.stop()
         guard let wav else {
             // Under 300 ms, or nothing above the noise floor: not a question.

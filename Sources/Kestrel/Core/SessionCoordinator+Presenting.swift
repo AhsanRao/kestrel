@@ -22,6 +22,7 @@ extension SessionCoordinator {
 
     /// Plain spoken answer.
     func present(_ answer: Answer, alreadySpoken: Bool = false) {
+        sounds.play(.answered, config: config)
         panel.model.answer = answer.text
         apply(.answered)
         render()
@@ -114,6 +115,7 @@ extension SessionCoordinator {
     }
 
     func fail(_ error: Error) {
+        sounds.play(.failed, config: config)
         discardCapture()
         let kestrelError = error as? KestrelError
         let message = kestrelError?.errorDescription ?? error.localizedDescription

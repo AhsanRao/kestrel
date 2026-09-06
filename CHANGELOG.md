@@ -4,6 +4,14 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T3 — Sound cues
+
+- Five short tones mark listening, heard, answered, inserted and failed, so Kestrel feels
+  responsive before it has said anything.
+- Synthesised in code rather than shipped as audio files: nothing to license, no blobs in the repo,
+  and each cue's envelope is unit-tested — a fade at both ends is what stops a tone clicking.
+- Silent when the Mac is muted or `sounds` is off.
+
 ### T2 — Per-app skills
 
 - `~/.kestrel/skills/<bundle-id>.md` is sent with every question asked while that app is frontmost,

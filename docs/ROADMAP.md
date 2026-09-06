@@ -41,15 +41,16 @@ HeyClicky ships 28 of these (`imessage.md`, `linear.md`, `notion.md`, `obsidian.
 - [x] Menu bar ▸ Open skills folder
 - [x] Tests: combination order, missing files, comment-only files, truncation, cache invalidation
 
-## T3 — Sound design
+## T3 — Sound design ✅
 
 HeyClicky cues every state change (`agent-launch.m4a`, `agent-done.m4a`, `clicky-text-send.wav`).
 Kestrel is silent apart from speech, which makes it feel unresponsive.
 
-- [ ] Short cues for: listening started, transcribed, answer ready, dictation inserted, error
-- [ ] Synthesised at build time — no third-party assets, no binary blobs in the repo
-- [ ] Respect system mute and a `sounds` config flag
-- [ ] Tests: cue selection per state, muted behaviour, missing-file tolerance
+- [x] Five cues: listening, heard, answered, inserted, failed
+- [x] Synthesised in code — no audio files in the repo, nothing to license, and the shape of each
+      cue is testable
+- [x] Respect system mute and the `sounds` flag; toggle in Settings ▸ Speech
+- [x] Tests: length, level, fade envelopes, rising vs falling, distinctness, mute and flag
 
 ## T4 — Desktop awareness
 

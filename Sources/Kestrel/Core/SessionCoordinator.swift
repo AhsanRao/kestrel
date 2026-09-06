@@ -16,6 +16,7 @@ final class SessionCoordinator {
     let transcriber: Transcriber = WhisperTranscriber()
     let router = BackendRouter()
     let speech = SpeechOutput()
+    let sounds = SoundBoard()
     let overlay = OverlayWindow()
     let selection = SelectionOverlay()
     let dragTracker = DragTracker()
@@ -64,6 +65,7 @@ final class SessionCoordinator {
     }
 
     func stop() {
+        sounds.stop()
         dragTracker.end()
         selection.hide()
         accessibilityRetry?.invalidate()

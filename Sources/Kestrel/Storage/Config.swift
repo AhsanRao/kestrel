@@ -15,6 +15,7 @@ struct Config: Codable, Equatable {
     var transcriptionHint: String?
 
     var speakAnswers: Bool
+    var sounds: Bool
     var acknowledgeWhileThinking: Bool
     var voiceIdentifier: String?
     var voiceRate: Double
@@ -46,6 +47,7 @@ struct Config: Codable, Equatable {
         language: "auto",
         transcriptionHint: nil,
         speakAnswers: true,
+        sounds: true,
         acknowledgeWhileThinking: true,
         voiceIdentifier: nil,
         voiceRate: 0.47,
@@ -124,6 +126,7 @@ struct Config: Codable, Equatable {
         language = v(.language, d.language)
         transcriptionHint = opt(.transcriptionHint)
         speakAnswers = v(.speakAnswers, d.speakAnswers)
+        sounds = v(.sounds, d.sounds)
         acknowledgeWhileThinking = v(.acknowledgeWhileThinking, d.acknowledgeWhileThinking)
         voiceIdentifier = opt(.voiceIdentifier)
         voiceRate = v(.voiceRate, d.voiceRate)
@@ -146,7 +149,7 @@ struct Config: Codable, Equatable {
     init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
          allowMCPServers: Bool,
          whisperBinary: String, whisperModel: String, language: String, transcriptionHint: String?,
-         speakAnswers: Bool, acknowledgeWhileThinking: Bool,
+         speakAnswers: Bool, sounds: Bool, acknowledgeWhileThinking: Bool,
          voiceIdentifier: String?, voiceRate: Double, voicePitch: Double,
          cleanupDictation: Bool, injectMode: InjectMode,
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
@@ -156,7 +159,8 @@ struct Config: Codable, Equatable {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
         self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.transcriptionHint = transcriptionHint
-        self.speakAnswers = speakAnswers; self.acknowledgeWhileThinking = acknowledgeWhileThinking; self.voiceIdentifier = voiceIdentifier
+        self.speakAnswers = speakAnswers; self.sounds = sounds
+        self.acknowledgeWhileThinking = acknowledgeWhileThinking; self.voiceIdentifier = voiceIdentifier
         self.voiceRate = voiceRate; self.voicePitch = voicePitch
         self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds

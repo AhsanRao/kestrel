@@ -63,6 +63,7 @@ struct SettingsView: View {
         Form {
             Toggle("Speak answers out loud", isOn: model.binding(\.speakAnswers))
             Toggle("Say something while thinking", isOn: model.binding(\.acknowledgeWhileThinking))
+            Toggle("Play sound cues", isOn: model.binding(\.sounds))
 
             Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
                 Text("Best available").tag("")
