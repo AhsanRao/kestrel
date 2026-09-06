@@ -6,3 +6,5 @@ assets/AppIcon.icns
 assets/AppIconMaster.png
 .DS_Store
 *.xcodeproj
+.agents/
+.claude/
