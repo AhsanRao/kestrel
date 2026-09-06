@@ -154,8 +154,13 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 ```
 kestrel/
 ├── CLAUDE.md                     # instructions for Claude Code (see §17)
-├── KESTREL_SPEC.md               # this document
 ├── README.md                     # user-facing setup and usage
+├── docs/
+│   ├── SPEC.md                   # this document
+│   ├── CHANGELOG.md
+│   ├── ROADMAP.md                # gap analysis against HeyClicky, T1–T9
+│   ├── INTERACTIONS.md           # the system-interaction reference
+│   └── VS-HEYCLICKY.md           # feature-by-feature comparison
 ├── Package.swift
 ├── build.sh                      # swift build → Kestrel.app, ad-hoc codesign
 ├── Makefile                      # make build / run / test / clean / icon
@@ -381,7 +386,7 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 | **M5** | Spatial context | Drag-to-circle while holding the hotkey; crop sent with the query | Circling one of several buttons and asking "what does this do?" answers about the circled one |
 | **M6** | Agents | MCP connector setup, agent HUD, confirmations | "Add a Linear ticket for the bug on screen" creates the ticket after one confirmation |
 
-Each milestone ends with: tests green, `README` updated, a short `CHANGELOG.md` entry.
+Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG.md` entry.
 
 ---
 
@@ -451,7 +456,7 @@ Each milestone ends with: tests green, `README` updated, a short `CHANGELOG.md` 
 
 Place `CLAUDE.md` (provided alongside this spec) at the repo root. Start with:
 
-> "Read KESTREL_SPEC.md fully. Implement milestone M0, then stop and show me the build output. Do not implement later milestones until I approve each one."
+> "Read docs/SPEC.md fully. Implement milestone M0, then stop and show me the build output. Do not implement later milestones until I approve each one."
 
 Working agreement for the build:
 - One milestone per session; each ends with `make test` green and a commit.

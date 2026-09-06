@@ -1,8 +1,21 @@
 # Changelog
 
-All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
+All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ## [Unreleased]
+
+### Documentation
+
+- **`docs/INTERACTIONS.md`** — the complete reference for acting on the system: the five action
+  kinds, the Accessibility scan and its bounds, the act-vs-explain decision, the JSON contract with
+  the model, the policy decision order, the actuator's mechanics and fallbacks, the overlay and Esc,
+  the audit log format, task folders, and an explicit list of what Kestrel deliberately cannot do.
+- **`docs/VS-HEYCLICKY.md`** — feature-by-feature comparison against the installed HeyClicky build,
+  tool by tool, with the remaining gaps ranked by what they cost to close.
+- Markdown moved out of the repository root into `docs/`: `KESTREL_SPEC.md` → `docs/SPEC.md`,
+  `CHANGELOG.md` → `docs/CHANGELOG.md`, joined by `docs/README.md` as an index. Only `README.md` and
+  `CLAUDE.md` stay at the root, both because tooling reads them there. `build.sh` reads the version
+  from the new path.
 
 ### Fixed
 

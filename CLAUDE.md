@@ -5,14 +5,14 @@ owner's Claude Pro/Max and ChatGPT Plus/Pro subscriptions by shelling out to `cl
 `codex exec`. Single user. Local speech-to-text. No backend, no telemetry.
 
 ## First thing to do
-Read `KESTREL_SPEC.md` end to end before writing any code. It defines scope, architecture, folder
+Read `docs/SPEC.md` end to end before writing any code. It defines scope, architecture, folder
 layout, module contracts, milestones, and acceptance criteria. Follow it; propose changes in
 conversation rather than silently deviating.
 
 ## How we work
 - Build **one milestone at a time** (M0 → M6, see spec §11). Stop after each and report the build
   output and a manual test summary. Wait for approval before the next milestone.
-- Every milestone ends with `make test` green, README updated, a `CHANGELOG.md` entry, and a commit.
+- Every milestone ends with `make test` green, README updated, a `docs/CHANGELOG.md` entry, and a commit.
 - Keep files small (< 200 lines) and in the folders defined in spec §7.
 - No third-party Swift packages without asking. Apple frameworks only: AppKit, SwiftUI,
   AVFoundation, Carbon, os.log.

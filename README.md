@@ -145,7 +145,10 @@ make icon      # regenerate icons from assets/kestrel-logo.svg
 make deps      # scripts/check-deps.sh
 ```
 
-- `KESTREL_SPEC.md` is the design of record; `CLAUDE.md` holds the working rules.
+- [`docs/`](docs/) holds everything: [`SPEC.md`](docs/SPEC.md) is the design of record,
+  [`INTERACTIONS.md`](docs/INTERACTIONS.md) documents what Kestrel can do to your Mac,
+  [`VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) is the feature comparison. `CLAUDE.md` holds the
+  working rules.
 - **Seeing the real panel.** Offscreen SwiftUI renders cannot show window chrome, materials or
   shadows, which is where panel bugs actually live. To photograph the real thing:
 
@@ -186,6 +189,9 @@ keep typing while it works. An overlay names each step, counts them, and Esc sto
 
 Every action is appended to `~/.kestrel/logs/actions.jsonl`, one JSON object per line.
 
+The complete reference — every action kind, how controls are found, the decision order, the actuator's
+fallbacks, and what it deliberately cannot do — is [`docs/INTERACTIONS.md`](docs/INTERACTIONS.md).
+
 ## Teaching it your own vocabulary
 
 Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every question;
@@ -202,6 +208,6 @@ Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every qu
 ## Status
 
 **M0**–**M6** complete: skeleton, ask, dictate + Codex, polish, walkthroughs, spatial context, and
-agent tasks. `docs/ROADMAP.md` records what was closed against HeyClicky and what was deliberately
-not copied.
-See `CHANGELOG.md`.
+agent tasks. [`docs/ROADMAP.md`](docs/ROADMAP.md) records what was closed against HeyClicky, and
+[`docs/VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) compares the two apps feature by feature.
+See [`docs/CHANGELOG.md`](docs/CHANGELOG.md).

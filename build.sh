@@ -6,7 +6,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 CONFIG="${CONFIG:-release}"
-VERSION="$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' CHANGELOG.md 2>/dev/null | head -1)"
+VERSION="$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' docs/CHANGELOG.md 2>/dev/null | head -1)"
 VERSION="${VERSION:-0.0.0}"
 APP="Kestrel.app"
 

@@ -9,6 +9,9 @@ and weighs 598 MB. Kestrel runs on the user's own subscriptions, has no backend 
 and weighs about 1.4 MB. That difference is the point of the project (spec §2), so only the product
 surface is a target — never the plumbing.
 
+A second, wider comparison written after all of this landed is in [VS-HEYCLICKY.md](VS-HEYCLICKY.md)
+— it lists what is still missing and what is worth building next.
+
 Status: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ---
