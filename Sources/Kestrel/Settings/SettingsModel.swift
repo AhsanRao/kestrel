@@ -44,11 +44,20 @@ final class SettingsModel: ObservableObject {
 
     var voices: [AVSpeechSynthesisVoice] { SpeechOutput.rankedVoices() }
 
-    /// System Settings is the only place macOS lets you install the neural voices.
+    /// Opens System Settings ▸ Accessibility ▸ Spoken Content, the only place macOS lets you
+    /// install the neural voices. It opens the pane; the download itself is Apple's "Manage
+    /// Voices…" sheet, which Kestrel cannot drive.
+    ///
+    /// Bundle id is the modern Settings extension. The old `com.apple.preference.universalaccess`
+    /// pane still exists but its anchors no longer resolve.
     func openVoiceDownloads() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.universalaccess?SpeechSettings")
-        else { return }
-        NSWorkspace.shared.open(url)
+        let candidates = [
+            "x-apple.systempreferences:com.apple.Accessibility-Settings.extension?Speech",
+            "x-apple.systempreferences:com.apple.Accessibility-Settings.extension",
+        ]
+        for string in candidates {
+            if let url = URL(string: string), NSWorkspace.shared.open(url) { return }
+        }
     }
 
     func previewVoice() {

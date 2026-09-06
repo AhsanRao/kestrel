@@ -83,9 +83,12 @@ struct SettingsView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Only the compact voices are installed — those are the robotic ones.")
+                        Text("Only compact voices are installed — those are the robotic ones. "
+                             + "Open Spoken Content, then Manage Voices…, and download a Premium "
+                             + "voice such as Ava or Zoe. Kestrel picks the best one automatically.")
                             .font(.caption)
-                        Button("Download better voices…") { model.openVoiceDownloads() }
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Open Spoken Content…") { model.openVoiceDownloads() }
                             .controlSize(.small)
                     }
                 }
