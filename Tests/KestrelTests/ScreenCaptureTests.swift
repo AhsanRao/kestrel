@@ -7,7 +7,7 @@ final class ScreenCaptureTests: XCTestCase {
     /// A 1512x982-point Retina display, captured and downscaled to 2048 px on the long edge.
     private let laptop = ScreenCapture(
         url: URL(fileURLWithPath: "/tmp/shot.png"),
-        displayFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+        captureFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
         pixelSize: CGSize(width: 2048, height: 1330))
 
     /// What a model actually reports for that screenshot: its own, much smaller view of it.
@@ -44,21 +44,21 @@ final class ScreenCaptureTests: XCTestCase {
     }
 
     func testAMissingGridIsTreatedAsPerMille() {
-        let walkthrough = Walkthrough(goal: "x", steps: [], image: nil, needs_more: nil)
+        let walkthrough = Walkthrough(goal: "x", steps: [])
         XCTAssertEqual(walkthrough.space, .perMille)
         let rect = laptop.screenRect(for: .init(x: 500, y: 0, w: 100, h: 100), in: walkthrough.space)
         XCTAssertEqual(rect.minX, 1512 * 0.5, accuracy: 0.01)
     }
 
     func testANonsenseGridIsTreatedAsPerMille() {
-        let walkthrough = Walkthrough(goal: "x", steps: [], image: .init(w: 0, h: 0), needs_more: nil)
+        let walkthrough = Walkthrough(goal: "x", steps: [], image: .init(w: 0, h: 0))
         XCTAssertEqual(walkthrough.space, .perMille)
     }
 
     func testSecondaryDisplayOffsetIsApplied() {
         let external = ScreenCapture(
             url: URL(fileURLWithPath: "/tmp/shot.png"),
-            displayFrame: CGRect(x: 1512, y: 200, width: 2560, height: 1440),
+            captureFrame: CGRect(x: 1512, y: 200, width: 2560, height: 1440),
             pixelSize: CGSize(width: 2048, height: 1152))
         let rect = external.screenRect(for: .init(x: 0, y: 0, w: 32, h: 20), in: modelGrid)
         XCTAssertEqual(rect.minX, 1512, accuracy: 0.001)
@@ -68,7 +68,7 @@ final class ScreenCaptureTests: XCTestCase {
 
     func testTheSameTargetLandsProportionallyOnAnyDisplaySize() {
         let small = ScreenCapture(url: URL(fileURLWithPath: "/tmp/a.png"),
-                                  displayFrame: CGRect(x: 0, y: 0, width: 1280, height: 800),
+                                  captureFrame: CGRect(x: 0, y: 0, width: 1280, height: 800),
                                   pixelSize: CGSize(width: 1280, height: 800))
         let target = WalkthroughStep.Target(x: 160, y: 104, w: 32, h: 20)
         XCTAssertEqual(laptop.screenRect(for: target, in: modelGrid).midX / 1512,

@@ -99,14 +99,21 @@ final class OverlayModel: ObservableObject {
     @Published var showsAnyClickHint = false
 
     var capture: ScreenCapture?
-    var space: Walkthrough.ImageSize = .perMille
+    /// Where each step points, in global AppKit points. Parallel to `steps`.
+    var frames: [CGRect] = []
 
     var currentStep: WalkthroughStep? {
         steps.indices.contains(index) ? steps[index] : nil
     }
 
+    /// The current target in global screen points, for hit-testing a click.
+    var currentFrame: CGRect? {
+        frames.indices.contains(index) ? frames[index] : nil
+    }
+
+    /// The same target inside the overlay window, which covers `capture.captureFrame`.
     var currentRect: CGRect? {
-        guard let step = currentStep, let capture else { return nil }
-        return capture.viewRect(for: step.target, in: space)
+        guard let frame = currentFrame, let capture else { return nil }
+        return capture.viewRect(forScreenRect: frame)
     }
 }

@@ -9,9 +9,9 @@ final class OverlayWindow {
 
     private var window: NSWindow?
 
-    func show(on displayFrame: CGRect) {
+    func show(on captureFrame: CGRect) {
         let window = ensureWindow()
-        window.setFrame(displayFrame, display: true)
+        window.setFrame(captureFrame, display: true)
         window.orderFrontRegardless()
         model.breathing = true
     }

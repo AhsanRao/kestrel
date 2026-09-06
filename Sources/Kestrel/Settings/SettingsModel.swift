@@ -42,10 +42,13 @@ final class SettingsModel: ObservableObject {
         )
     }
 
-    var voices: [AVSpeechSynthesisVoice] {
-        AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix("en") || $0.language.hasPrefix(Locale.current.language.languageCode?.identifier ?? "en") }
-            .sorted { $0.name < $1.name }
+    var voices: [AVSpeechSynthesisVoice] { SpeechOutput.rankedVoices() }
+
+    /// System Settings is the only place macOS lets you install the neural voices.
+    func openVoiceDownloads() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.universalaccess?SpeechSettings")
+        else { return }
+        NSWorkspace.shared.open(url)
     }
 
     func previewVoice() {

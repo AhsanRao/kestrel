@@ -6,11 +6,17 @@ import os
 ///
 /// Flags verified against `claude --help`, Claude Code 2.1.69 (2026-09-06):
 ///   -p, --print                        print response and exit
-///   --output-format <format>           "text" | "json" | "stream-json"   (we parse the json envelope)
+///   --output-format <format>           "text" | "json" | "stream-json"
+///   --include-partial-messages         emit text deltas (needs --print and stream-json)
+///   --verbose                          required alongside stream-json in print mode
 ///   --tools <tools...>                 restrict the built-in tool set    (we allow only Read)
 ///   --allowedTools <tools...>          auto-approve those tools, no prompt
 ///   --model <model>                    alias ("sonnet") or full id
 ///   --no-session-persistence           do not write a resumable session (only works with --print)
+///   --strict-mcp-config                use only MCP servers passed on the command line — none.
+///     Measured on this machine: 16.9 s per question with the user's claude.ai connectors being
+///     discovered, 5.2 s without. Kestrel asks about the screen; it needs no connectors until the
+///     v3 agent work, which is what `allowMCPServers` in config.json turns back on.
 /// There is no --max-turns in this release; Read-only single answers finish in one turn anyway.
 final class ClaudeBackend: Backend {
     let kind: BackendKind = .claude
@@ -20,14 +26,19 @@ final class ClaudeBackend: Backend {
 
     func cancel() { runner.cancel() }
 
-    func ask(_ query: Query, config: Config) throws -> Answer {
+    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {
         guard let executable = CLIRunner.locate("claude") else {
             throw KestrelError.backendMissing("claude")
         }
 
-        var arguments = ["-p", PromptBuilder.build(query),
-                         "--output-format", "json",
-                         "--no-session-persistence"]
+        // Streaming only when someone is listening for it; the plain json envelope is simpler and
+        // is what the dictation-cleanup path wants.
+        let streaming = onDelta != nil
+        var arguments = ["-p", PromptBuilder.build(query), "--no-session-persistence"]
+        if !config.allowMCPServers { arguments.append("--strict-mcp-config") }
+        arguments += streaming
+            ? ["--output-format", "stream-json", "--include-partial-messages", "--verbose"]
+            : ["--output-format", "json"]
         if query.screenshot != nil || query.focusCrop != nil {
             arguments += ["--tools", "Read", "--allowedTools", "Read"]
         } else {
@@ -41,10 +52,17 @@ final class ClaudeBackend: Backend {
         var env: [String: String] = [:]
         if let key = config.apiKeys.anthropic, !key.isEmpty { env["ANTHROPIC_API_KEY"] = key }
 
+        var parser = StreamParser()
+        var sentences = SentenceAccumulator()
         let result: CLIRunner.Result
         do {
-            result = try runner.run(executable: executable, arguments: arguments,
-                                    cwd: Paths.root, environment: env, timeout: query.timeout)
+            result = try runner.run(
+                executable: executable, arguments: arguments, cwd: Paths.root,
+                environment: env, timeout: query.timeout,
+                onLine: streaming ? { line in
+                    guard let chunk = parser.consume(line) else { return }
+                    for sentence in sentences.push(chunk) { onDelta?(sentence) }
+                } : nil)
         } catch is CancellationError {
             throw CancellationError()
         }
@@ -56,10 +74,12 @@ final class ClaudeBackend: Backend {
             throw KestrelError.backendFailed(name: "claude", stderr: result.stderr.isEmpty ? result.stdout : result.stderr)
         }
 
-        let text = ClaudeBackend.parse(result.stdout)
+        var text = streaming ? parser.answer : ClaudeBackend.parse(result.stdout)
+        if text.isEmpty { text = ClaudeBackend.parse(result.stdout) }
         guard !text.isEmpty else {
             throw KestrelError.backendFailed(name: "claude", stderr: "empty response")
         }
+        if streaming, let tail = sentences.flush() { onDelta?(tail) }
         log.debug("claude answered in \(result.durationMs)ms")
         return Answer(text: text, raw: result.stdout, durationMs: result.durationMs)
     }

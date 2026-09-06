@@ -29,7 +29,7 @@ final class WalkthroughSession {
 
     /// Returns false when Accessibility is missing, so the caller can fall back to speech.
     @discardableResult
-    func start(_ walkthrough: Walkthrough, capture: ScreenCapture) -> Bool {
+    func start(_ walkthrough: Walkthrough, frames: [CGRect], capture: ScreenCapture) -> Bool {
         stop(completed: false, notify: false)
         guard TextInjector.hasAccessibilityPermission else {
             log.info("no accessibility permission, cannot follow clicks")
@@ -41,11 +41,11 @@ final class WalkthroughSession {
         missedClicks = 0
         overlay.model.capture = capture
         overlay.model.showsAnyClickHint = false
-        overlay.model.space = walkthrough.space
+        overlay.model.frames = frames
         overlay.model.steps = walkthrough.steps
         overlay.model.goal = walkthrough.goal
         overlay.model.index = 0
-        overlay.show(on: capture.displayFrame)
+        overlay.show(on: capture.captureFrame)
 
         guard installTap() else {
             overlay.hide()
@@ -71,9 +71,10 @@ final class WalkthroughSession {
     /// couple of clicks that miss the ring, the overlay says so and the next click anywhere
     /// advances. The instruction text names the control, so the user is never actually stuck.
     fileprivate func handleClick(at point: CGPoint) {
-        guard let capture, let step = overlay.model.currentStep else { return }
-        let rect = capture.screenRect(for: step.target, in: overlay.model.space)
-        let slack = max(40, min(rect.width, rect.height) * 0.6)
+        guard overlay.model.currentStep != nil, let rect = overlay.model.currentFrame else { return }
+        // A frame straight from Accessibility is exact, so it needs far less slack than an estimate.
+        let exact = overlay.model.currentStep?.element != nil
+        let slack = exact ? 8 : max(40, min(rect.width, rect.height) * 0.6)
         let target = rect.insetBy(dx: -slack, dy: -slack)
 
         if !target.contains(point) {

@@ -95,6 +95,6 @@ final class SpeechAndInjectionTests: XCTestCase {
         """#
         let walkthrough = try JSONDecoder().decode(Walkthrough.self, from: Data(json.utf8))
         XCTAssertEqual(walkthrough.steps.count, 1)
-        XCTAssertEqual(walkthrough.steps[0].target.w, 60)
+        XCTAssertEqual(walkthrough.steps[0].target?.w, 60)
     }
 }

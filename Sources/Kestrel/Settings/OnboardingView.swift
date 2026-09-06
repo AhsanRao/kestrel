@@ -21,13 +21,14 @@ struct OnboardingView: View {
             Divider()
             footer
         }
-        .frame(width: 520, height: 560)
+        .frame(width: 520, height: 600)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.readyToUse)
         .onAppear { model.startPolling() }
         .onDisappear { model.stopPolling() }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 9) {
             Text("Set up Kestrel")
                 .font(.system(size: 19, weight: .semibold))
             Text("Hold ⌃⌘A and ask about your screen. Kestrel needs a few things first — nothing "
@@ -35,8 +36,30 @@ struct OnboardingView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            progress
         }
         .padding(18)
+    }
+
+    /// Fills as rows tick over, so the window shows how much is left at a glance.
+    private var progress: some View {
+        let done = model.report.items.filter(\.ok).count
+        let total = model.report.items.count
+        return VStack(alignment: .leading, spacing: 5) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.secondary.opacity(0.16))
+                    Capsule()
+                        .fill(model.readyToUse ? Color.green : KestrelPalette.cyan)
+                        .frame(width: geometry.size.width * CGFloat(done) / CGFloat(max(total, 1)))
+                }
+            }
+            .frame(height: 4)
+            Text("\(done) of \(total) ready")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: done)
     }
 
     private func section(_ title: String, _ requirements: [DependencyCheck.Requirement]) -> some View {
@@ -88,6 +111,11 @@ private struct OnboardingRow: View {
                 .font(.system(size: 16))
                 .foregroundStyle(item.ok ? Color.green : (item.requirement.isRequired ? KestrelPalette.coral : .secondary))
                 .frame(width: 22)
+                // A tick that lands with a small bounce is the whole reward for granting a
+                // permission in another app and coming back.
+                .scaleEffect(item.ok ? 1 : 0.9)
+                .animation(.spring(response: 0.3, dampingFraction: 0.55), value: item.ok)
+                .contentTransition(.symbolEffect(.replace))
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

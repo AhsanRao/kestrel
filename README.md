@@ -13,6 +13,7 @@ only while you are holding the key.
 | **Ask** | Hold `⌃⌘A`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
 | **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
+| **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
 
@@ -110,6 +111,12 @@ you save. The Settings window writes the same file.
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
 | `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
+| `spatialContext` | `true` | circle a region while holding the ask key |
+| `captureMode` | `"window"` | `"display"` to send the whole screen instead |
+| `acknowledgeWhileThinking` | `true` | say "one sec" while the model reads the screen |
+| `allowMCPServers` | `false` | leave off: MCP discovery added ~10 s to every question |
+| `voicePitch` | `0.98` | |
+| `transcriptionHint` | `null` | names and jargon to expect, passed to whisper |
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |
 | `apiKeys.anthropic` / `apiKeys.openai` | `null` | pay-as-you-go override |

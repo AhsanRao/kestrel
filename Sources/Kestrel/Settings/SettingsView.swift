@@ -35,6 +35,13 @@ struct SettingsView: View {
 
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
             Toggle("Draw walkthroughs for \"how do I…\" questions", isOn: model.binding(\.walkthroughs))
+            Toggle("Circle part of the screen while holding the ask key", isOn: model.binding(\.spatialContext))
+            Picker("Ask about", selection: model.binding(\.captureMode)) {
+                ForEach(Config.CaptureMode.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Text("The front window alone keeps small text readable. The whole screen is better only "
+                 + "when the question spans several windows.")
+                .font(.caption).foregroundStyle(.secondary)
             Picker("Insert dictation by", selection: model.binding(\.injectMode)) {
                 Text("Paste (⌘V)").tag(Config.InjectMode.paste)
                 Text("Typing").tag(Config.InjectMode.type)
@@ -55,11 +62,12 @@ struct SettingsView: View {
     private var speech: some View {
         Form {
             Toggle("Speak answers out loud", isOn: model.binding(\.speakAnswers))
+            Toggle("Say something while thinking", isOn: model.binding(\.acknowledgeWhileThinking))
 
             Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
-                Text("System default").tag("")
+                Text("Best available").tag("")
                 ForEach(model.voices, id: \.identifier) { voice in
-                    Text("\(voice.name) (\(voice.language))").tag(voice.identifier)
+                    Text(SpeechOutput.describe(voice)).tag(voice.identifier)
                 }
             }
             HStack {
@@ -67,11 +75,28 @@ struct SettingsView: View {
                 Slider(value: model.binding(\.voiceRate), in: 0.3...0.7)
                 Button("Preview") { model.previewVoice() }
             }
+            HStack {
+                Text("Pitch")
+                Slider(value: model.binding(\.voicePitch), in: 0.8...1.2)
+            }
+            if SpeechOutput.hasOnlyCompactVoices {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Only the compact voices are installed — those are the robotic ones.")
+                            .font(.caption)
+                        Button("Download better voices…") { model.openVoiceDownloads() }
+                            .controlSize(.small)
+                    }
+                }
+            }
 
             Section("Transcription") {
                 TextField("Whisper binary", text: model.binding(\.whisperBinary))
                 TextField("Whisper model", text: model.binding(\.whisperModel))
                 TextField("Language (auto, en, ur…)", text: model.binding(\.language))
+                TextField("Words to expect (names, jargon)",
+                          text: model.optionalStringBinding(\.transcriptionHint))
                 Text("Audio never leaves this Mac. For Urdu or mixed speech use ggml-small.bin.")
                     .font(.caption).foregroundStyle(.secondary)
             }

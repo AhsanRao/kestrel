@@ -17,7 +17,7 @@ final class CodexBackend: Backend {
 
     func cancel() { runner.cancel() }
 
-    func ask(_ query: Query, config: Config) throws -> Answer {
+    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {
         guard let executable = CLIRunner.locate("codex") else {
             throw KestrelError.backendMissing("codex")
         }

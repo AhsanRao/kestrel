@@ -10,14 +10,18 @@ struct Query {
     var focusCrop: URL?
     var mode: QueryMode
     var maxTokensHint: Int?
+    /// Clickable controls read from the Accessibility tree, offered to the model to choose from.
+    var elements: [AXElementScanner.Element]
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
-         mode: QueryMode = .ask, maxTokensHint: Int? = nil) {
+         mode: QueryMode = .ask, maxTokensHint: Int? = nil,
+         elements: [AXElementScanner.Element] = []) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
         self.mode = mode
         self.maxTokensHint = maxTokensHint
+        self.elements = elements
     }
 
     /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls
@@ -52,12 +56,37 @@ struct WalkthroughStep: Codable, Equatable {
         var y: Double
         var w: Double
         var h: Double
+
+        static let zero = Target(x: 0, y: 0, w: 0, h: 0)
     }
 
     var n: Int
     var instruction: String
-    var target: Target
+    /// The number of a control from the list Kestrel offered, when the Accessibility tree could be
+    /// read. This is the accurate path: macOS reports the exact frame, so nothing is estimated.
+    var element: Int?
+    /// Fallback for apps with no usable Accessibility tree: coordinates in the model's own grid.
+    var target: Target?
     var shape: String
+
+    init(n: Int, instruction: String, element: Int? = nil, target: Target? = nil, shape: String = "rect") {
+        self.n = n
+        self.instruction = instruction
+        self.element = element
+        self.target = target
+        self.shape = shape
+    }
+
+    /// Tolerant decoding: element-mode answers carry neither `shape` nor, sometimes, `n`, and a
+    /// missing optional field must never throw away an otherwise good step.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        n = ((try? container.decodeIfPresent(Int.self, forKey: .n)) ?? nil) ?? 0
+        instruction = ((try? container.decodeIfPresent(String.self, forKey: .instruction)) ?? nil) ?? ""
+        element = (try? container.decodeIfPresent(Int.self, forKey: .element)) ?? nil
+        target = (try? container.decodeIfPresent(Target.self, forKey: .target)) ?? nil
+        shape = ((try? container.decodeIfPresent(String.self, forKey: .shape)) ?? nil) ?? "rect"
+    }
 }
 
 struct Walkthrough: Codable, Equatable {
@@ -76,6 +105,13 @@ struct Walkthrough: Codable, Equatable {
     var steps: [WalkthroughStep]
     var image: ImageSize?
     var needs_more: Bool?
+
+    init(goal: String, steps: [WalkthroughStep], image: ImageSize? = nil, needs_more: Bool? = nil) {
+        self.goal = goal
+        self.steps = steps
+        self.image = image
+        self.needs_more = needs_more
+    }
 
     /// The space every `target` in `steps` is expressed in.
     var space: ImageSize {

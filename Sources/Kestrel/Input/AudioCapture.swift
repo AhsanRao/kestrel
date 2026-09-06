@@ -9,12 +9,19 @@ final class AudioCapture {
 
     /// Anything shorter is an accidental hotkey tap, not speech.
     static let minimumDuration: TimeInterval = 0.3
+    /// Below this peak the take is silence, not quiet speech.
+    static let silenceFloor: Float = 0.004
+    static let targetPeak: Float = 0.92
+    static let maximumGain: Float = 12
 
     private let log = Logger(subsystem: "dev.0xash.kestrel", category: "audio")
     private let engine = AVAudioEngine()
-    private var file: AVAudioFile?
     private var converter: AVAudioConverter?
-    private var outputURL: URL?
+    private var target: AVAudioFormat?
+    /// Samples are held rather than streamed to disk so the whole take can be normalised at the
+    /// end. Quiet input is the single biggest cause of whisper mishearing words.
+    private var samples: [Float] = []
+    private let samplesLock = NSLock()
     private var startedAt: Date?
     private var maxDurationTimer: DispatchWorkItem?
 
@@ -42,7 +49,6 @@ final class AudioCapture {
             throw Failure.permissionDenied
         }
 
-        let url = Paths.temporaryFile(ext: "wav")
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0 else { throw Failure.engineFailed("no input device") }
@@ -53,17 +59,8 @@ final class AudioCapture {
             throw Failure.engineFailed("unsupported input format \(inputFormat)")
         }
         self.converter = converter
-
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: 16_000,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-        ]
-        file = try AVAudioFile(forWriting: url, settings: settings)
-        outputURL = url
+        self.target = target
+        samplesLock.lock(); samples.removeAll(keepingCapacity: true); samplesLock.unlock()
 
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             self?.append(buffer, target: target)
@@ -74,7 +71,6 @@ final class AudioCapture {
             try engine.start()
         } catch {
             input.removeTap(onBus: 0)
-            file = nil
             throw Failure.engineFailed(error.localizedDescription)
         }
 
@@ -90,7 +86,7 @@ final class AudioCapture {
         }
         maxDurationTimer = timer
         DispatchQueue.main.asyncAfter(deadline: .now() + maxDuration, execute: timer)
-        log.debug("recording at \(inputFormat.sampleRate) Hz → \(url.lastPathComponent, privacy: .public)")
+        log.debug("recording at \(inputFormat.sampleRate) Hz")
     }
 
     /// Returns the WAV, or nil when the press was too short to be speech.
@@ -104,25 +100,41 @@ final class AudioCapture {
 
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        file = nil
-        converter = nil
 
-        let url = outputURL
-        outputURL = nil
+        samplesLock.lock()
+        var captured = samples
+        samples.removeAll(keepingCapacity: false)
+        samplesLock.unlock()
+        let format = target
+        converter = nil
+        target = nil
+
         let duration = startedAt.map { Date().timeIntervalSince($0) } ?? 0
         startedAt = nil
+        guard duration >= AudioCapture.minimumDuration, let format else { return nil }
 
-        guard let url, duration >= AudioCapture.minimumDuration else {
-            if let url { try? FileManager.default.removeItem(at: url) }
+        // Nothing above the noise floor: silence, or a muted input. Whisper would invent a
+        // sentence for it, so stop here instead.
+        let peak = captured.reduce(Float(0)) { max($0, abs($1)) }
+        guard peak > AudioCapture.silenceFloor else {
+            log.info("recording peaked at \(peak, format: .fixed(precision: 4)) — treating as silence")
             return nil
         }
-        return url
+
+        // Lift a quiet take to a healthy level. Capped so room tone in a long pause is not
+        // amplified into something whisper tries to transcribe.
+        let gain = min(AudioCapture.targetPeak / peak, AudioCapture.maximumGain)
+        if gain > 1.01 {
+            for index in captured.indices { captured[index] *= gain }
+            log.debug("normalised: peak \(peak, format: .fixed(precision: 3)) × \(gain, format: .fixed(precision: 2))")
+        }
+        return WAVWriter.write(captured, format: format, log: log)
     }
 
     // MARK: - Private
 
     private func append(_ buffer: AVAudioPCMBuffer, target: AVAudioFormat) {
-        guard let converter, let file else { return }
+        guard let converter else { return }
         let ratio = target.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
         guard let out = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
@@ -135,8 +147,11 @@ final class AudioCapture {
             status.pointee = .haveData
             return buffer
         }
-        guard error == nil, out.frameLength > 0 else { return }
-        try? file.write(from: out)
+        guard error == nil, out.frameLength > 0, let channel = out.floatChannelData?[0] else { return }
+        let incoming = UnsafeBufferPointer(start: channel, count: Int(out.frameLength))
+        samplesLock.lock()
+        samples.append(contentsOf: incoming)
+        samplesLock.unlock()
     }
 
     /// AirPods disconnecting mid-sentence changes the engine configuration. Keep what was captured

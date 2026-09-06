@@ -2,6 +2,54 @@
 
 All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
+## [0.5.0] - 2026-09-06 — M5 Spatial context, and a serious pass on latency, voice and accuracy
+
+**Latency.** A question took 16.9 s end to end; it now takes about 7 s. Almost all of the
+difference was `claude` discovering the user's MCP connectors on every single launch, which
+`--strict-mcp-config` skips (measured 16.9 s → 5.2 s on a bare prompt). Config key
+`allowMCPServers` turns it back on for the v3 agent work.
+
+- The screenshot is now taken while whisper transcribes, rather than before it.
+- Answers stream: `--output-format stream-json --include-partial-messages`, parsed into whole
+  sentences and spoken as they arrive, so the reply starts out loud before the model has finished.
+- Kestrel says a short "let me take a look" the moment it starts thinking, so the wait is not
+  silent. Toggle: `acknowledgeWhileThinking`.
+
+**Voice.** Ranked voice selection that prefers the neural premium and enhanced voices and skips
+the robotic compact ones, at a slightly slower rate and marginally lower pitch, with a beat between
+sentences. Settings shows each voice's tier and offers to open the download pane when only compact
+voices are installed.
+
+**Answers sound human.** The ask prompt was rewritten for speech: two or three sentences,
+contractions, no markdown, no preamble. It is also now forbidden to mention the screenshot, its
+resolution, or to ask the user to zoom in.
+
+**Screenshots.** Kestrel captures the frontmost window rather than the whole desktop. A 5K display
+squeezed into the ~1568 px a vision model receives turns labels to mush, which is what made the
+model ask to zoom in; one window spends the same budget on the part that matters. `captureMode`
+switches back to the whole screen.
+
+**Transcription.** Every take is normalised before whisper sees it — quiet input was the biggest
+cause of misheard words — and silence below the noise floor is dropped rather than transcribed into
+an invented sentence. whisper now runs with all but two cores, no cross-segment context and
+non-speech tokens suppressed, plus an optional vocabulary hint for names and jargon. A configured
+model that has gone missing falls back to the best one installed.
+
+**Walkthroughs point at real controls.** The vision model was consistently a button or two out,
+because locating a small control in a resized screenshot is genuinely hard for it. Kestrel now
+reads the frontmost app's controls from the Accessibility tree and offers the model a numbered
+list to choose from; the ring is drawn on the frame macOS reported, which is exact. Apps with no
+usable tree still fall back to the gridded screenshot and its estimated coordinates.
+
+**M5 — spatial context.** Drag while holding the ask key to circle part of the screen. The trail is
+drawn as you go, the region is cropped out of the screenshot and sent alongside the full frame.
+Global mouse monitors need no permission, so this works out of the box. Toggle: `spatialContext`.
+
+**Interface.** The panel is rebuilt on one spring: the indicator changes shape with the session
+rather than only colour — waveform bars while listening, a sweep while thinking — the border
+brightens while recording, and streamed sentences fade in as they arrive. The setup window gained a
+progress bar and a tick that lands with a bounce.
+
 ## [0.4.0] - 2026-09-06 — M4 Walkthroughs
 
 - First-run setup window: every permission and tool in one checklist, each with what it is for and

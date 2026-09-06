@@ -19,8 +19,18 @@ enum BackendKind: String, Codable, CaseIterable, Equatable {
 protocol Backend: AnyObject {
     var kind: BackendKind { get }
     /// Blocking. Call from a background queue. Throws `KestrelError` on failure.
-    func ask(_ query: Query, config: Config) throws -> Answer
+    ///
+    /// - Parameter onDelta: called on a background queue with each fragment of the answer as the
+    ///   model writes it, when the backend can stream. Kestrel speaks the answer sentence by
+    ///   sentence off this, so the reply starts out loud seconds before the model has finished.
+    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)?) throws -> Answer
     func cancel()
+}
+
+extension Backend {
+    func ask(_ query: Query, config: Config) throws -> Answer {
+        try ask(query, config: config, onDelta: nil)
+    }
 }
 
 enum BackendSupport {

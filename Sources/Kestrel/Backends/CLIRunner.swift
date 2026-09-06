@@ -37,8 +37,12 @@ final class CLIRunner {
         running?.terminate()
     }
 
+    /// - Parameter onLine: called on a background queue for every complete line of stdout as it
+    ///   arrives. Streaming is what makes the answer start being spoken while the model is still
+    ///   writing it, instead of after.
     func run(executable: URL, arguments: [String], cwd: URL,
-             environment extra: [String: String] = [:], timeout: TimeInterval) throws -> Result {
+             environment extra: [String: String] = [:], timeout: TimeInterval,
+             onLine: ((String) -> Void)? = nil) throws -> Result {
         let started = Date()
         let task = Process()
         task.executableURL = executable
@@ -76,7 +80,25 @@ final class CLIRunner {
         var outData = Data(), errData = Data()
         let group = DispatchGroup()
         let ioQueue = DispatchQueue(label: "dev.0xash.kestrel.cli.io", attributes: .concurrent)
-        ioQueue.async(group: group) { outData = outPipe.fileHandleForReading.readDataToEndOfFile() }
+        ioQueue.async(group: group) {
+            guard let onLine else {
+                outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+                return
+            }
+            var pending = Data()
+            while true {
+                let chunk = outPipe.fileHandleForReading.availableData
+                if chunk.isEmpty { break }
+                outData.append(chunk)
+                pending.append(chunk)
+                while let newline = pending.firstIndex(of: 0x0A) {
+                    let line = pending[pending.startIndex..<newline]
+                    pending = pending[pending.index(after: newline)...]
+                    if let text = String(data: line, encoding: .utf8), !text.isEmpty { onLine(text) }
+                }
+            }
+            if let text = String(data: pending, encoding: .utf8), !text.isEmpty { onLine(text) }
+        }
         ioQueue.async(group: group) { errData = errPipe.fileHandleForReading.readDataToEndOfFile() }
 
         var timedOut = false

@@ -44,12 +44,22 @@ final class WhisperOutputParsingTests: XCTestCase {
     func testEnglishOnlyModelForcesEnglish() {
         var config = Config.defaults
         config.language = "auto"
-        config.whisperModel = "/tmp/ggml-base.en.bin"
-        XCTAssertEqual(WhisperTranscriber.language(config: config), "en")
+        let english = URL(fileURLWithPath: "/tmp/ggml-base.en.bin")
+        let multilingual = URL(fileURLWithPath: "/tmp/ggml-small.bin")
 
-        config.whisperModel = "/tmp/ggml-small.bin"
-        XCTAssertEqual(WhisperTranscriber.language(config: config), "auto")
+        XCTAssertEqual(WhisperTranscriber.language(forModel: english, config: config), "en")
+        XCTAssertEqual(WhisperTranscriber.language(forModel: multilingual, config: config), "auto")
         config.language = "ur"
-        XCTAssertEqual(WhisperTranscriber.language(config: config), "ur")
+        XCTAssertEqual(WhisperTranscriber.language(forModel: multilingual, config: config), "ur")
+        // An .en model cannot do Urdu whatever the config says.
+        XCTAssertEqual(WhisperTranscriber.language(forModel: english, config: config), "en")
+    }
+
+    func testAMissingConfiguredModelFallsBackToWhatIsInstalled() {
+        var config = Config.defaults
+        config.whisperModel = "/tmp/definitely-not-here-\(UUID()).bin"
+        // Resolves to whatever is in ~/.kestrel/models, or nil on a machine with none.
+        let resolved = WhisperTranscriber.resolveModel(config: config)
+        XCTAssertNotEqual(resolved?.path, config.whisperModel)
     }
 }

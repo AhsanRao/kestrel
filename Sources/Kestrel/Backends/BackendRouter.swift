@@ -29,11 +29,11 @@ final class BackendRouter {
     }
 
     /// Blocking. Runs on the coordinator's background queue.
-    func ask(_ query: Query, config: Config) throws -> Answer {
+    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {
         let backend = select(for: query, config: config)
         inFlight = backend
         defer { inFlight = nil }
-        return try backend.ask(query, config: config)
+        return try backend.ask(query, config: config, onDelta: onDelta)
     }
 
     func cancel() {

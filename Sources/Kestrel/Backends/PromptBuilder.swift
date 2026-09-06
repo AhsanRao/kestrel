@@ -3,6 +3,18 @@ import Foundation
 /// Assembles the single prompt string handed to a CLI. Framing text lives in `Resources/Prompts`
 /// so it can be edited without a rebuild (spec §9).
 enum PromptBuilder {
+    /// A walkthrough asks two different questions depending on what Kestrel could learn about the
+    /// app: pick a real control by number, or — when Accessibility gave nothing — read a position
+    /// off a grid drawn on the screenshot.
+    static func framing(for query: Query) -> String {
+        switch query.mode {
+        case .walkthrough:
+            return BundleResources.prompt(query.elements.isEmpty ? .walkthrough : .walkthroughElements)
+        default:
+            return BundleResources.prompt(.ask)
+        }
+    }
+
     /// - Parameter mentionScreenshotPath: Claude reads the PNG itself via its Read tool, so it
     ///   needs the path in the prompt. Codex receives the image as an `--image` attachment.
     static func build(_ query: Query, mentionScreenshotPath: Bool = true) -> String {
@@ -12,7 +24,7 @@ enum PromptBuilder {
 
         case .ask, .walkthrough:
             var parts: [String] = []
-            parts.append(BundleResources.prompt(query.mode == .walkthrough ? .walkthrough : .ask))
+            parts.append(framing(for: query))
             if mentionScreenshotPath {
                 if let crop = query.focusCrop {
                     parts.append("The user circled a region of the screen. Read that crop first: \(crop.path)")
@@ -24,6 +36,10 @@ enum PromptBuilder {
                 }
             } else if query.focusCrop != nil {
                 parts.append("The first attached image is the region the user circled; the second is the full screen.")
+            }
+            if !query.elements.isEmpty {
+                parts.append("Controls on screen:\n"
+                             + query.elements.map(\.listing).joined(separator: "\n"))
             }
             parts.append("Question: \(query.text)")
             return parts.joined(separator: "\n\n")

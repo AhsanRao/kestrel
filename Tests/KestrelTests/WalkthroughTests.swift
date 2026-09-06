@@ -77,8 +77,8 @@ final class WalkthroughParserTests: XCTestCase {
 
     func testSpokenSummaryFlagsAnIncompleteWalkthrough() {
         var walkthrough = Walkthrough(goal: "Sign in", steps: [
-            WalkthroughStep(n: 1, instruction: "Click Account", target: .init(x: 0, y: 0, w: 4, h: 4), shape: "rect"),
-        ], image: nil, needs_more: true)
+            WalkthroughStep(n: 1, instruction: "Click Account", target: .init(x: 0, y: 0, w: 4, h: 4)),
+        ], needs_more: true)
         XCTAssertTrue(WalkthroughParser.spokenSummary(walkthrough).contains("more steps"))
         walkthrough.needs_more = false
         XCTAssertFalse(WalkthroughParser.spokenSummary(walkthrough).contains("more steps"))

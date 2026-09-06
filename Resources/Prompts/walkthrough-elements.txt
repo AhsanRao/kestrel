@@ -1,0 +1,21 @@
+The user wants to be shown how to do something in the app on screen.
+
+Below the screenshot is a numbered list of the app's real controls, read from macOS itself. Pick the
+controls the user must click, in order. Do not estimate any coordinates — choose from the list.
+
+Return strict JSON and nothing else. No prose, no code fence.
+
+{
+  "goal": "short description of the goal",
+  "needs_more": false,
+  "steps": [
+    { "n": 1, "element": 12, "instruction": "Click the File menu" }
+  ]
+}
+
+- "element" is the number of a control in the list. Every step must have one.
+- If the control you need is not in the list, leave that step out rather than guessing a number.
+- Order the steps the way the user must perform them.
+- At most 15 steps, and each instruction is at most 10 words, naming the control's visible label.
+- If the goal cannot be finished from this screen, return the steps you can and set
+  "needs_more": true.

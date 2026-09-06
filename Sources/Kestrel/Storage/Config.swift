@@ -7,14 +7,18 @@ struct Config: Codable, Equatable {
     var claudeModel: String?
     var codexModel: String?
     var autoRoute: Bool
+    var allowMCPServers: Bool
 
     var whisperBinary: String
     var whisperModel: String
     var language: String
+    var transcriptionHint: String?
 
     var speakAnswers: Bool
+    var acknowledgeWhileThinking: Bool
     var voiceIdentifier: String?
     var voiceRate: Double
+    var voicePitch: Double
 
     var cleanupDictation: Bool
     var injectMode: InjectMode
@@ -22,8 +26,10 @@ struct Config: Codable, Equatable {
     var hotkeys: Hotkeys
     var panelAutoHideSeconds: Int
     var screenshotMaxEdge: Int
+    var captureMode: CaptureMode
     var launchAtLogin: Bool
     var walkthroughs: Bool
+    var spatialContext: Bool
     var onboardingCompleted: Bool
 
     var apiKeys: APIKeys
@@ -33,19 +39,25 @@ struct Config: Codable, Equatable {
         claudeModel: nil,
         codexModel: nil,
         autoRoute: false,
+        allowMCPServers: false,
         whisperBinary: Paths.defaultWhisperBinary,
         whisperModel: Paths.defaultWhisperModel.path,
         language: "auto",
+        transcriptionHint: nil,
         speakAnswers: true,
+        acknowledgeWhileThinking: true,
         voiceIdentifier: nil,
-        voiceRate: 0.52,
+        voiceRate: 0.47,
+        voicePitch: 0.98,
         cleanupDictation: true,
         injectMode: .paste,
         hotkeys: .defaults,
         panelAutoHideSeconds: 20,
         screenshotMaxEdge: 2048,
+        captureMode: .window,
         launchAtLogin: false,
         walkthroughs: true,
+        spatialContext: true,
         onboardingCompleted: false,
         apiKeys: APIKeys(anthropic: nil, openai: nil)
     )
@@ -75,6 +87,20 @@ struct Config: Codable, Equatable {
 
     enum InjectMode: String, Codable, CaseIterable { case paste, type }
 
+    /// What a question is asked *about*. Capturing just the frontmost window spends every pixel on
+    /// the thing the user means, instead of shrinking a whole 5K desktop until the labels blur.
+    enum CaptureMode: String, Codable, CaseIterable {
+        case window
+        case display
+
+        var title: String {
+            switch self {
+            case .window: return "Front window"
+            case .display: return "Whole screen"
+            }
+        }
+    }
+
     // MARK: - Tolerant decoding
 
     init(from decoder: Decoder) throws {
@@ -90,36 +116,50 @@ struct Config: Codable, Equatable {
         claudeModel = opt(.claudeModel)
         codexModel = opt(.codexModel)
         autoRoute = v(.autoRoute, d.autoRoute)
+        allowMCPServers = v(.allowMCPServers, d.allowMCPServers)
         whisperBinary = v(.whisperBinary, d.whisperBinary)
         whisperModel = v(.whisperModel, d.whisperModel)
         language = v(.language, d.language)
+        transcriptionHint = opt(.transcriptionHint)
         speakAnswers = v(.speakAnswers, d.speakAnswers)
+        acknowledgeWhileThinking = v(.acknowledgeWhileThinking, d.acknowledgeWhileThinking)
         voiceIdentifier = opt(.voiceIdentifier)
         voiceRate = v(.voiceRate, d.voiceRate)
+        voicePitch = v(.voicePitch, d.voicePitch)
         cleanupDictation = v(.cleanupDictation, d.cleanupDictation)
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
         panelAutoHideSeconds = v(.panelAutoHideSeconds, d.panelAutoHideSeconds)
         screenshotMaxEdge = v(.screenshotMaxEdge, d.screenshotMaxEdge)
+        captureMode = v(.captureMode, d.captureMode)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
         walkthroughs = v(.walkthroughs, d.walkthroughs)
+        spatialContext = v(.spatialContext, d.spatialContext)
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
         apiKeys = v(.apiKeys, d.apiKeys)
         clamp()
     }
 
     init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
-         whisperBinary: String, whisperModel: String, language: String, speakAnswers: Bool,
-         voiceIdentifier: String?, voiceRate: Double, cleanupDictation: Bool, injectMode: InjectMode,
-         hotkeys: Hotkeys, panelAutoHideSeconds: Int, screenshotMaxEdge: Int, launchAtLogin: Bool,
-         walkthroughs: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
+         allowMCPServers: Bool,
+         whisperBinary: String, whisperModel: String, language: String, transcriptionHint: String?,
+         speakAnswers: Bool, acknowledgeWhileThinking: Bool,
+         voiceIdentifier: String?, voiceRate: Double, voicePitch: Double,
+         cleanupDictation: Bool, injectMode: InjectMode,
+         hotkeys: Hotkeys, panelAutoHideSeconds: Int, screenshotMaxEdge: Int, captureMode: CaptureMode,
+         launchAtLogin: Bool,
+         walkthroughs: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
-        self.autoRoute = autoRoute; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
-        self.language = language; self.speakAnswers = speakAnswers; self.voiceIdentifier = voiceIdentifier
-        self.voiceRate = voiceRate; self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
+        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
+        self.language = language; self.transcriptionHint = transcriptionHint
+        self.speakAnswers = speakAnswers; self.acknowledgeWhileThinking = acknowledgeWhileThinking; self.voiceIdentifier = voiceIdentifier
+        self.voiceRate = voiceRate; self.voicePitch = voicePitch
+        self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
-        self.screenshotMaxEdge = screenshotMaxEdge; self.launchAtLogin = launchAtLogin
-        self.walkthroughs = walkthroughs; self.onboardingCompleted = onboardingCompleted
+        self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
+        self.launchAtLogin = launchAtLogin
+        self.walkthroughs = walkthroughs; self.spatialContext = spatialContext
+        self.onboardingCompleted = onboardingCompleted
         self.apiKeys = apiKeys
         clamp()
     }
@@ -127,6 +167,7 @@ struct Config: Codable, Equatable {
     /// Keeps hand-edited nonsense from reaching AVSpeechSynthesizer or the screenshot scaler.
     private mutating func clamp() {
         voiceRate = min(max(voiceRate, 0.3), 0.7)
+        voicePitch = min(max(voicePitch, 0.5), 1.5)
         panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
         screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
     }

@@ -23,7 +23,8 @@ enum WalkthroughParser {
     static func sanitize(_ steps: [WalkthroughStep]) -> [WalkthroughStep] {
         steps
             .filter { !$0.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .filter { $0.target.w > 0 && $0.target.h > 0 }
+            // A step must point at something: a control from the list, or a box on the screen.
+            .filter { $0.element != nil || (($0.target?.w ?? 0) > 0 && ($0.target?.h ?? 0) > 0) }
             .prefix(maximumSteps)
             .enumerated()
             .map { index, step in

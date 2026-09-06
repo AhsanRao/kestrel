@@ -20,23 +20,41 @@ final class SpeechOutput: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         synthesizer.delegate = self
     }
 
-    /// Returns false when nothing was spoken because system output is muted.
+    /// Replaces anything being said. Returns false when nothing was spoken because system output
+    /// is muted.
     @discardableResult
     func speak(_ text: String, config: Config) -> Bool {
         stop()
+        return enqueue(text, config: config)
+    }
+
+    /// Adds to what is already queued, so an answer arriving sentence by sentence is read as one
+    /// continuous reply rather than restarting on every fragment.
+    @discardableResult
+    func enqueue(_ text: String, config: Config) -> Bool {
         let spoken = SpeechOutput.strippedForSpeech(text)
         guard !spoken.isEmpty else { return false }
         guard !SpeechOutput.isSystemOutputMuted else {
             log.info("output muted, skipping speech")
             return false
         }
-
-        let utterance = AVSpeechUtterance(string: spoken)
-        utterance.rate = Float(config.voiceRate)
-        utterance.voice = SpeechOutput.voice(config: config)
+        synthesizer.speak(utterance(spoken, config: config))
         isSpeaking = true
-        synthesizer.speak(utterance)
         return true
+    }
+
+    /// Rate and pitch matter as much as the voice: the stock 0.5 rate with a flat pitch is what
+    /// makes system speech sound robotic. Slightly slower, very slightly lower, with a beat of
+    /// silence between sentences, reads as someone talking rather than a machine reciting.
+    private func utterance(_ text: String, config: Config) -> AVSpeechUtterance {
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = SpeechOutput.voice(config: config)
+        utterance.rate = Float(config.voiceRate)
+        utterance.pitchMultiplier = Float(config.voicePitch)
+        utterance.volume = 1.0
+        utterance.preUtteranceDelay = 0
+        utterance.postUtteranceDelay = 0.12
+        return utterance
     }
 
     func stop() {
@@ -56,7 +74,7 @@ final class SpeechOutput: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
 
     // MARK: - Voice
 
-    /// Configured voice, else the best installed English voice (premium > enhanced > default).
+    /// Configured voice, else the best installed one.
     static func voice(config: Config) -> AVSpeechSynthesisVoice? {
         if let identifier = config.voiceIdentifier, let voice = AVSpeechSynthesisVoice(identifier: identifier) {
             return voice
@@ -64,18 +82,52 @@ final class SpeechOutput: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         return bestAvailableVoice()
     }
 
+    /// macOS ships several tiers under the same names. The compact voices are the ones that sound
+    /// synthetic; premium and enhanced are neural and are what Kestrel wants. Among equals, prefer
+    /// the voices Apple built for reading long passages, which are the calmest.
+    static let preferredNames = ["Ava", "Zoe", "Serena", "Allison", "Samantha", "Evan", "Tom", "Nathan", "Joelle"]
+
     static func bestAvailableVoice() -> AVSpeechSynthesisVoice? {
-        let preferred = Locale.current.language.languageCode?.identifier ?? "en"
-        let candidates = AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix(preferred) || $0.language.hasPrefix("en") }
-        func rank(_ voice: AVSpeechSynthesisVoice) -> Int {
-            switch voice.quality {
-            case .premium: return 3
-            case .enhanced: return 2
-            default: return 1
-            }
+        rankedVoices().first
+    }
+
+    /// Every usable voice, best first — what the settings picker shows.
+    static func rankedVoices() -> [AVSpeechSynthesisVoice] {
+        let preferredLanguage = Locale.current.language.languageCode?.identifier ?? "en"
+        return AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language.hasPrefix(preferredLanguage) || $0.language.hasPrefix("en") }
+            .filter { !$0.identifier.contains("eloquence") }        // the 1980s-sounding set
+            .sorted { rank($0) > rank($1) }
+    }
+
+    static func rank(_ voice: AVSpeechSynthesisVoice) -> Int {
+        var score: Int
+        switch voice.quality {
+        case .premium: score = 300
+        case .enhanced: score = 200
+        default: score = 100
         }
-        return candidates.max(by: { rank($0) < rank($1) })
+        if let index = preferredNames.firstIndex(where: { voice.name.hasPrefix($0) }) {
+            score += 50 - index
+        }
+        // A voice matching the user's own region needs no accent adjustment from the listener.
+        if voice.language == Locale.current.identifier.replacingOccurrences(of: "_", with: "-") { score += 10 }
+        return score
+    }
+
+    /// True when only the robotic compact voices are installed, so the UI can offer to fix it.
+    static var hasOnlyCompactVoices: Bool {
+        !rankedVoices().contains { $0.quality != .default }
+    }
+
+    static func describe(_ voice: AVSpeechSynthesisVoice) -> String {
+        let quality: String
+        switch voice.quality {
+        case .premium: quality = "Premium"
+        case .enhanced: quality = "Enhanced"
+        default: quality = "Compact"
+        }
+        return "\(voice.name) · \(quality)"
     }
 
     // MARK: - Text

@@ -76,6 +76,21 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] A question the model cannot answer from this screen returns one step and says there are more
 - [ ] "What app is this?" still answers normally, with no overlay
 
+## 5c. Spatial context (M5)
+
+- [ ] Holding the ask key and circling a button shows a cyan trail
+- [ ] Asking "what does this do?" about the circled control answers about that control
+- [ ] A tiny twitch of the mouse is ignored, and the question behaves as normal
+- [ ] The trail never appears in the screenshot that is sent
+
+## 5d. Voice and timing
+
+- [ ] Kestrel says something within a second of releasing the key
+- [ ] The answer starts being spoken before it has finished appearing on screen
+- [ ] The voice is one of the premium or enhanced ones, not a compact voice
+- [ ] Muting the Mac skips speech and leaves the answer on screen
+- [ ] A question about the front window is answered without any mention of resolution or zooming
+
 ## 6. Settings and config
 
 - [ ] `⌃⌘A` starts listening on a machine where Accessibility has never been granted

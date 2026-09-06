@@ -32,7 +32,8 @@ final class PanelModel: ObservableObject {
         case .idle: return KestrelPalette.idle
         case .listening, .dictating: return KestrelPalette.cyan
         case .transcribing, .thinking, .injecting: return KestrelPalette.blue
-        case .answering, .guiding: return KestrelPalette.cream
+        // Cream is the bird on the icon, not a dot on a light material — it vanishes there.
+        case .answering, .guiding: return KestrelPalette.blue
         case .error: return KestrelPalette.coral
         }
     }

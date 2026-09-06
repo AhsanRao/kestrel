@@ -2,25 +2,60 @@ import Foundation
 import os
 
 /// whisper.cpp via its `whisper-cli` binary (spec §8.4).
-/// Flags: -m <model> -f <wav> -nt (no timestamps) -np (no progress) --no-prints -l <lang>
+///
+/// Flags verified against `whisper-cli --help`, whisper.cpp shipped with ggml 0.23.0 (2026-09-06):
+///   -m <model> -f <wav>   model and input
+///   -nt                   no timestamps in the output
+///   -np                   no prints other than the result
+///   -l <lang>             language, or "auto"
+///   -t N                  decode threads; the default of 4 leaves an M-series chip idle
+///   -mc 0                 no text context carried between segments, which is where whisper's
+///                         invented sentences usually come from on short clips
+///   -sns                  suppress non-speech tokens, so coughs and clicks stop becoming words
+///   --prompt              optional vocabulary hint (names, jargon) from config
 final class WhisperTranscriber: Transcriber {
     private let log = Logger(subsystem: "dev.0xash.kestrel", category: "whisper")
     private let runner = CLIRunner()
 
     func cancel() { runner.cancel() }
 
+    /// Leaves a couple of cores for the UI and the CLI that is about to run.
+    static var threadCount: Int {
+        max(4, ProcessInfo.processInfo.activeProcessorCount - 2)
+    }
+
+    /// The configured model, or the best one actually installed. Falling back beats failing when
+    /// the user has downloaded a different size than the config names.
+    static func resolveModel(config: Config) -> URL? {
+        let configured = config.whisperModelURL
+        if FileManager.default.fileExists(atPath: configured.path) { return configured }
+        let installed = (try? FileManager.default.contentsOfDirectory(at: Paths.models,
+                                                                     includingPropertiesForKeys: [.fileSizeKey]))?
+            .filter { $0.pathExtension == "bin" && $0.lastPathComponent.hasPrefix("ggml-") } ?? []
+        // Larger model, better transcript; whisper's sizes sort that way by file size.
+        return installed.max { a, b in
+            let sizeA = (try? a.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let sizeB = (try? b.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            return sizeA < sizeB
+        }
+    }
+
     func transcribe(_ wav: URL, config: Config) throws -> String {
         let binary = config.whisperBinaryURL
         guard FileManager.default.isExecutableFile(atPath: binary.path) else {
             throw KestrelError.whisperBinaryMissing(Paths.tildeAbbreviated(binary))
         }
-        let model = config.whisperModelURL
-        guard FileManager.default.fileExists(atPath: model.path) else {
-            throw KestrelError.whisperModelMissing(Paths.tildeAbbreviated(model))
+        guard let model = WhisperTranscriber.resolveModel(config: config) else {
+            throw KestrelError.whisperModelMissing(Paths.tildeAbbreviated(config.whisperModelURL))
         }
 
-        let arguments = ["-m", model.path, "-f", wav.path, "-nt", "-np", "--no-prints",
-                         "-l", WhisperTranscriber.language(config: config)]
+        var arguments = ["-m", model.path, "-f", wav.path, "-nt", "-np",
+                         "-l", WhisperTranscriber.language(forModel: model, config: config),
+                         "-t", String(WhisperTranscriber.threadCount),
+                         "-mc", "0", "-sns"]
+        if let hint = config.transcriptionHint, !hint.isEmpty {
+            arguments += ["--prompt", hint]
+        }
         let result = try runner.run(executable: binary, arguments: arguments,
                                     cwd: Paths.tmp, timeout: 120)
         if result.timedOut { throw KestrelError.transcriptionFailed("whisper timed out") }
@@ -34,9 +69,9 @@ final class WhisperTranscriber: Transcriber {
     }
 
     /// An English-only model rejects `auto`; force `en` so the default setup just works.
-    static func language(config: Config) -> String {
-        let isEnglishOnly = config.whisperModelURL.lastPathComponent.contains(".en")
-        if isEnglishOnly { return "en" }
+    /// Keyed off the model actually being run, which may not be the one named in the config.
+    static func language(forModel model: URL, config: Config) -> String {
+        if model.lastPathComponent.contains(".en") { return "en" }
         return config.language.isEmpty ? "auto" : config.language
     }
 
