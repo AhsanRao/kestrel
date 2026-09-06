@@ -2,8 +2,10 @@ import AppKit
 import Carbon.HIToolbox
 import os
 
-/// Two global hotkeys via Carbon `RegisterEventHotKey`. Carbon is used deliberately: it delivers
-/// press *and* release and needs no Accessibility permission, unlike a CGEventTap (spec §8.1).
+/// Two global hotkeys. A binding with a key code goes to Carbon `RegisterEventHotKey`, which
+/// delivers press *and* release and needs no permission (spec §8.1). A bare modifier chord — ⌃⌘
+/// held alone — cannot be registered that way and is watched by `ModifierChordWatcher` instead,
+/// which does need Accessibility.
 final class HotkeyService {
     enum Action { case ask, dictate }
     enum Phase { case pressed, released }
@@ -11,8 +13,13 @@ final class HotkeyService {
     /// Delivered on the main thread.
     var handler: ((Action, Phase) -> Void)?
     var registrationFailure: ((String) -> Void)?
+    /// The chord turned out to be the start of a real shortcut; whatever it began must be undone.
+    var chordAborted: ((Action) -> Void)?
+    /// A bare-chord hotkey is configured but Accessibility has not been granted.
+    var accessibilityMissing: (() -> Void)?
 
     private let log = Logger(subsystem: "dev.0xash.kestrel", category: "hotkey")
+    private let chords = ModifierChordWatcher()
     private var eventHandler: EventHandlerRef?
     private var registrations: [UInt32: (ref: EventHotKeyRef, action: Action)] = [:]
     private var isDown: [Action: Bool] = [:]
@@ -29,11 +36,29 @@ final class HotkeyService {
     /// Re-registers from scratch. Called on every config change (spec §8.1).
     func apply(_ hotkeys: Config.Hotkeys) {
         unregisterAll()
-        register(hotkeys.ask, id: 1, action: .ask)
-        register(hotkeys.dictate, id: 2, action: .dictate)
+        chords.stop()
+
+        var chordBindings: [(Action, HotkeyBinding)] = []
+        for (binding, id, action) in [(hotkeys.ask, UInt32(1), Action.ask),
+                                      (hotkeys.dictate, UInt32(2), Action.dictate)] {
+            guard binding.isValid else { registrationFailure?(binding.display); continue }
+            if binding.isModifierOnly {
+                chordBindings.append((action, binding))
+            } else {
+                register(binding, id: id, action: action)
+            }
+        }
+        guard !chordBindings.isEmpty else { return }
+
+        chords.onPress = { [weak self] action in self?.dispatchChord(action, phase: .pressed) }
+        chords.onRelease = { [weak self] action in self?.dispatchChord(action, phase: .released) }
+        chords.onAbort = { [weak self] action in self?.chordAborted?(action) }
+        chords.onPermissionMissing = { [weak self] in self?.accessibilityMissing?() }
+        chords.watch(chordBindings)
     }
 
     func stop() {
+        chords.stop()
         unregisterAll()
         if let eventHandler { RemoveEventHandler(eventHandler) }
         eventHandler = nil
@@ -42,13 +67,10 @@ final class HotkeyService {
     // MARK: - Registration
 
     private func register(_ binding: HotkeyBinding, id: UInt32, action: Action) {
-        guard binding.isValid else {
-            registrationFailure?(binding.display)
-            return
-        }
+        guard let keyCode = binding.keyCode else { return }
         var ref: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: HotkeyService.signature, id: id)
-        let status = RegisterEventHotKey(binding.keyCode, binding.carbonModifiers, hotKeyID,
+        let status = RegisterEventHotKey(keyCode, binding.carbonModifiers, hotKeyID,
                                          GetApplicationEventTarget(), 0, &ref)
         if status == noErr, let ref {
             registrations[id] = (ref, action)
@@ -72,6 +94,11 @@ final class HotkeyService {
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
         ]
         InstallEventHandler(GetApplicationEventTarget(), hotkeyCallback, specs.count, &specs, nil, &eventHandler)
+    }
+
+    /// Chord events already arrive on the main thread and carry their own press/release pairing.
+    private func dispatchChord(_ action: Action, phase: Phase) {
+        handler?(action, phase)
     }
 
     fileprivate func dispatch(id: UInt32, phase: Phase) {

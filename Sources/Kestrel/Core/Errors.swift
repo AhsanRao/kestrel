@@ -16,6 +16,7 @@ enum KestrelError: LocalizedError, Equatable {
     case quotaExhausted(String)
     case accessibilityDenied
     case hotkeyRegistrationFailed(String)
+    case hotkeyNeedsAccessibility(String)
 
     var errorDescription: String? {
         switch self {
@@ -48,6 +49,8 @@ enum KestrelError: LocalizedError, Equatable {
             return "Accessibility permission needed to paste — System Settings ▸ Privacy & Security ▸ Accessibility"
         case .hotkeyRegistrationFailed(let combo):
             return "Hotkey \(combo) is already taken by another app — pick a different one in Settings"
+        case .hotkeyNeedsAccessibility(let combo):
+            return "The \(combo) hotkey needs Accessibility to be seen — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
         }
     }
 
@@ -58,7 +61,7 @@ enum KestrelError: LocalizedError, Equatable {
             return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
         case .screenRecordingDenied:
             return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        case .accessibilityDenied:
+        case .accessibilityDenied, .hotkeyNeedsAccessibility:
             return URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
         default:
             return nil

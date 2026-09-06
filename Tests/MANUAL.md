@@ -18,7 +18,7 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 2. Ask
 
-- [ ] Hold `⌃⌘Space`, ask "what app is this?", release → correct spoken answer
+- [ ] Hold `⌥⌘`, ask "what app is this?", release → correct spoken answer
 - [ ] The screenshot never contains the Kestrel panel
 - [ ] Question about the display the mouse is on, with two displays connected
 - [ ] Press the hotkey while the answer is being spoken → speech stops, recording restarts
@@ -66,8 +66,13 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 6. Settings and config
 
-- [ ] `⌃⌘Space` reaches Kestrel and not the Emoji & Symbols viewer
-- [ ] `⌃⌘D` reaches Kestrel and not Look Up
+- [ ] Holding `⌥⌘` alone starts listening after a short beat
+- [ ] A quick `⌥⌘` tap does nothing
+- [ ] `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space`, `⌥⌘W` still do their macOS jobs and leave no recording running
+- [ ] Holding `⌥⌘` a beat, then pressing a key, discards the recording silently
+- [ ] `⌃⌘K` starts dictation without ever arming the ask chord
+- [ ] With Accessibility off, ask shows the permission error; granting it makes `⌥⌘` work without
+      relaunching
 - [ ] Rebind the ask hotkey; the new combination works immediately, the old one does not
 - [ ] A combination already owned by another app shows the conflict error
 - [ ] Edit `~/.kestrel/config.json` by hand → applied without relaunching

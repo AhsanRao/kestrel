@@ -24,7 +24,14 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
 
             HotkeyRecorder(title: "Ask (hold)", binding: model.binding(\.hotkeys.ask))
-            HotkeyRecorder(title: "Dictate (toggle)", binding: model.binding(\.hotkeys.dictate))
+            HotkeyRecorder(title: "Dictate (toggle)", binding: model.binding(\.hotkeys.dictate),
+                           allowsBareChord: false)
+            if model.config.hotkeys.ask.isModifierOnly {
+                Text("A modifier-only hotkey is watched through Accessibility. Hold it for a "
+                     + "moment to start; pressing any key while it is held cancels, so ordinary "
+                     + "\(model.config.hotkeys.ask.display) shortcuts still work.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
 
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
             Toggle("Draw walkthroughs for \"how do I…\" questions", isOn: model.binding(\.walkthroughs))

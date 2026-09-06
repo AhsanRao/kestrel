@@ -22,6 +22,7 @@ final class SessionCoordinator {
     /// Kept alive for the whole walkthrough: the overlay needs its geometry to place the drawing.
     var pendingCapture: ScreenCapture?
     private var listeningStartedAt: Date?
+    private var accessibilityRetry: Timer?
 
     var config: Config { ConfigStore.shared.current }
 
@@ -38,6 +39,8 @@ final class SessionCoordinator {
         hotkeys.registrationFailure = { [weak self] combo in
             self?.fail(KestrelError.hotkeyRegistrationFailed(combo))
         }
+        hotkeys.chordAborted = { [weak self] _ in self?.chordAborted() }
+        hotkeys.accessibilityMissing = { [weak self] in self?.chordNeedsAccessibility() }
         hotkeys.start(with: config.hotkeys)
         applyConfigToPanel(config)
 
@@ -48,9 +51,36 @@ final class SessionCoordinator {
     }
 
     func stop() {
+        accessibilityRetry?.invalidate()
+        accessibilityRetry = nil
         hotkeys.stop()
         speech.stop()
         audio.stop()
+    }
+
+    /// The modifiers turned out to be the start of a real shortcut (⌃⌘K, ⌃⌘Q…), so the recording
+    /// that the chord began is thrown away without a word.
+    private func chordAborted() {
+        guard machine.state == .listening else { return }
+        audio.stop()
+        apply(.cancelled)
+        panel.hideImmediately()
+    }
+
+    /// A bare-chord hotkey cannot be seen without Accessibility. Ask for it, say why, and keep
+    /// checking so the hotkey starts working the moment it is granted — no relaunch needed.
+    private func chordNeedsAccessibility() {
+        TextInjector.requestAccessibilityPermission()
+        fail(KestrelError.hotkeyNeedsAccessibility(config.hotkeys.ask.display))
+        guard accessibilityRetry == nil else { return }
+        accessibilityRetry = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            guard TextInjector.hasAccessibilityPermission else { return }
+            timer.invalidate()
+            self.accessibilityRetry = nil
+            self.hotkeys.apply(self.config.hotkeys)
+            self.log.info("accessibility granted, chord hotkey live")
+        }
     }
 
     private func applyConfigToPanel(_ config: Config) {

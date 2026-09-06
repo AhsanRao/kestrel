@@ -4,8 +4,16 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [0.4.0] - 2026-09-06 — M4 Walkthroughs
 
-- Default hotkeys are now `⌃⌘Space` (ask) and `⌃⌘D` (dictate). Both collide with a stock macOS
-  shortcut — Emoji & Symbols and Look Up — so the README says how to free them.
+- Ask is now the bare `⌥⌘` chord: hold both modifiers on their own, speak, let go. Carbon cannot
+  register a modifier-only hotkey, so it is watched through a listen-only event tap, which means
+  ask now needs Accessibility; Kestrel prompts for it and goes live the moment it is granted.
+- Because `⌥⌘` also opens `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space` and friends, it waits ~0.28 s before listening
+  and any key pressed while it is held cancels, discarding whatever recording had started. Those
+  shortcuts are untouched.
+- Dictate is now `⌃⌘K`, on a different modifier pair so it can never be read as the start of an
+  ask. K because macOS already owns `⌃⌘Space`, `⌃⌘D`, `⌃⌘F` and `⌃⌘Q`.
+- `keyCode` is optional in `config.json`: omit it for a bare chord. The settings recorder captures
+  one by holding two or more modifiers and releasing without pressing a key.
 
 - Ask "how do I …?" and Kestrel draws the answer on screen instead of only speaking it:
   a ring around the control to click, its number, and the instruction.
@@ -49,7 +57,7 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [0.1.0] - 2026-09-06 — M1 Ask
 
-- Hold ⌃⌘Space: record, transcribe locally with whisper.cpp, capture the display under the mouse,
+- Hold the ask hotkey: record, transcribe locally with whisper.cpp, capture the display under the mouse,
   ask Claude, show the answer in a floating panel and speak it.
 - Panel is excluded from screen capture, auto-hides, and pauses its timer on hover.
 - Claude backend over `claude -p --output-format json`, cancellable, with timeouts.

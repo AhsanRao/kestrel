@@ -61,9 +61,13 @@ struct Config: Codable, Equatable {
         var ask: HotkeyBinding
         var dictate: HotkeyBinding
 
+        /// Ask is a bare ⌥⌘ chord: two adjacent keys, comfortable to hold, and nothing in macOS
+        /// fires on modifiers alone. Dictate deliberately sits on a *different* pair — ⌃⌘K — so
+        /// pressing it can never be mistaken for the start of an ask. K because macOS already owns
+        /// ⌃⌘Space (Emoji & Symbols), ⌃⌘D (Look Up), ⌃⌘F (Full Screen) and ⌃⌘Q (Lock Screen).
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: 49, modifiers: ["control", "command"]),      // ⌃⌘Space
-            dictate: HotkeyBinding(keyCode: 2, modifiers: ["control", "command"])    // ⌃⌘D
+            ask: HotkeyBinding(keyCode: nil, modifiers: ["option", "command"]),       // ⌥⌘
+            dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])    // ⌃⌘K
         )
     }
 

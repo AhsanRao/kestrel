@@ -10,8 +10,8 @@ only while you are holding the key.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌃⌘Space`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
-| **Dictate** | Tap `⌃⌘D`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
+| **Ask** | Hold `⌥⌘`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
+| **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
@@ -51,17 +51,18 @@ macOS asks once for each, at the moment it is first needed:
 
 | Permission | Asked when | If you miss the prompt |
 |---|---|---|
+| Accessibility | first ask, because `⌥⌘` is a modifier-only hotkey | System Settings ▸ Privacy & Security ▸ Accessibility |
 | Microphone | first hotkey press | System Settings ▸ Privacy & Security ▸ Microphone |
 | Screen Recording | first question | …▸ Screen Recording, **then relaunch Kestrel** |
-| Accessibility | first dictation | …▸ Accessibility |
+
 
 Kestrel's error panel links straight to the right pane when one is missing.
 
 ## Using it
 
-- **Ask:** hold `⌃⌘Space`, say *"what is this window for?"*, release. The panel shows the answer and
+- **Ask:** hold `⌥⌘`, say *"what is this window for?"*, release. The panel shows the answer and
   speaks it. Press the hotkey again to interrupt.
-- **Dictate:** tap `⌃⌘D`, speak, tap again. Text lands in the focused app.
+- **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
 - **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
   drawn on screen: click each highlighted control to advance, Esc to stop. Needs Accessibility;
   without it Kestrel reads the steps out instead.
@@ -72,9 +73,22 @@ Kestrel's error panel links straight to the right pane when one is missing.
 > lets you advance with a click anywhere.
 - Both hotkeys are rebindable in Settings.
 
-> macOS ships its own shortcuts on these combinations: `⌃⌘Space` opens the Emoji & Symbols viewer
-> and `⌃⌘D` looks a word up in the dictionary. If one of them wins, either turn it off in
-> System Settings ▸ Keyboard ▸ Keyboard Shortcuts, or rebind Kestrel's in Settings ▸ General.
+**Ask is the bare `⌥⌘` chord**: hold both modifiers on their own and speak. Nothing in macOS fires
+on modifiers alone, but those two keys do begin plenty of shortcuts — `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space`,
+`⌥⌘W` — so Kestrel waits about a quarter of a second before it starts listening, and *any* key
+pressed while they are held cancels and discards whatever had started. Those shortcuts keep working
+untouched; the only cost is a brief panel flash if you rest on `⌥⌘` for a beat before hitting the
+key. A modifier-only hotkey cannot be registered the ordinary way, so **ask needs Accessibility
+permission**; Kestrel asks on first use and goes live the moment it is granted, no relaunch.
+
+Dictate is `⌃⌘K`, deliberately on a *different* modifier pair so pressing it can never look like the
+start of an ask. K because macOS already owns `⌃⌘Space` (Emoji & Symbols), `⌃⌘D` (Look Up), `⌃⌘F`
+(Full Screen) and `⌃⌘Q` (Lock Screen).
+
+Both are rebindable in Settings ▸ General — hold two or more modifiers and release without pressing
+anything to record another bare chord. Prefer `⌃⌘` for ask if the flash bothers you: it is a much
+quieter prefix. One line in `config.json` does it:
+`"ask": {"modifiers": ["control", "command"]}`.
 
 ## Configuration
 
@@ -93,7 +107,7 @@ you save. The Settings window writes the same file.
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | premium voices are preferred when installed |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘Space` / `⌃⌘D` | `{keyCode, modifiers}` |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌥⌘` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |

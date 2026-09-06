@@ -2,13 +2,32 @@ import AppKit
 import Carbon.HIToolbox
 import Foundation
 
-/// A global hotkey as stored in config.json: a virtual key code plus modifier names.
+/// A global hotkey as stored in config.json: modifier names plus, optionally, a virtual key code.
 /// Names rather than a bitmask so the file stays hand-editable.
+///
+/// Omitting `keyCode` gives a **bare modifier chord** — ⌃⌘ held on its own. Carbon cannot register
+/// one of those, so it is watched through an event tap instead (`ModifierChordWatcher`), which is
+/// why a modifier-only hotkey needs Accessibility permission and a keyed one does not.
 struct HotkeyBinding: Codable, Equatable {
-    var keyCode: UInt32
+    var keyCode: UInt32?
     var modifiers: [String]
 
     static let modifierOrder = ["control", "option", "shift", "command"]
+
+    var isModifierOnly: Bool { keyCode == nil }
+
+    /// Canonical modifier names, so "cmd" and "command" compare equal.
+    var normalizedModifiers: Set<String> {
+        Set(modifiers.compactMap { name in
+            switch name.lowercased() {
+            case "control", "ctrl", "^": return "control"
+            case "option", "alt", "⌥": return "option"
+            case "shift", "⇧": return "shift"
+            case "command", "cmd", "⌘": return "command"
+            default: return nil
+            }
+        })
+    }
 
     /// Carbon modifier mask for `RegisterEventHotKey`.
     var carbonModifiers: UInt32 {
@@ -25,18 +44,22 @@ struct HotkeyBinding: Codable, Equatable {
         return mask
     }
 
-    /// "⌃⌘Space" — used in the panel hint, the menu and the settings window.
+    /// "⌃⌘K", or just "⌃⌘" for a bare chord — used in the panel hint, the menu and Settings.
     var display: String {
         var out = ""
-        let lowered = Set(modifiers.map { $0.lowercased() })
-        if lowered.contains("control") || lowered.contains("ctrl") { out += "⌃" }
-        if lowered.contains("option") || lowered.contains("alt") { out += "⌥" }
-        if lowered.contains("shift") { out += "⇧" }
-        if lowered.contains("command") || lowered.contains("cmd") { out += "⌘" }
+        let normalized = normalizedModifiers
+        if normalized.contains("control") { out += "⌃" }
+        if normalized.contains("option") { out += "⌥" }
+        if normalized.contains("shift") { out += "⇧" }
+        if normalized.contains("command") { out += "⌘" }
+        guard let keyCode else { return out }
         return out + HotkeyBinding.keyName(keyCode)
     }
 
-    var isValid: Bool { carbonModifiers != 0 }
+    /// A bare chord of one modifier would fire constantly, so two are required.
+    var isValid: Bool {
+        isModifierOnly ? normalizedModifiers.count >= 2 : carbonModifiers != 0
+    }
 
     static func modifierNames(from flags: NSEvent.ModifierFlags) -> [String] {
         var names: [String] = []
