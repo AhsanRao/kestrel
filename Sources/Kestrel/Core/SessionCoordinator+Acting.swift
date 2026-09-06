@@ -7,12 +7,21 @@ import Foundation
 /// part of — the confirmation, the overlay, the summary — hops to the main thread.
 extension SessionCoordinator {
     func runAgent(_ text: String, bundleID: String?) {
+        // Without Accessibility, the scan below always comes back empty — which used to be read as
+        // "nothing to act on" and silently downgraded to a spoken description. That looked like
+        // Kestrel refusing to act for no reason. Say what is actually missing instead.
+        guard AXElementScanner.isAvailable else {
+            discardCapture()
+            TextInjector.requestAccessibilityPermission()
+            return finish(with: KestrelError.accessibilityDenied)
+        }
         // Pinned now, while the app the user was looking at is still frontmost. By the time a
         // keystroke runs, a confirmation dialog may have made Kestrel frontmost instead.
         let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
         let elements = AXElementScanner.scanFrontmostApp()
         guard !elements.isEmpty else {
-            // Nothing to act on: answer the question instead of guessing at coordinates.
+            // Permission is granted but this screen genuinely has nothing to act on: answer the
+            // question instead of guessing at coordinates.
             return runAsk(text, forceAnswer: true)
         }
         DispatchQueue.main.sync { self.scannedElements = elements }

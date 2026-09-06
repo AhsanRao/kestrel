@@ -48,7 +48,7 @@ enum KestrelError: LocalizedError, Equatable {
         case .quotaExhausted(let name):
             return "\(name) usage limit reached — switch backend from the menu bar, or set an API key in ~/.kestrel/config.json"
         case .accessibilityDenied:
-            return "Accessibility permission needed to paste — System Settings ▸ Privacy & Security ▸ Accessibility"
+            return "Accessibility permission needed to type, click, or open apps for you — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
         case .hotkeyRegistrationFailed(let combo):
             return "Hotkey \(combo) is already taken by another app — pick a different one in Settings"
         case .actionDenied(let what):

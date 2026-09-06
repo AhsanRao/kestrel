@@ -15,7 +15,7 @@ final class ConfigTests: XCTestCase {
         let config = try decode(#"{"backend":"codex","speakAnswers":false}"#)
         XCTAssertEqual(config.backend, .codex)
         XCTAssertFalse(config.speakAnswers)
-        XCTAssertEqual(config.voiceRate, Config.defaults.voiceRate)
+        XCTAssertEqual(config.sounds, Config.defaults.sounds)
         XCTAssertEqual(config.hotkeys, .defaults)
     }
 
@@ -31,8 +31,7 @@ final class ConfigTests: XCTestCase {
     }
 
     func testOutOfRangeValuesAreClamped() throws {
-        let config = try decode(#"{"voiceRate":9.5,"screenshotMaxEdge":99999,"panelAutoHideSeconds":0}"#)
-        XCTAssertEqual(config.voiceRate, 0.7)
+        let config = try decode(#"{"screenshotMaxEdge":99999,"panelAutoHideSeconds":0}"#)
         XCTAssertEqual(config.screenshotMaxEdge, 4096)
         XCTAssertEqual(config.panelAutoHideSeconds, 2)
     }

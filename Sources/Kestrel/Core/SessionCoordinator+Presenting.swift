@@ -4,20 +4,23 @@ import Foundation
 /// How an answer reaches the user: spoken as it streams, drawn as a walkthrough, or read out when
 /// the drawing cannot be trusted. Split from the pipeline only to keep both files readable.
 extension SessionCoordinator {
-    /// A short "let me look" while the model is still reading the screen.
-    func acknowledge() {
+    /// Clears the streamed-speech flag for a new turn. Call before the query goes out so the first
+    /// sentence that streams back is recognised as the first.
+    func resetStreaming() {
         streamedSpeech = false
-        guard config.speakAnswers, config.acknowledgeWhileThinking else { return }
-        speech.speak(BundleResources.randomAcknowledgement(), config: config)
     }
 
     /// One sentence of the answer, as it is written. Shows in the panel and is queued for speech,
-    /// so the reply begins out loud while the rest is still arriving.
+    /// so the reply begins out loud while the rest is still arriving — the model's own first
+    /// sentence is what the user hears first, not a filler line.
     func speakStreamed(_ sentence: String) {
         guard case .thinking = machine.state else { return }
         panel.model.answer = panel.model.answer.isEmpty ? sentence : panel.model.answer + " " + sentence
         guard config.speakAnswers else { return }
-        if speech.enqueue(sentence, config: config) { streamedSpeech = true }
+        let isFirstSentence = !streamedSpeech
+        let spoken = isFirstSentence ? speech.speak(sentence, config: config)
+                                      : speech.enqueue(sentence, config: config)
+        if spoken { streamedSpeech = true }
     }
 
     /// Plain spoken answer.

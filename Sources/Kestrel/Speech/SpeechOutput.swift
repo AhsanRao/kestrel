@@ -43,14 +43,11 @@ final class SpeechOutput: NSObject, AVSpeechSynthesizerDelegate, @unchecked Send
         return true
     }
 
-    /// Rate and pitch matter as much as the voice: the stock 0.5 rate with a flat pitch is what
-    /// makes system speech sound robotic. Slightly slower, very slightly lower, with a beat of
-    /// silence between sentences, reads as someone talking rather than a machine reciting.
+    /// Rate and pitch are left at `AVSpeechUtterance`'s defaults, so a voice sounds here exactly as
+    /// it does in System Settings' own preview — no Kestrel-specific tuning to fight against.
     private func utterance(_ text: String, config: Config) -> AVSpeechUtterance {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = SpeechOutput.voice(config: config)
-        utterance.rate = Float(config.voiceRate)
-        utterance.pitchMultiplier = Float(config.voicePitch)
         utterance.volume = 1.0
         utterance.preUtteranceDelay = 0
         utterance.postUtteranceDelay = 0.12

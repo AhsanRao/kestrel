@@ -9,20 +9,10 @@ enum BundleResources {
         case walkthrough = "walkthrough"
         case walkthroughElements = "walkthrough-elements"
         case agent = "agent"
-        case acknowledgements = "acknowledgements"
     }
 
     static func prompt(_ prompt: Prompt) -> String {
         string(at: "Prompts/\(prompt.rawValue).txt") ?? ""
-    }
-
-    /// One of the short "let me look" lines spoken while the model is still thinking.
-    static func randomAcknowledgement() -> String {
-        let lines = prompt(.acknowledgements)
-            .split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        return lines.randomElement() ?? "One sec."
     }
 
     static var defaultMemory: String {

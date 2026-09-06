@@ -17,10 +17,7 @@ struct Config: Codable, Equatable {
 
     var speakAnswers: Bool
     var sounds: Bool
-    var acknowledgeWhileThinking: Bool
     var voiceIdentifier: String?
-    var voiceRate: Double
-    var voicePitch: Double
 
     var cleanupDictation: Bool
     var injectMode: InjectMode
@@ -51,10 +48,7 @@ struct Config: Codable, Equatable {
         transcriptionHint: nil,
         speakAnswers: true,
         sounds: true,
-        acknowledgeWhileThinking: true,
         voiceIdentifier: nil,
-        voiceRate: 0.47,
-        voicePitch: 0.98,
         cleanupDictation: true,
         injectMode: .paste,
         hotkeys: .defaults,
@@ -132,10 +126,7 @@ struct Config: Codable, Equatable {
         transcriptionHint = opt(.transcriptionHint)
         speakAnswers = v(.speakAnswers, d.speakAnswers)
         sounds = v(.sounds, d.sounds)
-        acknowledgeWhileThinking = v(.acknowledgeWhileThinking, d.acknowledgeWhileThinking)
         voiceIdentifier = opt(.voiceIdentifier)
-        voiceRate = v(.voiceRate, d.voiceRate)
-        voicePitch = v(.voicePitch, d.voicePitch)
         cleanupDictation = v(.cleanupDictation, d.cleanupDictation)
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
@@ -155,8 +146,8 @@ struct Config: Codable, Equatable {
     init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
          allowMCPServers: Bool, mcpForTasks: Bool,
          whisperBinary: String, whisperModel: String, language: String, transcriptionHint: String?,
-         speakAnswers: Bool, sounds: Bool, acknowledgeWhileThinking: Bool,
-         voiceIdentifier: String?, voiceRate: Double, voicePitch: Double,
+         speakAnswers: Bool, sounds: Bool,
+         voiceIdentifier: String?,
          cleanupDictation: Bool, injectMode: InjectMode,
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
          screenshotMaxEdge: Int, captureMode: CaptureMode,
@@ -166,8 +157,7 @@ struct Config: Codable, Equatable {
         self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.mcpForTasks = mcpForTasks; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.transcriptionHint = transcriptionHint
         self.speakAnswers = speakAnswers; self.sounds = sounds
-        self.acknowledgeWhileThinking = acknowledgeWhileThinking; self.voiceIdentifier = voiceIdentifier
-        self.voiceRate = voiceRate; self.voicePitch = voicePitch
+        self.voiceIdentifier = voiceIdentifier
         self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
         self.followUpSeconds = followUpSeconds
@@ -182,8 +172,6 @@ struct Config: Codable, Equatable {
 
     /// Keeps hand-edited nonsense from reaching AVSpeechSynthesizer or the screenshot scaler.
     private mutating func clamp() {
-        voiceRate = min(max(voiceRate, 0.3), 0.7)
-        voicePitch = min(max(voicePitch, 0.5), 1.5)
         panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
         followUpSeconds = min(max(followUpSeconds, 0), 900)
         screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)

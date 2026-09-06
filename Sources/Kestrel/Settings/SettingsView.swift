@@ -79,23 +79,16 @@ struct SettingsView: View {
     private var speech: some View {
         Form {
             Toggle("Speak answers out loud", isOn: model.binding(\.speakAnswers))
-            Toggle("Say something while thinking", isOn: model.binding(\.acknowledgeWhileThinking))
             Toggle("Play sound cues", isOn: model.binding(\.sounds))
 
-            Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
-                Text("Best available").tag("")
-                ForEach(model.voices, id: \.identifier) { voice in
-                    Text(SpeechOutput.describe(voice)).tag(voice.identifier)
+            HStack {
+                Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
+                    Text("Best available").tag("")
+                    ForEach(model.voices, id: \.identifier) { voice in
+                        Text(SpeechOutput.describe(voice)).tag(voice.identifier)
+                    }
                 }
-            }
-            HStack {
-                Text("Rate")
-                Slider(value: model.binding(\.voiceRate), in: 0.3...0.7)
                 Button("Preview") { model.previewVoice() }
-            }
-            HStack {
-                Text("Pitch")
-                Slider(value: model.binding(\.voicePitch), in: 0.8...1.2)
             }
             if SpeechOutput.hasOnlyCompactVoices {
                 HStack(alignment: .top, spacing: 8) {

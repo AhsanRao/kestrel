@@ -52,9 +52,7 @@ extension SessionCoordinator {
             return runAgent(text, bundleID: bundleID)
         }
         let wantsSteps = !forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config)
-        // Say something straight away. The model takes seconds; silence for those seconds is what
-        // made Kestrel feel slow, more than the seconds themselves.
-        DispatchQueue.main.async { self.acknowledge() }
+        DispatchQueue.main.async { self.resetStreaming() }
         // Walkthroughs get a gridded copy of the screenshot: the model reads coordinates off the
         // printed lines instead of guessing them. The user's own view is never touched.
         // The Accessibility tree is the accurate way to point at a control; the gridded screenshot
