@@ -110,6 +110,19 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] `~/.kestrel/logs/actions.jsonl` has one line per action, with the decision recorded
 - [ ] A task leaves a folder in `~/.kestrel/projects/`
 
+### 5g. Keyboard actions
+
+- [ ] "save this" in TextEdit presses ⌘S rather than walking the File menu
+- [ ] "add a line saying hello" appends rather than replacing what is in the document
+- [ ] "press Return" in a chat app is confirmed first, even if that app is set to `allow`
+- [ ] Typing lands in the target app while you keep working in another — the frontmost app does not
+      change, and neither does the cursor
+- [ ] After answering a confirmation, you are put back in the app you were in
+- [ ] "right click that" opens the control's context menu
+- [ ] "page down" moves a screenful, not a nudge
+- [ ] `open -n Kestrel.app --env KESTREL_PROBE_ACTIONS=1 --stdout /tmp/probe.txt` reports the marker
+      in the file and an unchanged frontmost app
+
 ## 6. Settings and config
 
 - [ ] `⌃⌘A` starts listening on a machine where Accessibility has never been granted

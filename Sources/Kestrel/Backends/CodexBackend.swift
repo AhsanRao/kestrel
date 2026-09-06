@@ -45,10 +45,15 @@ final class CodexBackend: Backend {
                                     cwd: Paths.root, environment: env, timeout: query.timeout)
 
         if result.timedOut { throw KestrelError.backendTimedOut(name: "codex", seconds: Int(query.timeout)) }
-        let combined = result.stdout + "\n" + result.stderr
-        if BackendSupport.isQuotaError(combined) { throw KestrelError.quotaExhausted("Codex") }
 
         let text = CodexBackend.parse(lastMessageFile: lastMessage, stdout: result.stdout)
+        // Same rule as Claude: a quota error is read only out of a run that actually failed. The
+        // transcript on stdout contains the answer, and an answer is not a diagnostic.
+        if result.exitCode != 0 || text.isEmpty {
+            let detail = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? result.stdout : result.stderr
+            if BackendSupport.isQuotaError(detail) { throw KestrelError.quotaExhausted("Codex") }
+        }
         guard result.exitCode == 0 || !text.isEmpty else {
             throw KestrelError.backendFailed(name: "codex", stderr: result.stderr.isEmpty ? result.stdout : result.stderr)
         }

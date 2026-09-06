@@ -5,7 +5,10 @@ private final class FakePerformer: ActionPerforming {
     var performed: [Action] = []
     var failOn: Action.Kind?
 
-    func perform(_ action: Action, on element: AXElementScanner.Element?) throws {
+    var lastPID: pid_t?
+
+    func perform(_ action: Action, on element: AXElementScanner.Element?, in app: pid_t?) throws {
+        lastPID = app
         if action.kind == failOn { throw KestrelError.actionFailed("press \(action.describe)") }
         performed.append(action)
     }

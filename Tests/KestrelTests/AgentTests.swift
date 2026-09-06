@@ -93,6 +93,29 @@ final class ActionPlanParserTests: XCTestCase {
         XCTAssertEqual(plan.goal, "That control isn't on this screen")
     }
 
+    func testKeystrokesNeedAChordThatParses() {
+        let good = #"{"goal":"x","actions":[{"kind":"key","value":"cmd+s","describe":"Save the file"}]}"#
+        XCTAssertEqual(ActionPlanParser.parse(good)?.actions.count, 1)
+
+        for bad in ["\"banana\"", "\"\"", "null"] {
+            let json = #"{"goal":"x","actions":[{"kind":"key","value":\#(bad),"describe":"Press it"}]}"#
+            XCTAssertEqual(ActionPlanParser.parse(json)?.actions.count, 0, bad)
+        }
+    }
+
+    func testTypeTextNeedsTextButNotAnElement() {
+        let focused = #"{"goal":"x","actions":[{"kind":"typeText","value":"hello","describe":"Type hello"}]}"#
+        XCTAssertEqual(ActionPlanParser.parse(focused)?.actions.count, 1)
+
+        let empty = #"{"goal":"x","actions":[{"kind":"typeText","element":2,"describe":"Type nothing"}]}"#
+        XCTAssertEqual(ActionPlanParser.parse(empty)?.actions.count, 0)
+    }
+
+    func testRightClickStillNeedsAControl() {
+        let json = #"{"goal":"x","actions":[{"kind":"rightClick","describe":"Open the context menu"}]}"#
+        XCTAssertEqual(ActionPlanParser.parse(json)?.actions.count, 0)
+    }
+
     func testAnUnknownKindIsRejectedRatherThanRun() {
         XCTAssertNil(ActionPlanParser.parse(#"{"goal":"x","actions":[{"kind":"formatDisk","element":1,"describe":"Format"}]}"#))
     }

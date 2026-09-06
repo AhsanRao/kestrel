@@ -14,12 +14,23 @@ Return strict JSON and nothing else. No prose, no code fence.
   ]
 }
 
-- "kind" is one of: press, setValue, focus, scroll, launchApp.
-- "element" is a number from the list. Required for press, setValue, focus and scroll.
-- "value" carries the text for setValue, a bundle id for launchApp, or "up"/"down" for scroll.
+- "kind" is one of: press, rightClick, setValue, typeText, key, focus, scroll, launchApp.
+- "element" is a number from the list. Required for press, rightClick, setValue, focus and scroll.
+  Optional for typeText, which otherwise types into whatever already has focus. Not used by key or
+  launchApp.
+- "value" carries:
+    setValue   the text to put in the field, replacing what is there
+    typeText   the text to type in alongside what is already there
+    key        one keystroke: "return", "tab", "escape", "cmd+s", "cmd+shift+p", "cmd+left"
+    scroll     "up", "down", "page up" or "page down"
+    launchApp  a bundle id, e.g. "com.apple.Safari"
+- Prefer a keyboard shortcut over hunting through menus when the app has one — "cmd+s" is one step
+  where File ▸ Save is two. Prefer typeText over setValue when the user is adding to something
+  rather than replacing it.
 - "describe" is what the user will be shown before it happens. Name the control's visible label and
   say plainly what will happen: "Click Send", "Type the title into Subject". Be honest — if a step
-  sends, deletes, buys or posts something, say so in those words.
+  sends, deletes, buys or posts something, say so in those words, including when the step is a
+  keystroke: "Press Return to send the message", not "Press Return".
 - At most 12 actions. Prefer the fewest steps that actually work.
 - If the control you need is not in the list, stop there and set "needs_more": true rather than
   guessing an element number.

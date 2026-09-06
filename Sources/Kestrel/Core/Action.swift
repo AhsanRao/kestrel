@@ -8,16 +8,21 @@ import Foundation
 struct Action: Codable, Equatable {
     enum Kind: String, Codable, CaseIterable {
         case press          // click a button, menu item, checkbox
+        case rightClick     // open a control's context menu
         case setValue       // type into a field, replacing what is there
+        case typeText       // type into what has focus, keeping what is there
+        case key            // a keystroke or chord: "return", "cmd+s", "cmd+shift+p"
         case focus          // bring a control's window forward and select it
         case scroll
         case launchApp
     }
 
     var kind: Kind
-    /// Index into the element list the model was given. Absent for `launchApp`.
+    /// Index into the element list the model was given. Absent for `launchApp` and `key`, and
+    /// optional for `typeText`, which otherwise types into whatever already has focus.
     var element: Int?
-    /// Text for `setValue`, bundle id for `launchApp`, direction for `scroll`.
+    /// Text for `setValue` and `typeText`, a chord for `key`, a bundle id for `launchApp`,
+    /// a direction ("up", "down", "page up", "page down") for `scroll`.
     var value: String?
     /// What the user will be told is about to happen.
     var describe: String

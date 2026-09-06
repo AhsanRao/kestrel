@@ -75,6 +75,46 @@ final class ActionPolicyTests: XCTestCase {
         }
     }
 
+    // MARK: - Keystrokes
+
+    /// A chord's description rarely admits what it does. Return sends the message.
+    func testCommittingChordsAreConfirmedEvenInAnAllowedApp() {
+        let policy = ActionPolicy(fallback: .confirm, apps: ["com.tinyspeck.slackmacgap": .allow],
+                                  blockedKinds: [], confirmDestructive: true)
+        for chord in ["return", "cmd+q", "cmd+w", "delete"] {
+            let action = Action(kind: .key, value: chord, describe: "Press \(chord)")
+            XCTAssertEqual(policy.decision(for: action, bundleID: "com.tinyspeck.slackmacgap",
+                                           elementLabel: nil), .confirm, chord)
+        }
+    }
+
+    func testOrdinaryChordsRunInAnAllowedApp() {
+        let policy = ActionPolicy(fallback: .confirm, apps: ["com.apple.TextEdit": .allow],
+                                  blockedKinds: [], confirmDestructive: true)
+        for chord in ["cmd+s", "tab", "cmd+f", "escape"] {
+            let action = Action(kind: .key, value: chord, describe: "Press \(chord)")
+            XCTAssertEqual(policy.decision(for: action, bundleID: "com.apple.TextEdit",
+                                           elementLabel: nil), .allow, chord)
+        }
+    }
+
+    func testKeystrokesAndTypingAreDeniedInATerminal() {
+        for action in [Action(kind: .key, value: "return", describe: "Press Return"),
+                       Action(kind: .typeText, value: "rm -rf /", describe: "Type the command")] {
+            XCTAssertEqual(ActionPolicy.default.decision(for: action, bundleID: "com.apple.Terminal",
+                                                         elementLabel: nil), .deny)
+        }
+    }
+
+    func testKeystrokesCanBeBlockedEntirely() {
+        let policy = ActionPolicy(fallback: .allow, apps: [:], blockedKinds: [.key, .typeText],
+                                  confirmDestructive: false)
+        XCTAssertEqual(policy.decision(for: Action(kind: .key, value: "cmd+s", describe: "Save"),
+                                       bundleID: "com.apple.TextEdit", elementLabel: nil), .deny)
+        XCTAssertEqual(policy.decision(for: Action(kind: .press, element: 1, describe: "Click Save"),
+                                       bundleID: "com.apple.TextEdit", elementLabel: nil), .allow)
+    }
+
     func testDenialBeatsDestructiveConfirmation() {
         XCTAssertEqual(ActionPolicy.default.decision(for: press("Send it"),
                                                      bundleID: "com.apple.Terminal",

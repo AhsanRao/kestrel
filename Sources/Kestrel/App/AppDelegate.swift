@@ -31,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.start()
         log.info("Kestrel ready")
 
+        if ActionProbe.isRequested {
+            ActionProbe.run()
+            return
+        }
+
         if PanelPreview.isRequested {
             PanelPreview.run(on: coordinator.panel)
             return

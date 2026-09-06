@@ -168,8 +168,13 @@ Say what you want done — "archive this", "set the title to Quarterly", "open S
 plans it against the app's real controls and carries it out. Asking *how* to do something still
 gets an explanation; when the phrasing is ambiguous it answers rather than acts.
 
+It can click, right-click, type into a field or alongside what is already there, press a key or a
+chord (`⌘S`, `⏎`, `⌘⇧P`), scroll, focus a control, and open an app.
+
 Actions go through Accessibility, so the real cursor never moves and focus is not stolen: you can
-keep typing while it works. An overlay names each step, counts them, and Esc stops the run.
+keep typing while it works. Keystrokes are delivered to the app the plan was made against, not to
+whatever is frontmost when the step runs. An overlay names each step, counts them, and Esc stops the
+run.
 
 **Nothing happens without permission.** `~/.kestrel/policy.json` decides:
 

@@ -49,7 +49,8 @@ final class ActionRunner {
     func cancel() { cancelled = true }
 
     func run(_ plan: ActionPlan, elements: [AXElementScanner.Element], policy: ActionPolicy,
-             bundleID: String?, onStep: ((Action, Int, Int) -> Void)? = nil) -> Result {
+             bundleID: String?, appPID: pid_t? = nil,
+             onStep: ((Action, Int, Int) -> Void)? = nil) -> Result {
         cancelled = false
         let byID = Dictionary(uniqueKeysWithValues: elements.map { ($0.id, $0) })
         let actions = Array(plan.actions.prefix(ActionPlan.maximumActions))
@@ -77,7 +78,7 @@ final class ActionRunner {
 
             onStep?(action, index, actions.count)
             do {
-                try performer.perform(action, on: element)
+                try performer.perform(action, on: element, in: appPID)
                 steps.append(Step(action: action, outcome: .performed))
                 log(action, bundleID: bundleID, decision: decision, confirmed: decision == .confirm,
                     succeeded: true, detail: nil)

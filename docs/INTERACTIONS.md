@@ -26,10 +26,17 @@ possible.
 | Kind | What it does | `element` | `value` |
 |---|---|---|---|
 | `press` | Clicks a button, menu item, checkbox, radio button, link, row | required | — |
+| `rightClick` | Opens a control's context menu | required | — |
 | `setValue` | Types into a field, **replacing** what is there | required | the text |
+| `typeText` | Types **alongside** what is already there | optional | the text |
+| `key` | One keystroke or chord | — | `"return"`, `"cmd+s"`, `"cmd+shift+p"` |
 | `focus` | Raises the control's window and selects it | required | — |
-| `scroll` | Scrolls the control by 6 lines | required | `"up"` / `"down"` |
+| `scroll` | Scrolls the control | required | `"up"`, `"down"`, `"page up"`, `"page down"` |
 | `launchApp` | Opens an application and activates it | — | bundle id |
+
+`typeText` without an `element` types into whatever already has focus in the target app, which is
+what makes it useful after a `press` that opened a compose box. `key` never takes an element: a
+keystroke goes to the app, not to a control.
 
 Each action also carries `describe` — the sentence you are shown before it happens ("Click Send",
 "Type the title into Subject"). That string is not cosmetic: it is what the confirmation dialog
@@ -243,6 +250,11 @@ ordinary inflections** — never substrings. "Deleting the row" counts; "the sen
 > overwrite · replace · merge · deploy · release · sign out · log out · quit · shut down · restart ·
 > format · reset · confirm · accept · approve · decline · cancel subscription · unsubscribe
 
+**Keystrokes are judged on the chord as well as the words.** A description rarely admits what a key
+does — "Press Return" is how a message gets sent, and ⌘Q closes the app with the draft still in it.
+So `return`, `enter`, `delete`, `forward delete`, and ⌘ with `q`, `w`, `delete` or `return` are
+confirmed whatever the description says, and whatever the policy allows for that app.
+
 ### The confirmation
 
 Modal, and deliberately so — this is the one moment you have to be in the loop. Kestrel activates,
@@ -259,16 +271,28 @@ Declining stops the whole run: *"Stopped, nothing was changed."*
 | Kind | Mechanism | Fallback |
 |---|---|---|
 | `press` | `AXUIElementPerformAction(kAXPressAction)` | mouse down/up **posted to the owning pid** at the control's centre — still background, cursor stays put |
+| `rightClick` | `AXUIElementPerformAction(kAXShowMenuAction)` | right button pair posted to the owning pid |
 | `setValue` | set `kAXFocusedAttribute`, then `kAXValueAttribute` | none — fails loudly |
+| `typeText` | focus the element if named, then `CGEvent` + `keyboardSetUnicodeString`, `postToPid` | none |
+| `key` | `CGEvent(keyboardEventSource:virtualKey:)` with the chord's flags, `postToPid` | none |
 | `focus` | `kAXRaiseAction`, then `kAXFocusedAttribute` | none |
-| `scroll` | `CGEvent(scrollWheelEvent2Source:)`, ±6 lines, `postToPid` | global `.cghidEventTap` only when no element handle exists |
+| `scroll` | `CGEvent(scrollWheelEvent2Source:)`, `postToPid` — 6 lines, or 30 for a page | global `.cghidEventTap` only when no element handle exists |
 | `launchApp` | `NSWorkspace.openApplication(activates: true)` | none |
+
+**Which process gets a keystroke.** The app that was frontmost when the plan was made, pinned before
+the first step runs. Asking for the frontmost app at execution time would be wrong: a confirmation
+dialog makes *Kestrel* frontmost, so a keystroke meant for Mail would have gone to the alert that
+just closed. A named element overrides the pin — its own owning process wins.
+
+Text is typed in chunks of 20 UTF-16 units, split so a surrogate pair is never cut in half.
+Keystrokes are `postToPid` like everything else, which matters more here than anywhere: a key posted
+to the global stream would land wherever focus drifted a moment later.
 
 Synthetic events are never posted to the global event stream when a target pid is known. That single
 choice is what keeps the run non-disruptive.
 
-`setValue` **replaces** a field's contents rather than appending — worth knowing when asking Kestrel
-to "set" something that already has text in it.
+`setValue` **replaces** a field's contents rather than appending — `typeText` is the one that adds to
+what is there.
 
 ---
 
@@ -334,7 +358,8 @@ A task that produces something needs somewhere to put it. Each agent run gets
 ## 11. Limits — what it deliberately cannot do
 
 - **No shell.** Kestrel never runs a command on your behalf. Terminals are denied.
-- **No drag, no gestures, no arbitrary keystrokes.** Five kinds, all Accessibility-expressible.
+- **No drag, no gestures, no double-click.** Eight kinds, all deliverable to a single process.
+  (HeyClicky does not expose drag or double-click either.)
 - **12 actions per request.** A longer job comes back with `needs_more` and you ask again.
 - **One app per run.** The scan is of the frontmost app; `launchApp` can bring another forward, but
   the plan was made against the controls that were visible when you spoke.

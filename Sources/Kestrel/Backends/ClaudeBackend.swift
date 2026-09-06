@@ -81,8 +81,15 @@ final class ClaudeBackend: Backend {
         }
 
         if result.timedOut { throw KestrelError.backendTimedOut(name: "claude", seconds: Int(query.timeout)) }
-        let combined = result.stdout + "\n" + result.stderr
-        if BackendSupport.isQuotaError(combined) { throw KestrelError.quotaExhausted("Claude") }
+
+        // Only what the CLI reported as a failure is eligible to be read as a quota error. The
+        // answer, and the usage/cost/duration JSON around it, are not diagnostics.
+        let diagnostics = ClaudeBackend.diagnostics(
+            exitCode: result.exitCode, stderr: result.stderr,
+            envelopeError: streaming ? parser.errorMessage : ClaudeBackend.errorEnvelope(result.stdout))
+        if let diagnostics, BackendSupport.isQuotaError(diagnostics) {
+            throw KestrelError.quotaExhausted("Claude")
+        }
         guard result.exitCode == 0 else {
             throw KestrelError.backendFailed(name: "claude", stderr: result.stderr.isEmpty ? result.stdout : result.stderr)
         }
@@ -95,6 +102,28 @@ final class ClaudeBackend: Backend {
         if streaming, let tail = sentences.flush() { onDelta?(tail) }
         log.debug("claude answered in \(result.durationMs)ms")
         return Answer(text: text, raw: result.stdout, durationMs: result.durationMs)
+    }
+
+    /// The text a failure is judged on: stderr when the process actually failed, plus the message
+    /// from an error envelope. Nil when the run reported no failure at all, which is the common
+    /// case and the one that must never reach `isQuotaError`.
+    static func diagnostics(exitCode: Int32, stderr: String, envelopeError: String?) -> String? {
+        var parts: [String] = []
+        if exitCode != 0, !stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append(stderr)
+        }
+        if let envelopeError, !envelopeError.isEmpty { parts.append(envelopeError) }
+        return parts.isEmpty ? nil : parts.joined(separator: "\n")
+    }
+
+    /// The `result` string of a non-streaming envelope, but only when it is flagged `is_error`.
+    static func errorEnvelope(_ stdout: String) -> String? {
+        let trimmed = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = trimmed.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["is_error"] as? Bool == true else { return nil }
+        let message = (object["result"] as? String) ?? (object["error"] as? String)
+        return (message?.isEmpty == false) ? message : "claude reported an error"
     }
 
     /// `--output-format json` prints one envelope object whose `result` holds the answer.

@@ -56,6 +56,8 @@ enum ActionPlanParser {
             guard !action.describe.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
             switch action.kind {
             case .launchApp: return !(action.value ?? "").isEmpty
+            case .key: return KeyChord(action.value ?? "") != nil
+            case .typeText: return !(action.value ?? "").isEmpty
             case .setValue: return action.element != nil && action.value != nil
             default: return action.element != nil
             }

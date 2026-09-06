@@ -4,6 +4,41 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ## [Unreleased]
 
+### Added
+
+- **Kestrel can use the keyboard.** Three new action kinds and a richer `scroll`, closing the action
+  surface against HeyClicky's computer-use driver tool for tool:
+  - `key` — one keystroke or chord, parsed from `"return"`, `"cmd+s"`, `"cmd+shift+p"`, `"option-left"`.
+    Often the shortest path there is: ⌘S is one step where File ▸ Save is two.
+  - `typeText` — types **alongside** what is already there, where `setValue` replaces a field
+    wholesale. The element is optional; without one it types into whatever has focus.
+  - `rightClick` — context menus, through `kAXShowMenuAction` with a pid-posted fallback.
+  - `scroll` now understands `"page up"` / `"page down"`, matched on whole words so "stop" is not
+    read as "top".
+- Every one of them is posted to a single process, so the property that made acting tolerable —
+  your cursor stays put, your focus is not stolen — holds for keystrokes too.
+- **A chord is judged on what the key does, not on how the step was described.** `return`, `delete`
+  and ⌘Q/⌘W/⌘Delete are confirmed even in an app the policy allows: "Press Return" is how a message
+  gets sent.
+- **The target process is pinned when the plan is made.** A confirmation dialog makes Kestrel
+  frontmost, so a keystroke that asked for "the frontmost app" at execution time would have gone to
+  the alert that just closed. Answering a confirmation now also puts you back in the app you were in.
+- `KESTREL_PROBE_ACTIONS=1` runs the actuator against TextEdit from another app and reports whether
+  the text landed and whether the frontmost app changed — the background-delivery property, checked
+  rather than asserted.
+
+### Fixed
+
+- **"Claude usage limit reached" after a perfectly good answer.** The quota check read the whole of
+  stdout, which for `--output-format json` is an envelope of durations, token counts, a cost and two
+  hex ids — and the needle list contained a bare `"429"`. Any request whose `duration_ms`,
+  `cache_read_input_tokens`, `total_cost_usd`, `session_id` or `uuid` happened to contain those three
+  digits was reported as a quota failure, seconds after the answer had been spoken. An answer that
+  merely discussed usage limits did it too.
+  A quota error is now read only out of text a CLI emitted as a failure — stderr from a non-zero
+  exit, or an error envelope's message — and never out of the answer. The needles are phrases, and
+  a bare 429 must carry HTTP framing. Same fix in the Codex backend.
+
 ### Documentation
 
 - **`docs/INTERACTIONS.md`** — the complete reference for acting on the system: the five action

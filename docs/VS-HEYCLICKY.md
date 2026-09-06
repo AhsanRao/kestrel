@@ -23,18 +23,18 @@ server (Cua Driver) with these tools; Kestrel has five action kinds.
 |---|---|---|
 | `click` (by `element_token`) | ✅ `press` | Same idea, same background delivery |
 | `set_value` | ✅ `setValue` | Ours **replaces** the field; theirs too |
-| `scroll` | ✅ `scroll` | Ours is fixed at ±6 lines |
+| `scroll` | ✅ `scroll` | 6 lines, or 30 for a page |
 | `launch_app` | ✅ `launchApp` | Theirs also takes `urls:` to open a link in a background window |
 | `get_window_state` | ✅ `AXElementScanner` | AX snapshot + screenshot; ours is the numbered control list |
 | `list_windows` / `get_app_state` | ✅ `DesktopSurvey` | Ours is gathered only when the question needs it |
 | `check_permissions` | ✅ onboarding window | Ours re-checks live while open |
 | Agent cursor overlay | ✅ `AgentOverlay` | Ours names the step and counts `n of m` |
-| `right_click` | ❌ | Context menus are unreachable for us today |
-| `type_text` | ❌ | We can only *replace* a field, never append or type into a focused surface |
-| `press_key` | ❌ | No ⏎, ⇥, Esc, arrow keys |
-| `hotkey` | ❌ | No ⌘S, ⌘⇧P, ⌘F — often the shortest path to a result |
-| `page` | ❌ | Page-scroll a long view |
-| `activate` / window focus by id | 🟡 `focus` | Ours raises via an *element*; no "focus that window" |
+| `right_click` | ✅ `rightClick` | `kAXShowMenuAction`, with a pid-posted right button pair as fallback |
+| `type_text` | ✅ `typeText` | Types alongside existing text; element optional |
+| `press_key` | ✅ `key` | `"return"`, `"tab"`, `"escape"`, arrows, F-keys |
+| `hotkey` | ✅ `key` | Same kind: `"cmd+s"`, `"cmd+shift+p"` |
+| `page` | ✅ `scroll` | `"page up"` / `"page down"` — 30 lines rather than 6 |
+| `activate` / window focus by id | 🟡 `focus`, `launchApp` | `launchApp` on a running app brings it forward, so this is covered in practice; there is no "focus that window id" |
 | Window-scoped pixel click when AX misses | 🟡 | We fall back to a pid-posted click, but only at a known element's frame — never at model-chosen coordinates |
 | `move_cursor`, `drag`, `double_click` | ❌ | **Not shipped by HeyClicky either** — parity |
 | Trajectory recording / replay / zoom | ❌ | Not shipped by HeyClicky either |
@@ -137,20 +137,19 @@ afternoon each.
 
 Effort is rough: **S** ≈ an evening, **M** ≈ a day, **L** ≈ several.
 
+**Done since this list was written:** `press_key`, `hotkey`, `type_text`, `right_click` and `page`
+all shipped as the `key`, `typeText`, `rightClick` and `scroll` kinds. What is left:
+
 | # | Gap | Why it matters | Effort |
 |---|---|---|---|
-| 1 | **`press_key` + `hotkey`** | ⏎ / ⌘S / ⌘F is the shortest path to most results, and today no plan can use one. Biggest capability per line of code. | S |
-| 2 | **`type_text`** | `setValue` replaces a field; you cannot append to a note, a chat box or a code editor. | S |
-| 3 | **Text mode** | Every request must currently be spoken. A field on the panel reuses the whole existing pipeline. | S |
-| 4 | **`right_click`** | Context menus are a large, currently unreachable part of macOS. | S |
-| 5 | **Snapshot → act → verify loop** | The architectural gap. Re-scan between steps, confirm the effect, continue on `needs_more`. Turns a fixed plan into an agent. | L |
-| 6 | **History** | Answers vanish when the panel hides. A searchable list of past exchanges is table stakes and needs no new permissions. | M |
-| 7 | **Ship per-app skills** | The mechanism exists and is empty. Five good files (Mail, Safari, Slack, Xcode, Finder) would be felt immediately. | M |
-| 8 | **Integrations pane** | Show what MCP servers the user's CLI already has, and let them be enabled per-task. Honest version of Composio. | M |
-| 9 | **`activate` / focus a window** | Acting on an app that is not frontmost currently means `launchApp` and hoping. | S |
-| 10 | **Window-scoped pixel click fallback** | For apps whose AX tree is thin. Needs care: it reopens the coordinate-accuracy problem AX was chosen to solve. | M |
-| 11 | **Background / concurrent runs** | Their multi-thread model. Large, and in tension with "one hotkey, one thing". | L |
-| 12 | **Document reading beyond the screen** | Answer about a whole PDF rather than the visible page. New entitlements, new privacy surface. | L |
+| 1 | **Text mode** | Every request must currently be spoken. A field on the panel reuses the whole existing pipeline. | S |
+| 2 | **Snapshot → act → verify loop** | The architectural gap. Re-scan between steps, confirm the effect, continue on `needs_more`. Turns a fixed plan into an agent. | L |
+| 3 | **History** | Answers vanish when the panel hides. A searchable list of past exchanges is table stakes and needs no new permissions. | M |
+| 4 | **Ship per-app skills** | The mechanism exists and is empty. Five good files (Mail, Safari, Slack, Xcode, Finder) would be felt immediately. | M |
+| 5 | **Integrations pane** | Show what MCP servers the user's CLI already has, and let them be enabled per-task. Honest version of Composio. | M |
+| 6 | **Window-scoped pixel click fallback** | For apps whose AX tree is thin. Needs care: it reopens the coordinate-accuracy problem AX was chosen to solve. | M |
+| 7 | **Background / concurrent runs** | Their multi-thread model. Large, and in tension with "one hotkey, one thing". | L |
+| 8 | **Document reading beyond the screen** | Answer about a whole PDF rather than the visible page. New entitlements, new privacy surface. | L |
 
 Not doing, and why: Realtime voice (would send audio to OpenAI directly — forbidden), always-on
 listening (spec §2), telemetry, a hosted backend, a paywall, Sparkle without asking first.
@@ -164,9 +163,10 @@ on **showing** (drawn walkthroughs), on **dictation**, on **memory and per-app s
 mechanism**, on **project folders**, and on **sound and overlay feedback** — at 0.2% of the download
 size and with no backend.
 
-It is behind on **the breadth of the action vocabulary** (no keystrokes, no typing, no right-click),
-on **iterating** (one plan versus snapshot-act-verify), and on **product surface around the core**
-(history, text input, shipped skills, an integrations UI).
+The action vocabulary now matches theirs tool for tool, minus the ones they do not ship either
+(drag, double-click, cursor movement). It is still behind on **iterating** (one plan versus
+snapshot-act-verify) and on **product surface around the core** (history, text input, shipped
+skills, an integrations UI).
 
 It is ahead, deliberately, on **safety** (deny-by-default, enforced destructive-verb confirmation,
 terminals denied, local audit log, Esc abort) and on **privacy** (local speech-to-text, no telemetry,

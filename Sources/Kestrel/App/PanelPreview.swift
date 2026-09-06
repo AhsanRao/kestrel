@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import ImageIO
 import UniformTypeIdentifiers
 
 /// Shows the panel with sample content, and optionally photographs it.
@@ -57,10 +58,15 @@ enum PanelPreview {
     /// The composited screen is also the only thing that shows the shadow and the edges — which is
     /// the whole reason for taking the picture.
     private static func capture(_ panel: PanelWindow, to url: URL) {
-        guard let frame = panel.screenFrame else { return }
-        _ = frame
+        guard panel.screenFrame != nil else { return }
         // The whole screen: cropping to the panel's frame proved fiddly to get right in flipped
         // coordinates, and the surrounding desktop is useful context for judging the edges anyway.
+        //
+        // Deprecated in macOS 14, and kept anyway. The replacement, ScreenCaptureKit, is async and
+        // wants the main run loop — which this blocks. `/usr/sbin/screencapture`, which ScreenGrabber
+        // uses for real captures, is worse here: as a subprocess its Screen Recording grant is
+        // judged against whatever launched Kestrel, so it fails from a terminal, which is precisely
+        // where this tool is run from. One warning in debug-only code is the cheaper trade.
         guard let image = CGWindowListCreateImage(
             .infinite, .optionAll, kCGNullWindowID, [.bestResolution]) else { return }
         guard let destination = CGImageDestinationCreateWithURL(

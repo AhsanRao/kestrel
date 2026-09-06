@@ -45,6 +45,9 @@ struct ActionPolicy: Codable, Equatable {
         if confirmDestructive {
             let text = [action.describe, elementLabel, action.value].compactMap { $0 }.joined(separator: " ")
             if DestructiveVerbs.isDestructive(text) { return .confirm }
+            // A chord's own meaning, which its description usually understates: "Press Return" is
+            // how a message gets sent, and ⌘Q closes the app with the draft still in it.
+            if action.kind == .key, KeyChord.isIrreversible(action.value) { return .confirm }
         }
         return app ?? fallback
     }

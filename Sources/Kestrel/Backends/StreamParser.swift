@@ -38,6 +38,15 @@ struct StreamParser {
         }
     }
 
+    /// What the CLI reported as a failure, if it reported one. Never the answer: the quota check
+    /// reads this, and reading the answer instead is what made a good reply end in "usage limit
+    /// reached".
+    var errorMessage: String? {
+        guard isError else { return nil }
+        let message = finalResult ?? text
+        return message.isEmpty ? nil : message
+    }
+
     /// The best text available: the final envelope when it arrived, else what was streamed.
     var answer: String {
         let candidate = finalResult ?? text

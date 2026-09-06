@@ -36,13 +36,24 @@ extension Backend {
 enum BackendSupport {
     /// The user's plan quota, not a crash. Detected by string because neither CLI has a stable
     /// exit code for it.
+    ///
+    /// Only ever call this on text a CLI emitted as a *failure* — stderr from a non-zero exit, or
+    /// an error envelope's message. Run against the whole of stdout it reports a quota error for
+    /// answers that merely discuss one, and for any `stream-json` run whose token count or
+    /// `duration_ms` happens to contain "429". Both looked identical to the user: a full answer,
+    /// spoken, followed by "Claude usage limit reached".
     static func isQuotaError(_ text: String) -> Bool {
         let lowered = text.lowercased()
-        let needles = [
-            "usage limit", "rate limit", "quota", "credit balance",
-            "insufficient_quota", "too many requests", "429",
+        let phrases = [
+            "usage limit reached", "usage limit exceeded", "exceeded your usage",
+            "rate limit", "rate_limit", "quota exceeded", "exceeded your quota",
+            "insufficient quota", "insufficient_quota", "out of credits",
+            "credit balance is too low", "too many requests",
         ]
-        return needles.contains { lowered.contains($0) }
+        if phrases.contains(where: lowered.contains) { return true }
+        // A bare "429" matches token counts, durations and prices. Require HTTP framing.
+        return ["status 429", "status: 429", "http 429", "error 429", "code 429", "(429)"]
+            .contains { lowered.contains($0) }
     }
 
     /// Strips the wrapper models sometimes add despite being told not to.

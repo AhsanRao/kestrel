@@ -67,7 +67,58 @@ final class BackendOutputParsingTests: XCTestCase {
     func testQuotaErrorsAreRecognised() {
         XCTAssertTrue(BackendSupport.isQuotaError("Error: usage limit reached, resets at 3pm"))
         XCTAssertTrue(BackendSupport.isQuotaError("429 Too Many Requests"))
+        XCTAssertTrue(BackendSupport.isQuotaError("API error (status 429)"))
         XCTAssertFalse(BackendSupport.isQuotaError("Read tool: file not found"))
+    }
+
+    /// The envelope around every successful answer carries durations, token counts, a cost and two
+    /// hex ids. A bare "429" needle matched all of them, so roughly one answer in fifteen ended in
+    /// a quota error that had not happened.
+    func testUsageNumbersContaining429AreNotQuotaErrors() {
+        let envelope = """
+        {"type":"result","subtype":"success","is_error":false,"duration_ms":4291,\
+        "duration_api_ms":4290,"num_turns":1,"result":"You are looking at Safari.",\
+        "session_id":"429e67aa-6531-46ba-813a-54e5513c074a","total_cost_usd":0.0142912,\
+        "usage":{"input_tokens":3,"cache_read_input_tokens":3429,"output_tokens":429}}
+        """
+        // Two layers now reject it: the needle no longer matches a bare 429, and a successful run
+        // produces no diagnostics for the needle to be run against in the first place.
+        XCTAssertFalse(BackendSupport.isQuotaError(envelope))
+        XCTAssertNil(ClaudeBackend.errorEnvelope(envelope))
+        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
+                                               envelopeError: ClaudeBackend.errorEnvelope(envelope)))
+    }
+
+    /// An answer that discusses quotas is still just an answer.
+    func testAnswerAboutUsageLimitsIsNotAQuotaError() {
+        let stdout = #"{"type":"result","is_error":false,"result":"Your usage limit resets at 3pm."}"#
+        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
+                                               envelopeError: ClaudeBackend.errorEnvelope(stdout)))
+    }
+
+    func testRealQuotaFailureIsStillCaught() {
+        let detail = ClaudeBackend.diagnostics(exitCode: 1, stderr: "Claude usage limit reached",
+                                               envelopeError: nil)
+        XCTAssertNotNil(detail)
+        XCTAssertTrue(BackendSupport.isQuotaError(detail ?? ""))
+    }
+
+    func testErrorEnvelopeIsUsedAsDiagnostics() {
+        let stdout = #"{"type":"result","is_error":true,"result":"rate limit exceeded"}"#
+        XCTAssertEqual(ClaudeBackend.errorEnvelope(stdout), "rate limit exceeded")
+        let detail = ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
+                                               envelopeError: ClaudeBackend.errorEnvelope(stdout))
+        XCTAssertTrue(BackendSupport.isQuotaError(detail ?? ""))
+    }
+
+    func testStreamParserExposesOnlyRealErrors() {
+        var ok = StreamParser()
+        _ = ok.consume(#"{"type":"result","is_error":false,"result":"Your quota is fine."}"#)
+        XCTAssertNil(ok.errorMessage)
+
+        var bad = StreamParser()
+        _ = bad.consume(#"{"type":"result","is_error":true,"result":"usage limit reached"}"#)
+        XCTAssertEqual(bad.errorMessage, "usage limit reached")
     }
 
     func testCleanAnswerStripsQuotesAndFences() {

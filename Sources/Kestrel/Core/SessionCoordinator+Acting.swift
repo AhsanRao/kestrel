@@ -7,6 +7,9 @@ import Foundation
 /// part of — the confirmation, the overlay, the summary — hops to the main thread.
 extension SessionCoordinator {
     func runAgent(_ text: String, bundleID: String?) {
+        // Pinned now, while the app the user was looking at is still frontmost. By the time a
+        // keystroke runs, a confirmation dialog may have made Kestrel frontmost instead.
+        let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
         let elements = AXElementScanner.scanFrontmostApp()
         guard !elements.isEmpty else {
             // Nothing to act on: answer the question instead of guessing at coordinates.
@@ -33,7 +36,9 @@ extension SessionCoordinator {
                 return
             }
             discardCapture()
-            DispatchQueue.main.async { self.begin(plan, elements: elements, bundleID: bundleID) }
+            DispatchQueue.main.async {
+                self.begin(plan, elements: elements, bundleID: bundleID, appPID: targetPID)
+            }
         } catch is CancellationError {
             discardCapture()
         } catch {
@@ -44,7 +49,8 @@ extension SessionCoordinator {
 
     // MARK: - Running
 
-    private func begin(_ plan: ActionPlan, elements: [AXElementScanner.Element], bundleID: String?) {
+    private func begin(_ plan: ActionPlan, elements: [AXElementScanner.Element], bundleID: String?,
+                       appPID: pid_t?) {
         apply(.actionsReady)
         render()
         panel.hideImmediately()
@@ -64,6 +70,7 @@ extension SessionCoordinator {
         work.async { [weak self] in
             guard let self else { return }
             let result = runner.run(plan, elements: elements, policy: policy, bundleID: bundleID,
+                                    appPID: appPID,
                                     onStep: { [weak self] action, index, _ in
                 DispatchQueue.main.async {
                     self?.agentOverlay.model.show(action, at: action.element.flatMap { byID[$0]?.frame },
@@ -80,6 +87,14 @@ extension SessionCoordinator {
     private func askPermission(for action: Action, app: String?) -> Bool {
         var allowed = false
         let ask = {
+            // The alert has to come forward to be answered, which takes the user out of the app
+            // being worked on. Put them back afterwards.
+            let previous = NSWorkspace.shared.frontmostApplication
+            defer {
+                if let previous, previous.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                    previous.activate()
+                }
+            }
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
             alert.messageText = action.describe
