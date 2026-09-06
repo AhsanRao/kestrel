@@ -64,18 +64,24 @@ a screenshot, so it cannot answer "what else is open" or act on another app.
 - [x] Tests: layer and size filtering, ordering, capping, missing titles, malformed entries,
       detector phrasing
 
-## T5 — Actuator: let Kestrel act
+## T5 — Actuator: let Kestrel act ✅
 
 The core gap. HeyClicky's policy constrains every input tool to `delivery_mode: background` — it
 clicks without stealing the cursor or focus. `AXUIElementPerformAction` is background by
 construction, and M4's `AXElementScanner` already knows where every control is.
 
-- [ ] `Actuator`: press, set value, focus, scroll and menu-item invocation through Accessibility
-- [ ] `CGEventPostToPid` fallback for apps with no usable Accessibility tree
-- [ ] Policy in `~/.kestrel/policy.json`: allowlist by app and action, deny by default
-- [ ] Confirmation required before anything that sends, deletes, buys, posts or overwrites
-- [ ] Every action logged to `~/.kestrel/logs/actions.jsonl`
-- [ ] Tests: policy evaluation, destructive-verb detection, confirmation gating, dry runs
+- [x] `Actuator`: press, set value, focus, scroll and launch, through Accessibility — the real
+      cursor never moves and focus is not stolen, which is what makes acting tolerable to sit next to
+- [x] `postToPid` fallback for controls that expose no press action, still delivered to the owning
+      process rather than the global event stream
+- [x] Policy in `~/.kestrel/policy.json`, `confirm` by default and **terminals denied outright**,
+      because typing into one is arbitrary command execution
+- [x] Anything reading as irreversible is confirmed even in an allowed app, matched on whole words
+      and their inflections so "Deleting the row" counts and "the sender column" does not
+- [x] `ActionRunner` stops on a refusal, a decline or a failure rather than half-applying a plan
+- [x] Every action appended to `~/.kestrel/logs/actions.jsonl`
+- [x] Tests: policy decisions, verb inflections, partial and malformed policy files, confirmation
+      gating, abort paths, plan capping
 
 ## T6 — Agent cursor and action log
 

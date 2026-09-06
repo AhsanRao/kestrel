@@ -17,6 +17,8 @@ enum KestrelError: LocalizedError, Equatable {
     case accessibilityDenied
     case hotkeyRegistrationFailed(String)
     case hotkeyNeedsAccessibility(String)
+    case actionDenied(String)
+    case actionFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -49,6 +51,10 @@ enum KestrelError: LocalizedError, Equatable {
             return "Accessibility permission needed to paste — System Settings ▸ Privacy & Security ▸ Accessibility"
         case .hotkeyRegistrationFailed(let combo):
             return "Hotkey \(combo) is already taken by another app — pick a different one in Settings"
+        case .actionDenied(let what):
+            return "Kestrel is not allowed to \(what) — edit ~/.kestrel/policy.json to permit it"
+        case .actionFailed(let what):
+            return "Could not \(what) — the control did not respond"
         case .hotkeyNeedsAccessibility(let combo):
             return "The \(combo) hotkey needs Accessibility to be seen — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
         }

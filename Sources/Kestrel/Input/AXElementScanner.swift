@@ -30,6 +30,22 @@ enum AXElementScanner {
         var role: String
         /// Global AppKit points, origin bottom-left — ready to hand to the overlay.
         var frame: CGRect
+        /// The live Accessibility handle, kept so the element can be acted on and not merely drawn
+        /// around. Absent in tests and in anything reconstructed from disk.
+        var ref: AXUIElement?
+
+        init(id: Int, label: String, role: String, frame: CGRect, ref: AXUIElement? = nil) {
+            self.id = id
+            self.label = label
+            self.role = role
+            self.frame = frame
+            self.ref = ref
+        }
+
+        /// Identity is what the model and the user see; the opaque handle is not part of it.
+        static func == (lhs: Element, rhs: Element) -> Bool {
+            lhs.id == rhs.id && lhs.label == rhs.label && lhs.role == rhs.role && lhs.frame == rhs.frame
+        }
 
         /// "3. Export  (button)" — the line the model chooses from.
         var listing: String {
@@ -88,7 +104,7 @@ enum AXElementScanner {
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty && $0.count <= 60 } ?? ""
 
-        return Element(id: 0, label: label, role: role, frame: frame)
+        return Element(id: 0, label: label, role: role, frame: frame, ref: element)
     }
 
     // MARK: - Attributes

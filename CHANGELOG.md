@@ -4,6 +4,19 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T5 — Kestrel can act
+
+- New `Actuator` performs press, set-value, focus, scroll and launch through Accessibility.
+  `AXUIElementPerformAction` goes straight to the control, so the real cursor never moves and focus
+  is not stolen — you can keep typing while it works. Controls with no press action fall back to a
+  click posted to the owning process, not to the global event stream.
+- `~/.kestrel/policy.json` decides what is permitted. It ships as **confirm by default** with
+  terminals denied outright, and anything irreversible — send, delete, buy, post, publish, submit —
+  is confirmed even in an app you have allowed.
+- `ActionRunner` runs a plan step by step and stops on the first refusal, decline or failure rather
+  than leaving a sequence half-applied.
+- Every action is appended to `~/.kestrel/logs/actions.jsonl`, one JSON object per line.
+
 ### T4 — Desktop awareness
 
 - "What else is open?" and "switch to Slack" now get a list of open windows and running apps.
