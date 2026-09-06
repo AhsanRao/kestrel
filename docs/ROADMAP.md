@@ -83,13 +83,16 @@ construction, and M4's `AXElementScanner` already knows where every control is.
 - [x] Tests: policy decisions, verb inflections, partial and malformed policy files, confirmation
       gating, abort paths, plan capping
 
-## T6 — Agent cursor and action log
+## T6 — Agent cursor and action log ✅
 
 HeyClicky draws a fake cursor so automation is legible. Kestrel already has an overlay window.
 
-- [ ] Visible marker showing what Kestrel is about to touch, with the action named
-- [ ] Esc aborts the run; the panel lists what was done
-- [ ] Tests: step sequencing, abort behaviour, completion state
+- [x] A ring on the control being touched, an agent pointer dot, the action in words, and a step
+      counter — automation that happens invisibly is the same as automation you cannot trust
+- [x] `EscapeWatcher`: Esc stops a run from wherever the user is, through a listen-only tap that
+      never swallows the key
+- [x] Tests: step counting and clamping, coordinate flipping, second-display offsets, targetless
+      actions, reset
 
 ## T7 — Agent tasks (spec M6)
 
