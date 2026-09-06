@@ -3,6 +3,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var model = SettingsModel()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
 
     var body: some View {
         TabView {
@@ -12,6 +14,14 @@ struct SettingsView: View {
         }
         .padding(16)
         .frame(width: 460, height: 560)
+        // A settling arrival, matching the panel and onboarding rather than the flat pop of a
+        // stock window.
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 6)
+        .onAppear {
+            guard !reduceMotion else { appeared = true; return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { appeared = true }
+        }
     }
 
     // MARK: - General
@@ -31,6 +41,7 @@ struct SettingsView: View {
                      + "moment to start; pressing any key while it is held cancels, so ordinary "
                      + "\(model.config.hotkeys.ask.display) shortcuts still work.")
                     .font(.caption).foregroundStyle(.secondary)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
@@ -60,6 +71,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: model.config.hotkeys.ask.isModifierOnly)
     }
 
     // MARK: - Speech

@@ -89,6 +89,7 @@ struct PanelView: View {
                 .padding(.vertical, 2)
                 .background(KestrelPalette.blue.opacity(0.16), in: Capsule())
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Backend: \(model.backend.displayName)")
         }
     }
 

@@ -5,6 +5,7 @@ import SwiftUI
 /// voice while Kestrel listens, an orbiting sweep while it thinks, a settled dot when it answers.
 struct PanelIndicator: View {
     @ObservedObject var model: PanelModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -13,7 +14,7 @@ struct PanelIndicator: View {
                 WaveformBars(accent: model.accent, level: model.level)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             case .transcribing, .thinking, .injecting, .acting:
-                ThinkingSweep(accent: model.accent)
+                ThinkingSweep(accent: model.accent, reduceMotion: reduceMotion)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             default:
                 SettledDot(accent: model.accent)
@@ -22,6 +23,22 @@ struct PanelIndicator: View {
         }
         .frame(width: 20, height: 16)
         .animation(.spring(response: 0.34, dampingFraction: 0.7), value: model.state)
+        // The shape alone carries state for sighted users; VoiceOver needs it named instead.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        switch model.state {
+        case .listening, .dictating: return "Listening"
+        case .transcribing: return "Transcribing"
+        case .thinking: return "Thinking"
+        case .injecting: return "Pasting"
+        case .acting: return "Working"
+        case .answering, .guiding: return "Answer ready"
+        case .error: return "Error"
+        case .idle: return "Idle"
+        }
     }
 }
 
@@ -55,6 +72,7 @@ private struct WaveformBars: View {
 /// A ring with a moving gap: the standard "working" idiom, without a spinner's busy feel.
 private struct ThinkingSweep: View {
     let accent: Color
+    let reduceMotion: Bool
     @State private var angle: Double = 0
 
     var body: some View {
@@ -68,6 +86,8 @@ private struct ThinkingSweep: View {
         }
         .frame(width: 13, height: 13)
         .onAppear {
+            // A still, gapped ring still reads as "not idle" without the spin Reduce Motion asks to skip.
+            guard !reduceMotion else { return }
             withAnimation(.linear(duration: 0.95).repeatForever(autoreverses: false)) { angle = 360 }
         }
     }

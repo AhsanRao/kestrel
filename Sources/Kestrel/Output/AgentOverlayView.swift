@@ -93,6 +93,7 @@ struct AgentOverlayView: View {
 /// Kestrel's own pointer: a filled dot inside a slow pulse, so it never looks like the user's
 /// cursor has been taken over.
 private struct AgentPointer: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse = false
 
     var body: some View {
@@ -109,6 +110,8 @@ private struct AgentPointer: View {
         }
         .frame(width: 18, height: 18)
         .onAppear {
+            // The dot alone still marks the target without the halo's repeating pulse.
+            guard !reduceMotion else { return }
             withAnimation(.easeOut(duration: 1.1).repeatForever(autoreverses: false)) { pulse = true }
         }
     }

@@ -4,6 +4,7 @@ import SwiftUI
 /// and the instruction. Everything is click-through; the window below still receives the click.
 struct OverlayView: View {
     @ObservedObject var model: OverlayModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
@@ -35,8 +36,9 @@ struct OverlayView: View {
         .frame(width: inflated.width, height: inflated.height)
         .background(KestrelPalette.cyan.opacity(0.10))
         .shadow(color: KestrelPalette.cyan.opacity(0.55), radius: 12)
-        .scaleEffect(model.breathing ? 1.03 : 1.0)
-        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: model.breathing)
+        .scaleEffect(reduceMotion ? 1.0 : (model.breathing ? 1.03 : 1.0))
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                   value: model.breathing)
         .offset(x: inflated.minX, y: inflated.minY)
     }
 
