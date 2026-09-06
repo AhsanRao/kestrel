@@ -70,7 +70,9 @@ extension SessionCoordinator {
                           mode: wantsSteps ? .walkthrough : .ask,
                           elements: wantsSteps ? scannedElements : [],
                           history: history,
-                          skills: SkillLibrary.notes(forBundleID: bundleID))
+                          skills: SkillLibrary.notes(forBundleID: bundleID),
+                          desktop: DesktopContextDetector.needsDesktopContext(text)
+                              ? DesktopSurvey.summary() : nil)
         do {
             // A walkthrough answer is JSON, which must never be read out; a spoken answer streams.
             let onDelta: ((String) -> Void)? = wantsSteps ? nil : { [weak self] sentence in

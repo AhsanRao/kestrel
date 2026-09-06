@@ -52,14 +52,17 @@ Kestrel is silent apart from speech, which makes it feel unresponsive.
 - [x] Respect system mute and the `sounds` flag; toggle in Settings ▸ Speech
 - [x] Tests: length, level, fade envelopes, rising vs falling, distinctness, mute and flag
 
-## T4 — Desktop awareness
+## T4 — Desktop awareness ✅
 
 `list_apps`, `list_windows`, `get_window_state`, `get_desktop_state` in HeyClicky. Kestrel only has
 a screenshot, so it cannot answer "what else is open" or act on another app.
 
-- [ ] Enumerate running apps and on-screen windows with titles, frames and bundle ids
-- [ ] Offer that context to the model on request, not on every question (tokens, latency)
-- [ ] Tests: window filtering, ordering, off-screen and layered windows
+- [x] Enumerate running apps and on-screen windows with titles, frames and bundle ids
+- [x] Gathered only when the question is about the desktop — "what else is open", "switch to…" —
+      so ordinary screen questions pay nothing for it
+- [x] Palettes, tooltips and non-zero window layers filtered out; frontmost first, then biggest
+- [x] Tests: layer and size filtering, ordering, capping, missing titles, malformed entries,
+      detector phrasing
 
 ## T5 — Actuator: let Kestrel act
 

@@ -4,6 +4,13 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T4 — Desktop awareness
+
+- "What else is open?" and "switch to Slack" now get a list of open windows and running apps.
+- Gathered only for questions that are actually about the desktop; ordinary screen questions send
+  nothing extra and stay fast.
+- Palettes, tooltips and overlay layers are filtered out, and the window in front is listed first.
+
 ### T3 — Sound cues
 
 - Five short tones mark listening, heard, answered, inserted and failed, so Kestrel feels

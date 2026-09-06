@@ -44,6 +44,7 @@ enum PromptBuilder {
             if let skills = query.skills, !skills.isEmpty {
                 parts.append("Things to keep in mind here:\n\(skills)")
             }
+            if let desktop = query.desktop, !desktop.isEmpty { parts.append(desktop) }
             if let brief = Conversation.brief(query.history) { parts.append(brief) }
             parts.append("Question: \(query.text)")
             return parts.joined(separator: "\n\n")

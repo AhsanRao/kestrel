@@ -16,11 +16,14 @@ struct Query {
     var history: [Conversation.Exchange]
     /// Per-app notes from `~/.kestrel/skills`, when the frontmost app has any.
     var skills: String?
+    /// What else is open, when the question is about the desktop rather than the screen.
+    var desktop: String?
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
          elements: [AXElementScanner.Element] = [],
-         history: [Conversation.Exchange] = [], skills: String? = nil) {
+         history: [Conversation.Exchange] = [], skills: String? = nil,
+         desktop: String? = nil) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
@@ -29,6 +32,7 @@ struct Query {
         self.elements = elements
         self.history = history
         self.skills = skills
+        self.desktop = desktop
     }
 
     /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls
