@@ -4,6 +4,16 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T7 — Agent tasks
+
+- "Archive this", "open Slack", "set the title to Quarterly" are now carried out rather than
+  explained. "How do I archive this?" still explains — and when the phrasing is ambiguous Kestrel
+  answers, because the wrong answer costs a sentence and the wrong action costs an email.
+- The model plans against the real controls it was shown; every step passes the policy, anything
+  irreversible is confirmed, and the run stops on the first refusal or failure.
+- The overlay names the goal, counts the steps, pauses briefly between them so the run can be
+  watched, and Esc stops it from anywhere.
+
 ### T5 — Kestrel can act
 
 - New `Actuator` performs press, set-value, focus, scroll and launch through Accessibility.

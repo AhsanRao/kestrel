@@ -8,6 +8,7 @@ enum BundleResources {
         case dictationCleanup = "dictation-cleanup"
         case walkthrough = "walkthrough"
         case walkthroughElements = "walkthrough-elements"
+        case agent = "agent"
         case acknowledgements = "acknowledgements"
     }
 

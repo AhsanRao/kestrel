@@ -8,6 +8,8 @@ enum PromptBuilder {
     /// off a grid drawn on the screenshot.
     static func framing(for query: Query) -> String {
         switch query.mode {
+        case .agent:
+            return BundleResources.prompt(.agent)
         case .walkthrough:
             return BundleResources.prompt(query.elements.isEmpty ? .walkthrough : .walkthroughElements)
         default:
@@ -22,7 +24,7 @@ enum PromptBuilder {
         case .dictationCleanup:
             return BundleResources.prompt(.dictationCleanup) + "\n" + query.text
 
-        case .ask, .walkthrough:
+        case .ask, .walkthrough, .agent:
             var parts: [String] = []
             parts.append(framing(for: query))
             if mentionScreenshotPath {

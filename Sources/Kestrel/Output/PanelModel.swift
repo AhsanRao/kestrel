@@ -25,6 +25,7 @@ final class PanelModel: ObservableObject {
         case .answering: return "Answer"
         case .injecting: return "Pasting…"
         case .guiding: return "Follow the steps"
+        case .acting: return "Working…"
         case .error(let message): return message
         }
     }
@@ -33,7 +34,7 @@ final class PanelModel: ObservableObject {
         switch state {
         case .idle: return KestrelPalette.idle
         case .listening, .dictating: return KestrelPalette.cyan
-        case .transcribing, .thinking, .injecting: return KestrelPalette.blue
+        case .transcribing, .thinking, .injecting, .acting: return KestrelPalette.blue
         // Cream is the bird on the icon, not a dot on a light material — it vanishes there.
         case .answering, .guiding: return KestrelPalette.blue
         case .error: return KestrelPalette.coral

@@ -36,6 +36,11 @@ struct SettingsView: View {
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
             Toggle("Draw walkthroughs for \"how do I…\" questions", isOn: model.binding(\.walkthroughs))
             Toggle("Circle part of the screen while holding the ask key", isOn: model.binding(\.spatialContext))
+            Toggle("Let Kestrel do things, not just describe them", isOn: model.binding(\.agentActions))
+            Text("Nothing happens without permission: `~/.kestrel/policy.json` asks before every "
+                 + "action by default, denies terminals outright, and always confirms anything "
+                 + "that sends, deletes, buys or posts.")
+                .font(.caption).foregroundStyle(.secondary)
             Picker("Ask about", selection: model.binding(\.captureMode)) {
                 ForEach(Config.CaptureMode.allCases, id: \.self) { Text($0.title).tag($0) }
             }

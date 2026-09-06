@@ -39,7 +39,7 @@ extension SessionCoordinator {
         }
     }
 
-    func runAsk(_ text: String) {
+    func runAsk(_ text: String, forceAnswer: Bool = false) {
         // A question asked soon after the last one, in the same app, continues it.
         let bundleID = TextInjector.frontmostBundleID()
         let history = conversation.context(now: Date(),
@@ -47,7 +47,11 @@ extension SessionCoordinator {
                                            frontmostBundleID: bundleID)
         DispatchQueue.main.async { self.panel.model.isFollowUp = !history.isEmpty }
         // "How do I …?" is a request to be shown, not told (spec §8.15).
-        let wantsSteps = WalkthroughDetector.wantsWalkthrough(text, config: config)
+        // Three branches: do it, show it, or say it.
+        if !forceAnswer, AgentDetector.wantsAction(text, config: config) {
+            return runAgent(text, bundleID: bundleID)
+        }
+        let wantsSteps = !forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config)
         // Say something straight away. The model takes seconds; silence for those seconds is what
         // made Kestrel feel slow, more than the seconds themselves.
         DispatchQueue.main.async { self.acknowledge() }

@@ -1,6 +1,6 @@
 import Foundation
 
-enum QueryMode: String { case ask, dictationCleanup, walkthrough }
+enum QueryMode: String { case ask, dictationCleanup, walkthrough, agent }
 
 /// What a backend is asked to do. Screenshots are passed as file paths: both CLIs read images off
 /// disk, and this keeps large base64 payloads out of argv.
@@ -41,6 +41,7 @@ struct Query {
         switch mode {
         case .ask: return 120
         case .walkthrough: return 180
+        case .agent: return 150
         case .dictationCleanup: return 30
         }
     }

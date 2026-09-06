@@ -94,11 +94,15 @@ HeyClicky draws a fake cursor so automation is legible. Kestrel already has an o
 - [x] Tests: step counting and clamping, coordinate flipping, second-display offsets, targetless
       actions, reset
 
-## T7 — Agent tasks (spec M6)
+## T7 — Agent tasks (spec M6) ✅
 
-- [ ] Multi-step plans: model proposes actions, Kestrel executes them under policy
-- [ ] HUD with live status, cancel and retry
-- [ ] Tests: plan parsing, step failure handling, cancellation
+- [x] `AgentDetector` splits "archive this" from "how do I archive this?" — when it is ambiguous,
+      Kestrel answers, because the wrong answer costs a sentence and the wrong action costs an email
+- [x] The model proposes a plan of real controls; `ActionRunner` executes it under policy
+- [x] Live overlay with the goal, step counter and Esc, and a beat between steps so it can be watched
+- [x] Result summarised in the panel and spoken
+- [x] Tests: detector phrasing, plan parsing through fences and prose, dropped steps, unknown
+      action kinds, capping, and the acting state's transitions
 
 ## T8 — Projects and artifacts
 

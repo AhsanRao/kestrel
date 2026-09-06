@@ -21,6 +21,10 @@ final class SessionCoordinator {
     let selection = SelectionOverlay()
     let dragTracker = DragTracker()
     lazy var walkthrough = WalkthroughSession(overlay: overlay)
+    let agentOverlay = AgentOverlay()
+    let actuator = Actuator()
+    let escapeWatcher = EscapeWatcher()
+    var activeRun: ActionRunner?
 
     var machine = SessionMachine()
     /// Kept alive for the whole walkthrough: the overlay needs its geometry to place the drawing.
@@ -66,6 +70,8 @@ final class SessionCoordinator {
 
     func stop() {
         sounds.stop()
+        escapeWatcher.stop()
+        activeRun?.cancel()
         dragTracker.end()
         selection.hide()
         accessibilityRetry?.invalidate()
@@ -135,7 +141,10 @@ final class SessionCoordinator {
         case .finishDictating: finishRecording(intent: .dictation)
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
-        case .clearOverlay: walkthrough.stop(completed: false, notify: false)
+        case .clearOverlay:
+            walkthrough.stop(completed: false, notify: false)
+            escapeWatcher.stop()
+            agentOverlay.hide()
         case .reset: reset()
         }
     }
