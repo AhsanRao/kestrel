@@ -4,6 +4,14 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T2 — Per-app skills
+
+- `~/.kestrel/skills/<bundle-id>.md` is sent with every question asked while that app is frontmost,
+  and `default.md` is sent always — the way to teach Kestrel your own vocabulary without editing
+  prompts. Seeded with a README explaining the format.
+- Re-read the moment a file is saved; capped at 6 000 characters, since every question pays for it.
+- Menu bar ▸ Open skills folder.
+
 ### T1 — Follow-up turns
 
 - A question asked within 90 seconds, in the same app, continues the last one, so "no, the other

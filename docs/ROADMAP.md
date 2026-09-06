@@ -26,16 +26,20 @@ Every hotkey press is currently a fresh `claude -p --no-session-persistence`, so
 - [x] Panel shows that a question is a follow-up
 - [x] Tests: window expiry, app-change invalidation, prompt assembly, retention limit
 
-## T2 — Per-app skills
+## T2 — Per-app skills ✅
 
 Spec §16 designs `~/.kestrel/skills/*.md` injected by frontmost bundle id; it was never built.
 HeyClicky ships 28 of these (`imessage.md`, `linear.md`, `notion.md`, `obsidian.md`, `spotify.md`,
 `github-pr-workflow.md`, …).
 
-- [ ] Load `~/.kestrel/skills/<bundle-id>.md`, plus a `default.md`, for the frontmost app
-- [ ] Seed a starter set on first run and document the format
-- [ ] Cache with invalidation on file change; never block the ask path on disk
-- [ ] Tests: resolution order, missing files, oversized files, bundle-id matching
+- [x] Load `~/.kestrel/skills/<bundle-id>.md`, plus a `default.md`, for the frontmost app
+- [x] Seed `README.md` and `default.md` on first run, explaining the format and how to find a
+      bundle id
+- [x] Cache keyed on modification date, so a saved edit applies at once and an unchanged file is
+      never re-read
+- [x] 6 000-character cap per send, because every question pays for this
+- [x] Menu bar ▸ Open skills folder
+- [x] Tests: combination order, missing files, comment-only files, truncation, cache invalidation
 
 ## T3 — Sound design
 

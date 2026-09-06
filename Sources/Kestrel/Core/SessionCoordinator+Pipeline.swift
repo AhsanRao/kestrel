@@ -69,7 +69,8 @@ extension SessionCoordinator {
                           focusCrop: pendingCrop,
                           mode: wantsSteps ? .walkthrough : .ask,
                           elements: wantsSteps ? scannedElements : [],
-                          history: history)
+                          history: history,
+                          skills: SkillLibrary.notes(forBundleID: bundleID))
         do {
             // A walkthrough answer is JSON, which must never be read out; a spoken answer streams.
             let onDelta: ((String) -> Void)? = wantsSteps ? nil : { [weak self] sentence in

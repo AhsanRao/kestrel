@@ -58,6 +58,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         addItem("Open memory file", #selector(openMemory))
+        addItem("Open skills folder", #selector(openSkills))
         addItem("Setup & permissions…", #selector(openOnboarding))
         addItem("Check dependencies…", #selector(checkDependencies))
         addItem("Settings…", #selector(openSettings), key: ",")
@@ -98,6 +99,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     @objc private func openMemory() { MemoryStore.openInEditor() }
+    @objc private func openSkills() { NSWorkspace.shared.open(Paths.skills) }
     @objc private func openSettings() { onOpenSettings?() }
     @objc private func checkDependencies() { onCheckDependencies?() }
     @objc private func openOnboarding() { onOpenOnboarding?() }

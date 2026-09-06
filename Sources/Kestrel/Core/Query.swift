@@ -14,11 +14,13 @@ struct Query {
     var elements: [AXElementScanner.Element]
     /// Earlier turns, when this question continues a warm conversation.
     var history: [Conversation.Exchange]
+    /// Per-app notes from `~/.kestrel/skills`, when the frontmost app has any.
+    var skills: String?
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
          elements: [AXElementScanner.Element] = [],
-         history: [Conversation.Exchange] = []) {
+         history: [Conversation.Exchange] = [], skills: String? = nil) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
@@ -26,6 +28,7 @@ struct Query {
         self.maxTokensHint = maxTokensHint
         self.elements = elements
         self.history = history
+        self.skills = skills
     }
 
     /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls

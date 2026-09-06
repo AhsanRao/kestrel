@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         ConfigStore.shared.start()
         MemoryStore.bootstrap()
+        SkillLibrary.bootstrap()
         LaunchAtLogin.sync(with: ConfigStore.shared.current.launchAtLogin)
 
         let menu = StatusMenu()
