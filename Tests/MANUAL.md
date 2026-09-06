@@ -18,7 +18,7 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 2. Ask
 
-- [ ] Hold `⌃⌥Space`, ask "what app is this?", release → correct spoken answer
+- [ ] Hold `⌃⌘Space`, ask "what app is this?", release → correct spoken answer
 - [ ] The screenshot never contains the Kestrel panel
 - [ ] Question about the display the mouse is on, with two displays connected
 - [ ] Press the hotkey while the answer is being spoken → speech stops, recording restarts
@@ -50,8 +50,24 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Rename `whisper-cli` → error names `brew install whisper-cpp`
 - [ ] Exhausted plan quota → "usage limit reached" with the switch-backend hint
 
+## 5b. Walkthroughs (M4)
+
+- [ ] "How do I export as PDF in this app?" draws ≥2 steps on the right controls
+- [ ] Clicking the highlighted control advances to the next step; the click still reaches the app
+- [ ] Clicking somewhere else does not advance
+- [ ] Esc clears the overlay immediately
+- [ ] The last click ends the walkthrough and removes the overlay
+- [ ] Pressing the ask hotkey mid-walkthrough clears the overlay and starts listening
+- [ ] The overlay never appears in a screenshot taken by the next question
+- [ ] On the second display, the rings land on the right controls
+- [ ] Revoke Accessibility → the steps are spoken and nothing is drawn
+- [ ] A question the model cannot answer from this screen returns one step and says there are more
+- [ ] "What app is this?" still answers normally, with no overlay
+
 ## 6. Settings and config
 
+- [ ] `⌃⌘Space` reaches Kestrel and not the Emoji & Symbols viewer
+- [ ] `⌃⌘D` reaches Kestrel and not Look Up
 - [ ] Rebind the ask hotkey; the new combination works immediately, the old one does not
 - [ ] A combination already owned by another app shows the conflict error
 - [ ] Edit `~/.kestrel/config.json` by hand → applied without relaunching

@@ -25,7 +25,7 @@ struct HotkeyBinding: Codable, Equatable {
         return mask
     }
 
-    /// "⌃⌥Space" — used in the panel hint, the menu and the settings window.
+    /// "⌃⌘Space" — used in the panel hint, the menu and the settings window.
     var display: String {
         var out = ""
         let lowered = Set(modifiers.map { $0.lowercased() })

@@ -53,6 +53,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
         addToggle("Speak answers", isOn: config.speakAnswers, action: #selector(toggleSpeak))
         addToggle("Clean up dictation", isOn: config.cleanupDictation, action: #selector(toggleCleanup))
+        addToggle("Draw walkthroughs", isOn: config.walkthroughs, action: #selector(toggleWalkthroughs))
         menu.addItem(.separator())
 
         addItem("Open memory file", #selector(openMemory))
@@ -88,6 +89,10 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     @objc private func toggleCleanup() {
         ConfigStore.shared.update { $0.cleanupDictation.toggle() }
+    }
+
+    @objc private func toggleWalkthroughs() {
+        ConfigStore.shared.update { $0.walkthroughs.toggle() }
     }
 
     @objc private func openMemory() { MemoryStore.openInEditor() }

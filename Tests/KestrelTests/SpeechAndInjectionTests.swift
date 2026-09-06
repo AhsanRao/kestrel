@@ -83,6 +83,7 @@ final class SpeechAndInjectionTests: XCTestCase {
     func testTimeoutsMatchTheSpec() {
         XCTAssertEqual(Query(text: "x", mode: .ask).timeout, 120)
         XCTAssertEqual(Query(text: "x", mode: .dictationCleanup).timeout, 30)
+        XCTAssertEqual(Query(text: "x", mode: .walkthrough).timeout, 180)
     }
 
     // MARK: - Walkthrough JSON (v2 schema, parsed defensively)

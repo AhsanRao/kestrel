@@ -6,8 +6,8 @@ final class PanelModel: ObservableObject {
     @Published var transcript: String = ""
     @Published var answer: String = ""
     @Published var backend: BackendKind = .claude
-    @Published var askHint: String = "⌃⌥Space"
-    @Published var dictateHint: String = "⌃⌥D"
+    @Published var askHint: String = "⌃⌘Space"
+    @Published var dictateHint: String = "⌃⌘D"
     @Published var permissionURL: URL?
     @Published var pulse: Int = 0
     @Published var isHovering: Bool = false
@@ -22,6 +22,7 @@ final class PanelModel: ObservableObject {
         case .thinking: return "Thinking…"
         case .answering: return "Answer"
         case .injecting: return "Pasting…"
+        case .guiding: return "Follow the steps"
         case .error(let message): return message
         }
     }
@@ -31,7 +32,7 @@ final class PanelModel: ObservableObject {
         case .idle: return KestrelPalette.idle
         case .listening, .dictating: return KestrelPalette.cyan
         case .transcribing, .thinking, .injecting: return KestrelPalette.blue
-        case .answering: return KestrelPalette.cream
+        case .answering, .guiding: return KestrelPalette.cream
         case .error: return KestrelPalette.coral
         }
     }

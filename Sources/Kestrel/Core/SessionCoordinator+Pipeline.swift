@@ -14,7 +14,7 @@ extension SessionCoordinator {
             log.debug("transcript in \(Int(Date().timeIntervalSince(started) * 1000))ms")
             guard !text.isEmpty else {
                 DispatchQueue.main.async {
-                    self.discardScreenshot()
+                    self.discardCapture()
                     self.apply(.transcriptionEmpty)
                     self.render()
                 }
@@ -35,23 +35,83 @@ extension SessionCoordinator {
     }
 
     func runAsk(_ text: String) {
-        let query = Query(text: text, screenshot: pendingScreenshot, mode: .ask)
+        // "How do I …?" is a request to be shown, not told (spec §8.15).
+        let wantsSteps = WalkthroughDetector.wantsWalkthrough(text, config: config)
+        // Walkthroughs get a gridded copy of the screenshot: the model reads coordinates off the
+        // printed lines instead of guessing them. The user's own view is never touched.
+        var gridded: URL?
+        if wantsSteps, let original = pendingCapture?.url { gridded = GridAnnotator.annotate(original) }
+        defer { if let gridded { try? FileManager.default.removeItem(at: gridded) } }
+
+        let query = Query(text: text, screenshot: gridded ?? pendingCapture?.url,
+                          mode: wantsSteps ? .walkthrough : .ask)
         do {
             let answer = try router.ask(query, config: config)
-            discardScreenshot()
             DispatchQueue.main.async {
-                self.panel.model.answer = answer.text
-                self.apply(.answered)
-                self.render()
-                if self.config.speakAnswers, self.speech.speak(answer.text, config: self.config) { return }
-                self.scheduleAutoHide()
+                if wantsSteps, let walkthrough = WalkthroughParser.parse(answer.text) {
+                    self.present(walkthrough)
+                } else {
+                    self.discardCapture()
+                    self.present(answer)
+                }
             }
         } catch is CancellationError {
-            discardScreenshot()
+            discardCapture()
         } catch {
-            discardScreenshot()
+            discardCapture()
             finish(with: error)
         }
+    }
+
+    /// Plain spoken answer.
+    func present(_ answer: Answer) {
+        panel.model.answer = answer.text
+        apply(.answered)
+        render()
+        if config.speakAnswers, speech.speak(answer.text, config: config) { return }
+        scheduleAutoHide()
+    }
+
+    /// Drawn walkthrough, with a spoken fallback whenever the drawing cannot be trusted.
+    func present(_ walkthrough: Walkthrough) {
+        guard let capture = pendingCapture else { return spokenFallback(walkthrough) }
+        var usable = walkthrough
+        let space = walkthrough.space
+        usable.steps = walkthrough.steps.filter { ScreenCapture.isPlausible($0.target, in: space) }
+        guard !usable.steps.isEmpty else { return spokenFallback(walkthrough) }
+        usable.steps = WalkthroughParser.sanitize(usable.steps)
+
+        guard self.walkthrough.start(usable, capture: capture) else {
+            // Following clicks needs Accessibility; ask once, then read the steps out instead.
+            TextInjector.requestAccessibilityPermission()
+            return spokenFallback(walkthrough)
+        }
+        panel.model.answer = WalkthroughParser.spokenSummary(usable)
+        apply(.walkthroughReady)
+        render()
+        panel.hideImmediately()          // the overlay is the UI now
+        speakStep(usable.steps[0])
+    }
+
+    private func spokenFallback(_ walkthrough: Walkthrough) {
+        discardCapture()
+        let summary = WalkthroughParser.spokenSummary(walkthrough)
+        present(Answer(text: summary, raw: summary, durationMs: 0, steps: walkthrough.steps))
+    }
+
+    func walkthroughAdvanced(to step: WalkthroughStep) {
+        apply(.walkthroughAdvanced)
+        speakStep(step)
+    }
+
+    func walkthroughEnded() {
+        apply(.walkthroughFinished)
+        render()
+    }
+
+    private func speakStep(_ step: WalkthroughStep) {
+        guard config.speakAnswers else { return }
+        speech.speak(step.instruction, config: config)
     }
 
     func runDictation(_ text: String) {
@@ -80,9 +140,9 @@ extension SessionCoordinator {
 
     // MARK: - Finishing
 
-    func discardScreenshot() {
-        if let url = pendingScreenshot { try? FileManager.default.removeItem(at: url) }
-        pendingScreenshot = nil
+    func discardCapture() {
+        if let capture = pendingCapture { try? FileManager.default.removeItem(at: capture.url) }
+        pendingCapture = nil
     }
 
     func finish(with error: Error) {
@@ -90,7 +150,7 @@ extension SessionCoordinator {
     }
 
     func fail(_ error: Error) {
-        discardScreenshot()
+        discardCapture()
         let kestrelError = error as? KestrelError
         let message = kestrelError?.errorDescription ?? error.localizedDescription
         log.error("\(message, privacy: .public)")
@@ -105,7 +165,7 @@ extension SessionCoordinator {
         panel.model.transcript = ""
         panel.model.answer = ""
         panel.model.permissionURL = nil
-        discardScreenshot()
+        discardCapture()
     }
 
     func scheduleAutoHide() {
@@ -119,6 +179,8 @@ extension SessionCoordinator {
 
     func render() {
         panel.model.state = machine.state
-        if machine.state != .idle { panel.show() }
+        // While guiding, the overlay is the interface; re-showing the panel would double up on it.
+        guard machine.state != .idle, machine.state != .guiding else { return }
+        panel.show()
     }
 }

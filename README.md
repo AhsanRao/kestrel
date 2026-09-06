@@ -10,8 +10,9 @@ only while you are holding the key.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌃⌥Space`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
-| **Dictate** | Tap `⌃⌥D`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
+| **Ask** | Hold `⌃⌘Space`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
+| **Dictate** | Tap `⌃⌘D`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
+| **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
 
@@ -58,10 +59,22 @@ Kestrel's error panel links straight to the right pane when one is missing.
 
 ## Using it
 
-- **Ask:** hold `⌃⌥Space`, say *"what is this window for?"*, release. The panel shows the answer and
+- **Ask:** hold `⌃⌘Space`, say *"what is this window for?"*, release. The panel shows the answer and
   speaks it. Press the hotkey again to interrupt.
-- **Dictate:** tap `⌃⌥D`, speak, tap again. Text lands in the focused app.
+- **Dictate:** tap `⌃⌘D`, speak, tap again. Text lands in the focused app.
+- **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
+  drawn on screen: click each highlighted control to advance, Esc to stop. Needs Accessibility;
+  without it Kestrel reads the steps out instead.
+
+> Where the ring lands is only as good as the model's eye for a screenshot, and that is the weak
+> part of this feature — on a toolbar of near-identical buttons it can be a button or two out.
+> Each step also names its control, clicks near the ring count, and after two misses the overlay
+> lets you advance with a click anywhere.
 - Both hotkeys are rebindable in Settings.
+
+> macOS ships its own shortcuts on these combinations: `⌃⌘Space` opens the Emoji & Symbols viewer
+> and `⌃⌘D` looks a word up in the dictionary. If one of them wins, either turn it off in
+> System Settings ▸ Keyboard ▸ Keyboard Shortcuts, or rebind Kestrel's in Settings ▸ General.
 
 ## Configuration
 
@@ -80,7 +93,8 @@ you save. The Settings window writes the same file.
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | premium voices are preferred when installed |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥Space` / `⌃⌥D` | `{keyCode, modifiers}` |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘Space` / `⌃⌘D` | `{keyCode, modifiers}` |
+| `walkthroughs` | `true` | draw steps for "how do I…" questions |
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |
 | `apiKeys.anthropic` / `apiKeys.openai` | `null` | pay-as-you-go override |
@@ -121,5 +135,6 @@ make deps      # scripts/check-deps.sh
 ## Status
 
 v1 complete: **M0** skeleton, **M1** ask, **M2** dictate + Codex, **M3** polish.
-Next: **M4** draw-on-screen walkthroughs, **M5** circle-a-region context, **M6** MCP agent tasks.
+**M4** draw-on-screen walkthroughs complete.
+Next: **M5** circle-a-region context, **M6** MCP agent tasks.
 See `CHANGELOG.md`.

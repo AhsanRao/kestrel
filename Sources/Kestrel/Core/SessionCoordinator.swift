@@ -15,9 +15,12 @@ final class SessionCoordinator {
     let transcriber: Transcriber = WhisperTranscriber()
     let router = BackendRouter()
     let speech = SpeechOutput()
+    let overlay = OverlayWindow()
+    lazy var walkthrough = WalkthroughSession(overlay: overlay)
 
     var machine = SessionMachine()
-    var pendingScreenshot: URL?
+    /// Kept alive for the whole walkthrough: the overlay needs its geometry to place the drawing.
+    var pendingCapture: ScreenCapture?
     private var listeningStartedAt: Date?
 
     var config: Config { ConfigStore.shared.current }
@@ -28,6 +31,8 @@ final class SessionCoordinator {
         panel.onOpenPermission = { NSWorkspace.shared.open($0) }
         speech.onFinish = { [weak self] in self?.scheduleAutoHide() }
         audio.onAutoStop = { [weak self] url in self?.audioStoppedOnItsOwn(url) }
+        walkthrough.onFinish = { [weak self] _ in self?.walkthroughEnded() }
+        walkthrough.onAdvance = { [weak self] step in self?.walkthroughAdvanced(to: step) }
 
         hotkeys.handler = { [weak self] action, phase in self?.handle(action, phase) }
         hotkeys.registrationFailure = { [weak self] combo in
@@ -83,6 +88,7 @@ final class SessionCoordinator {
         case .finishDictating: finishRecording(intent: .dictation)
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
+        case .clearOverlay: walkthrough.stop(completed: false, notify: false)
         case .reset: reset()
         }
     }
@@ -122,7 +128,7 @@ final class SessionCoordinator {
             guard let self else { return }
             if intent == .ask {
                 do {
-                    self.pendingScreenshot = try ScreenGrabber.capture(maxEdge: maxEdge)
+                    self.pendingCapture = try ScreenGrabber.capture(maxEdge: maxEdge)
                 } catch {
                     self.finish(with: error)
                     return

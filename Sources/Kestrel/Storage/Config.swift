@@ -23,6 +23,7 @@ struct Config: Codable, Equatable {
     var panelAutoHideSeconds: Int
     var screenshotMaxEdge: Int
     var launchAtLogin: Bool
+    var walkthroughs: Bool
 
     var apiKeys: APIKeys
 
@@ -43,6 +44,7 @@ struct Config: Codable, Equatable {
         panelAutoHideSeconds: 20,
         screenshotMaxEdge: 2048,
         launchAtLogin: false,
+        walkthroughs: true,
         apiKeys: APIKeys(anthropic: nil, openai: nil)
     )
 
@@ -60,8 +62,8 @@ struct Config: Codable, Equatable {
         var dictate: HotkeyBinding
 
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: 49, modifiers: ["control", "option"]),      // ⌃⌥Space
-            dictate: HotkeyBinding(keyCode: 2, modifiers: ["control", "option"])    // ⌃⌥D
+            ask: HotkeyBinding(keyCode: 49, modifiers: ["control", "command"]),      // ⌃⌘Space
+            dictate: HotkeyBinding(keyCode: 2, modifiers: ["control", "command"])    // ⌃⌘D
         )
     }
 
@@ -94,6 +96,7 @@ struct Config: Codable, Equatable {
         panelAutoHideSeconds = v(.panelAutoHideSeconds, d.panelAutoHideSeconds)
         screenshotMaxEdge = v(.screenshotMaxEdge, d.screenshotMaxEdge)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
+        walkthroughs = v(.walkthroughs, d.walkthroughs)
         apiKeys = v(.apiKeys, d.apiKeys)
         clamp()
     }
@@ -102,13 +105,14 @@ struct Config: Codable, Equatable {
          whisperBinary: String, whisperModel: String, language: String, speakAnswers: Bool,
          voiceIdentifier: String?, voiceRate: Double, cleanupDictation: Bool, injectMode: InjectMode,
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, screenshotMaxEdge: Int, launchAtLogin: Bool,
-         apiKeys: APIKeys) {
+         walkthroughs: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
         self.autoRoute = autoRoute; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.speakAnswers = speakAnswers; self.voiceIdentifier = voiceIdentifier
         self.voiceRate = voiceRate; self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
-        self.screenshotMaxEdge = screenshotMaxEdge; self.launchAtLogin = launchAtLogin; self.apiKeys = apiKeys
+        self.screenshotMaxEdge = screenshotMaxEdge; self.launchAtLogin = launchAtLogin
+        self.walkthroughs = walkthroughs; self.apiKeys = apiKeys
         clamp()
     }
 

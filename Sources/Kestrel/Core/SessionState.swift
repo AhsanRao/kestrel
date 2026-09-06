@@ -12,6 +12,8 @@ enum SessionState: Equatable {
     case thinking
     case answering
     case injecting
+    /// A walkthrough is drawn on screen and waiting for the user to click the current target.
+    case guiding
     case error(String)
 
     var isBusy: Bool {
@@ -30,6 +32,9 @@ enum SessionEvent: Equatable {
     case transcriptionEmpty
     case answered
     case injected
+    case walkthroughReady
+    case walkthroughAdvanced
+    case walkthroughFinished
     case failed(String)
     case autoHideElapsed
     case cancelled
@@ -44,6 +49,7 @@ enum SessionEffect: Equatable {
     case finishDictating
     case interruptSpeech
     case pulse                // busy: refuse the input, nudge the panel
+    case clearOverlay
     case reset
 }
 
@@ -53,6 +59,30 @@ struct SessionMachine {
     @discardableResult
     mutating func apply(_ event: SessionEvent) -> [SessionEffect] {
         switch (state, event) {
+        // Guiding is handled first: leaving it must always take the drawing off the screen.
+        case (.guiding, .walkthroughAdvanced):
+            return []
+
+        case (.guiding, .walkthroughFinished), (.guiding, .cancelled):
+            state = .idle
+            return [.clearOverlay, .reset]
+
+        case (.guiding, .failed(let message)):
+            state = .error(message)
+            return [.clearOverlay]
+
+        case (.guiding, .askPressed):
+            state = .listening
+            return [.clearOverlay, .interruptSpeech, .startListening]
+
+        case (.guiding, .dictateToggled):
+            state = .dictating
+            return [.clearOverlay, .interruptSpeech, .startDictating]
+
+        case (.thinking, .walkthroughReady):
+            state = .guiding
+            return []
+
         case (_, .failed(let message)):
             state = .error(message)
             return [.interruptSpeech]

@@ -53,8 +53,8 @@ final class ConfigTests: XCTestCase {
     }
 
     func testHotkeyDisplayAndModifierMask() {
-        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌥Space")
-        XCTAssertEqual(Config.Hotkeys.defaults.dictate.display, "⌃⌥D")
+        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌘Space")
+        XCTAssertEqual(Config.Hotkeys.defaults.dictate.display, "⌃⌘D")
         XCTAssertTrue(Config.Hotkeys.defaults.ask.isValid)
         XCTAssertFalse(HotkeyBinding(keyCode: 49, modifiers: []).isValid)
     }

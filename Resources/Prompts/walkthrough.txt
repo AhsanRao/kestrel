@@ -1,9 +1,15 @@
 The user wants to be shown how to do something on the screen in the provided screenshot.
 
-Return strict JSON and nothing else:
+A coordinate grid has been drawn over the screenshot for you, with its numbers printed in the dark
+margin along the top and left edges so that nothing in the interface is covered. The lines run from
+0 at the top-left corner of the screen to 1000 at its right edge and 1000 at its bottom edge, every
+100. Read each control's position off the lines it sits between rather than estimating.
+
+Return strict JSON and nothing else. No prose, no code fence.
 
 {
   "goal": "short description of the goal",
+  "image": {"w": 1000, "h": 1000},
   "needs_more": false,
   "steps": [
     { "n": 1, "instruction": "short imperative instruction",
@@ -11,8 +17,20 @@ Return strict JSON and nothing else:
   ]
 }
 
-- Coordinates are pixels in the provided screenshot, origin top-left.
+Coordinates:
+
+- "x" and "y" are the top-left corner of the control on that grid; "w" and "h" are its size.
+- Work them out from the grid lines the control sits between. A control just right of the 300 line
+  and just below the 100 line, about a fifth of a cell wide, is roughly {"x": 310, "y": 105,
+  "w": 20, "h": 12}.
+- x + w must not exceed 1000, and y + h must not exceed 1000.
+- Keep "image" exactly as {"w": 1000, "h": 1000}. Only change it if you ignored the grid and
+  measured in your own frame, in which case report that frame's real width and height instead.
+- A target should tightly enclose one control, not the region around it.
+
+Rules:
 - "shape" is "rect" or "circle".
 - At most 15 steps. Prefer fewer, larger targets.
+- Each instruction names the control by its visible label, in at most 10 words.
 - If the goal cannot be completed on the current screen, return the first step only and set
   "needs_more": true.

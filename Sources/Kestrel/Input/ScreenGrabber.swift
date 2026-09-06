@@ -15,12 +15,15 @@ enum ScreenGrabber {
     static func requestPermission() -> Bool { CGRequestScreenCaptureAccess() }
 
     /// Blocking; call from a background queue. The panel must already be hidden or ordered out.
-    static func capture(maxEdge: Int) throws -> URL {
+    /// Returns the PNG together with the geometry needed to map model coordinates back to screen
+    /// points, which the v2 walkthrough overlay depends on.
+    static func capture(maxEdge: Int) throws -> ScreenCapture {
         guard hasPermission else { throw KestrelError.screenRecordingDenied }
 
+        let display = activeDisplay()
         let raw = Paths.temporaryFile(ext: "png")
         var arguments = ["-x", "-o", "-t", "png"]           // -x silent, -o no window shadow
-        if let index = activeDisplayIndex() { arguments += ["-D", String(index)] }
+        if let index = display.index { arguments += ["-D", String(index)] }
         arguments.append(raw.path)
 
         let task = Process()
@@ -41,22 +44,33 @@ enum ScreenGrabber {
             throw KestrelError.screenshotFailed(detail.trimmingCharacters(in: .whitespacesAndNewlines))
         }
 
-        return downscale(raw, maxEdge: maxEdge) ?? raw
+        let final = downscale(raw, maxEdge: maxEdge) ?? raw
+        return ScreenCapture(url: final, displayFrame: display.frame, pixelSize: pixelSize(of: final))
     }
 
-    /// 1-based index into the active display list, which is what `screencapture -D` expects.
-    private static func activeDisplayIndex() -> Int? {
+    /// The display under the mouse: its 1-based index for `screencapture -D`, and its frame in
+    /// global AppKit points.
+    private static func activeDisplay() -> (index: Int?, frame: CGRect) {
         let mouse = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }),
-              let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
-        else { return nil }
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+        let frame = screen?.frame ?? .zero
+        guard let number = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        else { return (nil, frame) }
         let target = CGDirectDisplayID(number.uint32Value)
 
         var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return (nil, frame) }
         var displays = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &displays, &count) == .success else { return nil }
-        return displays.firstIndex(of: target).map { $0 + 1 }
+        guard CGGetActiveDisplayList(count, &displays, &count) == .success else { return (nil, frame) }
+        return (displays.firstIndex(of: target).map { $0 + 1 }, frame)
+    }
+
+    static func pixelSize(of url: URL) -> CGSize {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int else { return .zero }
+        return CGSize(width: width, height: height)
     }
 
     /// Rewrites the PNG in place at a smaller size. Returns nil (keep the original) on any failure.

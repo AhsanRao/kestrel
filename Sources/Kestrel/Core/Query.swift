@@ -20,10 +20,12 @@ struct Query {
         self.maxTokensHint = maxTokensHint
     }
 
-    /// Timeouts per spec §8.5.
+    /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls
+    /// in the image, which measured well over a plain answer in testing.
     var timeout: TimeInterval {
         switch mode {
-        case .ask, .walkthrough: return 120
+        case .ask: return 120
+        case .walkthrough: return 180
         case .dictationCleanup: return 30
         }
     }
@@ -59,7 +61,25 @@ struct WalkthroughStep: Codable, Equatable {
 }
 
 struct Walkthrough: Codable, Equatable {
+    /// The coordinate grid the model measured in. Vendors resize screenshots before the model sees
+    /// them, and the model cannot know the original size, so it is asked to declare its own frame
+    /// and Kestrel rescales from that. Absent means "assume per-mille".
+    struct ImageSize: Codable, Equatable {
+        var w: Double
+        var h: Double
+
+        static let perMille = ImageSize(w: 1000, h: 1000)
+        var isUsable: Bool { w > 1 && h > 1 }
+    }
+
     var goal: String
     var steps: [WalkthroughStep]
+    var image: ImageSize?
     var needs_more: Bool?
+
+    /// The space every `target` in `steps` is expressed in.
+    var space: ImageSize {
+        guard let image, image.isUsable else { return .perMille }
+        return image
+    }
 }

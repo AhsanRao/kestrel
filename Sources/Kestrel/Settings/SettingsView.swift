@@ -27,6 +27,7 @@ struct SettingsView: View {
             HotkeyRecorder(title: "Dictate (toggle)", binding: model.binding(\.hotkeys.dictate))
 
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
+            Toggle("Draw walkthroughs for \"how do I…\" questions", isOn: model.binding(\.walkthroughs))
             Picker("Insert dictation by", selection: model.binding(\.injectMode)) {
                 Text("Paste (⌘V)").tag(Config.InjectMode.paste)
                 Text("Typing").tag(Config.InjectMode.type)
