@@ -4,6 +4,16 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### T8 — Projects, T9 — connectors per task
+
+- Each agent task gets `~/.kestrel/projects/<slug>/` as its working directory, with the memory file
+  symlinked in so nothing is forgotten by running there. Names are slugged from speech and cannot
+  resolve outside the projects folder. Menu bar ▸ Open projects folder.
+- `mcpForTasks` turns MCP connectors on for agent tasks only. Ordinary questions keep
+  `--strict-mcp-config` and the ~11 seconds it saves.
+- Claude's flag assembly is now a pure function with tests, rather than something discovered in
+  the field when a flag drifts.
+
 ### T7 — Agent tasks
 
 - "Archive this", "open Slack", "set the title to Quarterly" are now carried out rather than

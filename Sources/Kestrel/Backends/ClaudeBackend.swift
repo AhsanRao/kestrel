@@ -26,19 +26,21 @@ final class ClaudeBackend: Backend {
 
     func cancel() { runner.cancel() }
 
-    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {
-        guard let executable = CLIRunner.locate("claude") else {
-            throw KestrelError.backendMissing("claude")
-        }
-
-        // Streaming only when someone is listening for it; the plain json envelope is simpler and
-        // is what the dictation-cleanup path wants.
-        let streaming = onDelta != nil
+    /// Built as a pure function so the flag combinations can be tested without spawning anything.
+    ///
+    /// MCP discovery is the expensive one: with the user's connectors configured it added about
+    /// eleven seconds to every question. Plain questions never want it. An agent task might, which
+    /// is why it is opt-in per task rather than switched on globally.
+    static func arguments(for query: Query, config: Config, streaming: Bool) -> [String] {
         var arguments = ["-p", PromptBuilder.build(query), "--no-session-persistence"]
-        if !config.allowMCPServers { arguments.append("--strict-mcp-config") }
+
+        let wantsConnectors = config.allowMCPServers || (query.mode == .agent && config.mcpForTasks)
+        if !wantsConnectors { arguments.append("--strict-mcp-config") }
+
         arguments += streaming
             ? ["--output-format", "stream-json", "--include-partial-messages", "--verbose"]
             : ["--output-format", "json"]
+
         if query.screenshot != nil || query.focusCrop != nil {
             arguments += ["--tools", "Read", "--allowedTools", "Read"]
         } else {
@@ -47,6 +49,16 @@ final class ClaudeBackend: Backend {
         if let model = config.claudeModel, !model.isEmpty {
             arguments += ["--model", model]
         }
+        return arguments
+    }
+
+    func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {
+        guard let executable = CLIRunner.locate("claude") else {
+            throw KestrelError.backendMissing("claude")
+        }
+
+        let streaming = onDelta != nil
+        let arguments = ClaudeBackend.arguments(for: query, config: config, streaming: streaming)
 
         // Optional pay-as-you-go override. Absent by default: subscription auth stays with the CLI.
         var env: [String: String] = [:]
@@ -57,7 +69,8 @@ final class ClaudeBackend: Backend {
         let result: CLIRunner.Result
         do {
             result = try runner.run(
-                executable: executable, arguments: arguments, cwd: Paths.root,
+                executable: executable, arguments: arguments,
+                cwd: query.workingDirectory ?? Paths.root,
                 environment: env, timeout: query.timeout,
                 onLine: streaming ? { line in
                     guard let chunk = parser.consume(line) else { return }

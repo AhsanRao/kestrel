@@ -18,12 +18,15 @@ struct Query {
     var skills: String?
     /// What else is open, when the question is about the desktop rather than the screen.
     var desktop: String?
+    /// Where the CLI should run. Agent tasks get their own project folder; everything else runs
+    /// in `~/.kestrel`.
+    var workingDirectory: URL?
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
          elements: [AXElementScanner.Element] = [],
          history: [Conversation.Exchange] = [], skills: String? = nil,
-         desktop: String? = nil) {
+         desktop: String? = nil, workingDirectory: URL? = nil) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
@@ -33,6 +36,7 @@ struct Query {
         self.history = history
         self.skills = skills
         self.desktop = desktop
+        self.workingDirectory = workingDirectory
     }
 
     /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls

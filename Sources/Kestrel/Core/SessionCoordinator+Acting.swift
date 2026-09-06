@@ -14,8 +14,12 @@ extension SessionCoordinator {
         }
         DispatchQueue.main.sync { self.scannedElements = elements }
 
+        // A task gets its own folder, so anything it writes has somewhere to land and the CLI has
+        // a working directory that cannot wander outside ~/.kestrel.
+        let project = ProjectStore.create(for: text)
         let query = Query(text: text, screenshot: pendingCapture?.url, mode: .agent,
-                          elements: elements, skills: SkillLibrary.notes(forBundleID: bundleID))
+                          elements: elements, skills: SkillLibrary.notes(forBundleID: bundleID),
+                          workingDirectory: project)
         do {
             let answer = try router.ask(query, config: config)
             guard let plan = ActionPlanParser.parse(answer.text), !plan.actions.isEmpty else {

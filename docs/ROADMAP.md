@@ -104,21 +104,25 @@ HeyClicky draws a fake cursor so automation is legible. Kestrel already has an o
 - [x] Tests: detector phrasing, plan parsing through fences and prose, dropped steps, unknown
       action kinds, capping, and the acting state's transitions
 
-## T8 — Projects and artifacts
+## T8 — Projects and artifacts ✅
 
 HeyClicky writes task output into per-task project folders (it had generated a PDF and an HTML page).
 
-- [ ] `~/.kestrel/projects/<slug>/` as the working directory for a task
-- [ ] Panel offers to reveal what was produced
-- [ ] Tests: slugging, collision handling, path containment
+- [x] `~/.kestrel/projects/<slug>/` created per task and used as the CLI's working directory
+- [x] Memory symlinked in, since both CLIs read `CLAUDE.md` / `AGENTS.md` from the working directory
+- [x] Menu bar ▸ Open projects folder; `ProjectStore.outputs` lists what a task produced
+- [x] Names are slugged from speech and can never resolve outside the projects folder
+- [x] Tests: slugging, punctuation collapsing, length, collisions, path-escape attempts, outputs
 
-## T9 — MCP connectors
+## T9 — MCP connectors ✅
 
 `--strict-mcp-config` currently saves ~10 s per question by skipping connector discovery. Agent
 tasks are the one case where connectors are worth that cost.
 
-- [ ] Opt in per task rather than globally, so plain questions stay fast
-- [ ] Tests: flag assembly for both paths
+- [x] `mcpForTasks` enables connectors for agent tasks only; questions keep `--strict-mcp-config`
+      and stay fast
+- [x] Flag assembly extracted into a pure function so it can be tested without spawning anything
+- [x] Tests: strictness per mode, streaming flags, tool restriction, model pass-through
 
 ## Not doing
 
