@@ -26,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.onOpenOnboarding = { [weak self] in self?.showOnboarding() }
         menu.install()
         statusMenu = menu
+        coordinator.onStateChange = { [weak menu] state in menu?.show(state: state) }
 
         coordinator.start()
         log.info("Kestrel ready")

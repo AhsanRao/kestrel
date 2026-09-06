@@ -70,9 +70,10 @@ struct OnboardingView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
                 .padding(.bottom, 6)
-            ForEach(requirements, id: \.self) { requirement in
+            ForEach(Array(requirements.enumerated()), id: \.element) { index, requirement in
                 if let item = model.report.item(requirement) {
                     OnboardingRow(item: item, model: model)
+                        .modifier(StaggeredEntrance(delay: Double(index) * 0.045))
                     Divider().padding(.leading, 46)
                 }
             }
@@ -171,4 +172,22 @@ private struct OnboardingRow: View {
     }
 
     private var actionTitle: String { isPermission ? "Allow" : "Copy command" }
+}
+
+/// Rows arrive one after another instead of all at once, which turns a wall of requirements into
+/// a list the eye reads top to bottom.
+private struct StaggeredEntrance: ViewModifier {
+    let delay: Double
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 8)
+            .onAppear {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.85).delay(delay)) {
+                    shown = true
+                }
+            }
+    }
 }

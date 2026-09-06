@@ -13,6 +13,8 @@ final class PanelModel: ObservableObject {
     @Published var isHovering: Bool = false
     /// This question continues the previous one rather than starting fresh.
     @Published var isFollowUp: Bool = false
+    /// Live input level, 0…1, while recording.
+    @Published var level: Double = 0
     @Published var levelPhase: Double = 0
 
     var label: String {

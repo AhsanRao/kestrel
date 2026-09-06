@@ -124,6 +124,15 @@ tasks are the one case where connectors are worth that cost.
 - [x] Flag assembly extracted into a pure function so it can be tested without spawning anything
 - [x] Tests: strictness per mode, streaming flags, tool restriction, model pass-through
 
+## Interface pass ✅
+
+- [x] Panel waveform driven by real input level, not a canned animation
+- [x] Indicator changes shape per state; panel enters and leaves rather than blinking
+- [x] Menu bar icon breathes while listening or working
+- [x] Agent pointer glides between controls; selection snaps to its bounding box
+- [x] Staggered entrance in the setup window
+- [x] Tests: level normalisation and smoothing, menu bar pacing per state
+
 ## Not doing
 
 - **Sparkle auto-update** — a third-party dependency, and CLAUDE.md forbids adding one without

@@ -40,6 +40,7 @@ struct PanelView: View {
         .animation(spring, value: model.answer.isEmpty)
         .animation(spring, value: model.transcript.isEmpty)
         .animation(spring, value: model.isFollowUp)
+        .animation(.easeOut(duration: 0.22), value: model.answer)
         .onHover { model.isHovering = $0 }
         .modifier(PulseEffect(trigger: model.pulse))
     }
@@ -49,6 +50,11 @@ struct PanelView: View {
     private var background: some View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(.regularMaterial)
+            // A wash of the state colour, so the panel reads correctly before a word of it does.
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(model.accent.opacity(model.isError ? 0.10 : model.isRecording ? 0.07 : 0))
+            )
     }
 
     /// The border carries the state colour, brightening while Kestrel is actually listening.
@@ -63,9 +69,10 @@ struct PanelView: View {
             PanelIndicator(model: model)
             Text(model.label)
                 .font(.system(size: 13, weight: .medium))
-                .lineLimit(2)
+                .lineLimit(3)
+                // Errors name the command that fixes them, so they must wrap rather than truncate.
+                .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.opacity)
-                .id(model.label)
             Spacer(minLength: 8)
             if model.isFollowUp {
                 Label("follow-up", systemImage: "arrow.turn.down.right")
@@ -93,8 +100,9 @@ struct PanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // New sentences arrive while the model is still writing; fading them in reads as
                 // speech appearing rather than the panel jumping.
-                .transition(.opacity)
-                .id(model.answer)
+                // Sentences arrive while the model is still writing; a crossfade reads as speech
+                // appearing rather than as the panel being rebuilt.
+                .contentTransition(.opacity)
         }
         .frame(maxHeight: 260)
         .transition(.opacity.combined(with: .move(edge: .top)))

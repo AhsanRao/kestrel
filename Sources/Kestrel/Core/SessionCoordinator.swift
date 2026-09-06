@@ -25,6 +25,8 @@ final class SessionCoordinator {
     let actuator = Actuator()
     let escapeWatcher = EscapeWatcher()
     var activeRun: ActionRunner?
+    /// Told whenever the session moves, so the menu bar can reflect it.
+    var onStateChange: ((SessionState) -> Void)?
 
     var machine = SessionMachine()
     /// Kept alive for the whole walkthrough: the overlay needs its geometry to place the drawing.
@@ -49,6 +51,7 @@ final class SessionCoordinator {
         panel.onOpenPermission = { NSWorkspace.shared.open($0) }
         speech.onFinish = { [weak self] in self?.scheduleAutoHide() }
         audio.onAutoStop = { [weak self] url in self?.audioStoppedOnItsOwn(url) }
+        audio.onLevel = { [weak self] level in self?.panel.model.level = Double(level) }
         walkthrough.onFinish = { [weak self] _ in self?.walkthroughEnded() }
         walkthrough.onAdvance = { [weak self] step in self?.walkthroughAdvanced(to: step) }
         dragTracker.onChange = { [weak self] points in self?.selection.update(points: points) }
@@ -129,6 +132,7 @@ final class SessionCoordinator {
     func apply(_ event: SessionEvent) {
         let effects = machine.apply(event)
         panel.model.state = machine.state
+        onStateChange?(machine.state)
         for effect in effects { perform(effect) }
         render()
     }

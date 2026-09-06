@@ -8,6 +8,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     var onOpenOnboarding: (() -> Void)?
 
     private var statusItem: NSStatusItem?
+    private var animator: StatusItemAnimator?
     private let menu = NSMenu()
 
     func install() {
@@ -18,10 +19,17 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.delegate = self
         item.menu = menu
         statusItem = item
+        animator = StatusItemAnimator(button: item.button)
         rebuild()
     }
 
     func menuWillOpen(_ menu: NSMenu) { rebuild() }
+
+    /// Called as the session moves, so the menu bar shows what Kestrel is doing even when the
+    /// panel is hidden behind a full-screen window.
+    func show(state: SessionState) {
+        animator?.apply(state)
+    }
 
     /// `assets/kestrel-menubar-template.svg`, rendered by `scripts/make-icon.sh` into the bundle.
     /// Falls back to an SF Symbol when running from `swift run` with no bundle around.

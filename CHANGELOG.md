@@ -4,6 +4,25 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### Interface pass
+
+- **The waveform is now the user's actual voice.** `AudioCapture` meters the input and the panel's
+  bars follow it, on a decibel scale with a fast attack and slow release — the shape that reads as
+  speech rather than as noise. Previously it was a canned two-frame animation.
+- The header indicator changes shape with the session rather than only colour: bars while
+  listening, an orbiting sweep while working, a dot with one expanding ring when an answer lands.
+- The panel falls a few points into place when it appears and fades when it leaves, instead of
+  blinking. Streamed sentences crossfade in rather than replacing the block.
+- A wash of the state colour behind the material, so the panel reads before a word of it does. Error
+  text wraps instead of truncating — it names the command that fixes the problem.
+- **The menu bar icon breathes** while Kestrel is listening or working, quickly for recording and
+  slowly for thinking, so state is visible even behind a full-screen window.
+- The agent's pointer and ring keep their identity between steps, so moving to the next control is
+  a glide across the screen. Watching it travel is what makes a run legible.
+- Circling a region snaps to the box that is actually being sent and holds it for a beat, so the
+  user sees what their scribble became.
+- Setup rows arrive in sequence rather than all at once.
+
 ### T8 — Projects, T9 — connectors per task
 
 - Each agent task gets `~/.kestrel/projects/<slug>/` as its working directory, with the memory file

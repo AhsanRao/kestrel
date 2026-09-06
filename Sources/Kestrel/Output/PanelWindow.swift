@@ -15,9 +15,40 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     func show() {
         let panel = ensurePanel()
         cancelHideTimer()
+        let wasVisible = panel.isVisible
         position(panel)
         panel.orderFrontRegardless()
+        if !wasVisible { animateIn(panel) }
         startLevelAnimation()
+    }
+
+    /// Arrives by falling a few points into place. Short enough not to delay the answer, long
+    /// enough that the panel does not appear to teleport.
+    private func animateIn(_ panel: NSPanel) {
+        let settled = panel.frame
+        panel.setFrameOrigin(NSPoint(x: settled.origin.x, y: settled.origin.y + 12))
+        panel.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+            panel.animator().setFrame(settled, display: true)
+        }
+    }
+
+    /// Fades out when it is leaving of its own accord, rather than blinking off.
+    private func fadeOut() {
+        guard let panel, panel.isVisible else { return }
+        stopLevelAnimation()
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            guard let self, let panel = self.panel, panel.alphaValue < 0.05 else { return }
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+        }
     }
 
     /// Ordered out synchronously so the screenshot taken right after cannot contain the panel.
@@ -36,7 +67,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
                 self.hide(after: 3)
                 return
             }
-            self.hideImmediately()
+            self.fadeOut()
         }
         hideTimer = work
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
@@ -60,6 +91,9 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         let hosting = NSHostingController(rootView: PanelView(model: model) { [weak self] url in
             self?.onOpenPermission?(url)
         })
+        // The panel grows as an answer arrives; letting AppKit follow SwiftUI's layout each frame
+        // makes that a resize rather than a jump.
+        hosting.sizingOptions = [.preferredContentSize]
         let panel = NSPanel(contentViewController: hosting)
         panel.styleMask = [.nonactivatingPanel, .titled, .fullSizeContentView]
         panel.titleVisibility = .hidden

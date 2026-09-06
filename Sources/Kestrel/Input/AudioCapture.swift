@@ -22,6 +22,8 @@ final class AudioCapture {
     /// end. Quiet input is the single biggest cause of whisper mishearing words.
     private var samples: [Float] = []
     private let samplesLock = NSLock()
+    private var meter = LevelMeter()
+    private var lastLevelSent = Date.distantPast
     private var startedAt: Date?
     private var maxDurationTimer: DispatchWorkItem?
 
@@ -29,6 +31,9 @@ final class AudioCapture {
 
     /// Called when recording ends on its own: the max duration elapsed, or the input device left.
     var onAutoStop: ((URL?) -> Void)?
+    /// Smoothed input level, 0…1, delivered on the main thread while recording. Drives the panel's
+    /// waveform, so what the user sees is their own voice rather than a canned animation.
+    var onLevel: ((Float) -> Void)?
 
     static func requestPermission(_ completion: @escaping (Bool) -> Void) {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
@@ -61,6 +66,7 @@ final class AudioCapture {
         self.converter = converter
         self.target = target
         samplesLock.lock(); samples.removeAll(keepingCapacity: true); samplesLock.unlock()
+        meter.reset()
 
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             self?.append(buffer, target: target)
@@ -149,6 +155,15 @@ final class AudioCapture {
         }
         guard error == nil, out.frameLength > 0, let channel = out.floatChannelData?[0] else { return }
         let incoming = UnsafeBufferPointer(start: channel, count: Int(out.frameLength))
+
+        // Roughly 25 updates a second: enough to look alive, few enough to cost nothing.
+        let level = meter.push(incoming)
+        if Date().timeIntervalSince(lastLevelSent) > 0.04 {
+            lastLevelSent = Date()
+            let block = onLevel
+            DispatchQueue.main.async { block?(level) }
+        }
+
         samplesLock.lock()
         samples.append(contentsOf: incoming)
         samplesLock.unlock()

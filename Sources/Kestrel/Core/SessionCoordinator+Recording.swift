@@ -35,7 +35,7 @@ extension SessionCoordinator {
 
     func finishRecording(intent: SessionIntent) {
         focusRegion = dragTracker.end()
-        selection.hide()
+        selection.settle(focusRegion)
         sounds.play(.heard, config: config)
         let wav = audio.stop()
         guard let wav else {
