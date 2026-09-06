@@ -34,8 +34,9 @@ struct PanelView: View {
         .frame(width: 420, alignment: .leading)
         .background(background)
         .overlay(border)
+        // No SwiftUI shadow: the window is sized to this view, so a shadow drawn here is clipped
+        // at the edges. The panel's own window shadow does the job properly.
         .compositingGroup()
-        .shadow(color: .black.opacity(0.22), radius: 22, y: 10)
         .animation(spring, value: model.state)
         .animation(spring, value: model.answer.isEmpty)
         .animation(spring, value: model.transcript.isEmpty)

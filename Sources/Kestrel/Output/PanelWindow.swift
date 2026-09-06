@@ -79,6 +79,15 @@ final class PanelWindow: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
+    /// For `PanelPreview` only: the window's number, and a way to lift the capture exclusion for
+    /// long enough to photograph it.
+    var windowNumber: Int? { panel?.windowNumber }
+    var screenFrame: CGRect? { panel?.frame }
+
+    func setExcludedFromCapture(_ excluded: Bool) {
+        panel?.sharingType = excluded ? .none : .readOnly
+    }
+
     // MARK: - Private
 
     private func cancelHideTimer() {
@@ -94,16 +103,23 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         // The panel grows as an answer arrives; letting AppKit follow SwiftUI's layout each frame
         // makes that a resize rather than a jump.
         hosting.sizingOptions = [.preferredContentSize]
-        let panel = NSPanel(contentViewController: hosting)
-        panel.styleMask = [.nonactivatingPanel, .titled, .fullSizeContentView]
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
-        panel.standardWindowButton(.closeButton)?.isHidden = true
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        panel.standardWindowButton(.zoomButton)?.isHidden = true
+        // Borderless, not a titled window with its titlebar hidden. A titled NSPanel still installs
+        // a titlebar view above the content: with a clear window background and a rounded card
+        // inside, that showed as a broken strip across the top edge. `.fullSizeContentView` only
+        // means anything alongside `.titled`, so it goes too.
+        // Built with its style mask, not assigned one afterwards: a borderless panel created
+        // through `init(contentViewController:)` and restyled later ends up 1×0 points, because it
+        // never picks up the hosting view's size.
+        let panel = FloatingPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 140),
+                                  styleMask: [.nonactivatingPanel, .borderless],
+                                  backing: .buffered, defer: false)
+        panel.contentViewController = hosting
+        panel.setContentSize(hosting.view.fittingSize)
         panel.isMovableByWindowBackground = true
         panel.isOpaque = false
         panel.backgroundColor = .clear
+        // AppKit derives the shadow from the alpha of what is drawn, so the rounded card casts a
+        // correct one outside the window. A SwiftUI shadow would be clipped by the window bounds.
         panel.hasShadow = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -116,6 +132,11 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     }
 
     private func position(_ panel: NSPanel) {
+        // Lay out before measuring, or the first showing is positioned against a stale size.
+        panel.contentView?.layoutSubtreeIfNeeded()
+        if let fitting = panel.contentViewController?.view.fittingSize, fitting.height > 1 {
+            panel.setContentSize(fitting)
+        }
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let frame = screen?.visibleFrame else { return }
@@ -141,4 +162,14 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         levelTimer = nil
         model.levelPhase = 0
     }
+}
+
+/// A borderless panel that can still take the keyboard.
+///
+/// Borderless windows refuse key status by default, which would make the answer text unselectable
+/// and the permission button unclickable. `.nonactivatingPanel` keeps it from activating Kestrel,
+/// so the app the user was working in stays frontmost either way.
+private final class FloatingPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }

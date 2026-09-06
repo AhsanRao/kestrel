@@ -146,6 +146,13 @@ make deps      # scripts/check-deps.sh
 ```
 
 - `KESTREL_SPEC.md` is the design of record; `CLAUDE.md` holds the working rules.
+- **Seeing the real panel.** Offscreen SwiftUI renders cannot show window chrome, materials or
+  shadows, which is where panel bugs actually live. To photograph the real thing:
+
+      KESTREL_PREVIEW_PANEL=1 KESTREL_PREVIEW_STATE=listening \
+        KESTREL_PREVIEW_OUT=/tmp/panel.png Kestrel.app/Contents/MacOS/Kestrel
+
+  States: `listening`, `thinking`, `answer`, `error`. Without the env vars nothing changes.
 - `Tests/MANUAL.md` is the checklist for everything unit tests cannot reach.
 - Icons are generated from the original logo by `scripts/icon-tool.swift`; nothing is redrawn.
 - **CLI flags drift between releases.** Every invocation is confined to

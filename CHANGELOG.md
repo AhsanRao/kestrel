@@ -4,6 +4,17 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The panel's top edge.** It was a `.titled` window with the titlebar hidden, and AppKit still
+  installs a titlebar view above the content — with a clear window background and a rounded card
+  inside, that showed as a broken strip across the top. It is now genuinely borderless, with a
+  `canBecomeKey` override so the answer text stays selectable and the permission button clickable.
+- The card's SwiftUI shadow was clipped by the window bounds; the window's own shadow does it
+  properly instead.
+- `KESTREL_PREVIEW_PANEL` photographs the real panel on the real desktop, which is how both of
+  those were found — and how a 1×0-point panel was caught before it shipped.
+
 ### Interface pass
 
 - **The waveform is now the user's actual voice.** `AudioCapture` meters the input and the panel's

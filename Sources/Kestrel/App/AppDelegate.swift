@@ -31,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.start()
         log.info("Kestrel ready")
 
+        if PanelPreview.isRequested {
+            PanelPreview.run(on: coordinator.panel)
+            return
+        }
+
         // First launch, or something it needs has gone missing since.
         if OnboardingModel.shouldPresentOnLaunch(config: ConfigStore.shared.current) {
             showOnboarding()
