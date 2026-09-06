@@ -14,6 +14,8 @@ only while you are holding the key.
 | **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
 | **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
+| **Do** | Say "archive this" or "open Slack" and Kestrel does it — under a policy that asks first. |
+| **Follow up** | Ask again within 90 seconds and it continues the same thread. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
 
@@ -111,6 +113,10 @@ you save. The Settings window writes the same file.
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
 | `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
+| `agentActions` | `true` | carry out instructions, gated by `policy.json` |
+| `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
+| `sounds` | `true` | short cues for each state change |
+| `mcpForTasks` | `false` | MCP connectors for agent tasks only |
 | `spatialContext` | `true` | circle a region while holding the ask key |
 | `captureMode` | `"window"` | `"display"` to send the whole screen instead |
 | `acknowledgeWhileThinking` | `true` | say "one sec" while the model reads the screen |
@@ -146,6 +152,38 @@ make deps      # scripts/check-deps.sh
   `Sources/Kestrel/Backends/ClaudeBackend.swift` and `CodexBackend.swift`, with the verified flags
   in a comment above it. `scripts/check-deps.sh` re-checks them against `--help` and warns on drift.
 
+## Letting Kestrel act
+
+Say what you want done — "archive this", "set the title to Quarterly", "open Slack" — and Kestrel
+plans it against the app's real controls and carries it out. Asking *how* to do something still
+gets an explanation; when the phrasing is ambiguous it answers rather than acts.
+
+Actions go through Accessibility, so the real cursor never moves and focus is not stolen: you can
+keep typing while it works. An overlay names each step, counts them, and Esc stops the run.
+
+**Nothing happens without permission.** `~/.kestrel/policy.json` decides:
+
+```json
+{
+  "fallback": "confirm",
+  "apps": { "com.apple.Terminal": "deny", "com.apple.Safari": "allow" },
+  "confirmDestructive": true,
+  "blockedKinds": []
+}
+```
+
+- `fallback` — what to do when no rule matches: `allow`, `confirm` or `deny`. Ships as `confirm`.
+- `apps` — per bundle id. Terminals ship denied: typing into one is arbitrary command execution.
+- `confirmDestructive` — anything that sends, deletes, buys, posts or overwrites is confirmed even
+  in an app you have allowed.
+
+Every action is appended to `~/.kestrel/logs/actions.jsonl`, one JSON object per line.
+
+## Teaching it your own vocabulary
+
+Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every question;
+`<bundle id>.md` only while that app is in front. Menu bar ▸ Open skills folder.
+
 ## What Kestrel never does
 
 - Read, store, or forward OAuth tokens from `~/.claude`, `~/.codex`, or the Keychain
@@ -156,7 +194,7 @@ make deps      # scripts/check-deps.sh
 
 ## Status
 
-v1 complete: **M0** skeleton, **M1** ask, **M2** dictate + Codex, **M3** polish.
-**M4** draw-on-screen walkthroughs complete.
-Next: **M5** circle-a-region context, **M6** MCP agent tasks.
+**M0**–**M6** complete: skeleton, ask, dictate + Codex, polish, walkthroughs, spatial context, and
+agent tasks. `docs/ROADMAP.md` records what was closed against HeyClicky and what was deliberately
+not copied.
 See `CHANGELOG.md`.

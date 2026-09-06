@@ -91,6 +91,25 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Muting the Mac skips speech and leaves the answer on screen
 - [ ] A question about the front window is answered without any mention of resolution or zooming
 
+## 5e. Follow-ups, skills, sounds
+
+- [ ] Ask a question, then ask "and the one below it?" — the second answer uses the first
+- [ ] Wait two minutes and ask again: the thread has gone cold
+- [ ] Switch app between questions: the thread has gone cold
+- [ ] Write `~/.kestrel/skills/default.md` and confirm the answer reflects it, with no relaunch
+- [ ] A cue plays on hotkey down, on release, on answer and on error; muting the Mac silences them
+
+## 5f. Acting (T5–T9)
+
+- [ ] "Open Slack" launches it; "how do I open Slack?" explains instead
+- [ ] An action in an app with no policy entry asks first, and Stop leaves nothing changed
+- [ ] "Send it" in Mail is confirmed even after allowing Mail
+- [ ] An action in Terminal is refused outright
+- [ ] The overlay names each step and counts them; Esc stops mid-run
+- [ ] The real cursor does not move and focus is not stolen while a run is in progress
+- [ ] `~/.kestrel/logs/actions.jsonl` has one line per action, with the decision recorded
+- [ ] A task leaves a folder in `~/.kestrel/projects/`
+
 ## 6. Settings and config
 
 - [ ] `⌃⌘A` starts listening on a machine where Accessibility has never been granted
