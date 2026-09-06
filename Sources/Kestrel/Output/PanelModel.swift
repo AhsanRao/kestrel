@@ -16,6 +16,20 @@ final class PanelModel: ObservableObject {
     /// Live input level, 0…1, while recording.
     @Published var level: Double = 0
     @Published var levelPhase: Double = 0
+    /// The notch on the screen the panel is about to appear on. Set by `PanelWindow` before it
+    /// positions itself, so the view can lay its content out around the camera housing.
+    @Published var notch: NotchMetrics = .none
+
+    /// Collapsed, the panel is a bar the width of the notch's surroundings; it opens only once
+    /// there is something to read.
+    var isExpanded: Bool {
+        !answer.isEmpty || !transcript.isEmpty || isError
+    }
+
+    /// The panel's width in each of its two sizes.
+    var width: CGFloat {
+        isExpanded ? 440 : max(notch.notchSize.width + 260, 300)
+    }
 
     var label: String {
         switch state {

@@ -36,6 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        if OverlayPreview.isRequested {
+            OverlayPreview.run(on: coordinator)
+            return
+        }
+
         if PanelPreview.isRequested {
             PanelPreview.run(on: coordinator.panel)
             return

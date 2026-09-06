@@ -39,7 +39,9 @@ extension SessionCoordinator {
         }
     }
 
-    func runAsk(_ text: String, forceAnswer: Bool = false) {
+    /// - Parameter asWalkthrough: forces the drawn branch, for a route being continued onto a new
+    ///   screen where the phrasing of the follow-up question is Kestrel's own, not the user's.
+    func runAsk(_ text: String, forceAnswer: Bool = false, asWalkthrough: Bool = false) {
         // A question asked soon after the last one, in the same app, continues it.
         let bundleID = TextInjector.frontmostBundleID()
         let history = conversation.context(now: Date(),
@@ -51,26 +53,30 @@ extension SessionCoordinator {
         if !forceAnswer, AgentDetector.wantsAction(text, config: config) {
             return runAgent(text, bundleID: bundleID)
         }
-        let wantsSteps = !forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config)
+        let wantsSteps = asWalkthrough
+            || (!forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config))
         DispatchQueue.main.async { self.resetStreaming() }
+        // The control list is read for a plain answer too, not only for a walkthrough: it is what
+        // lets the answer point at something. "Click Share in the toolbar" spoken while the Share
+        // button is circled is an assistant; the same sentence alone is a chatbot describing a
+        // photograph.
+        let elements = AXElementScanner.scanFrontmostApp()
+        DispatchQueue.main.sync { self.scannedElements = elements }
         // Walkthroughs get a gridded copy of the screenshot: the model reads coordinates off the
         // printed lines instead of guessing them. The user's own view is never touched.
         // The Accessibility tree is the accurate way to point at a control; the gridded screenshot
         // is only the fallback for apps that expose nothing useful.
         var gridded: URL?
-        if wantsSteps {
-            let elements = AXElementScanner.scanFrontmostApp()
-            DispatchQueue.main.sync { self.scannedElements = elements }
-            if elements.isEmpty, let original = pendingCapture?.url {
-                gridded = GridAnnotator.annotate(original)
-            }
+        if wantsSteps, elements.isEmpty, let original = pendingCapture?.url {
+            gridded = GridAnnotator.annotate(original)
         }
         defer { if let gridded { try? FileManager.default.removeItem(at: gridded) } }
 
         let query = Query(text: text, screenshot: gridded ?? pendingCapture?.url,
                           focusCrop: pendingCrop,
                           mode: wantsSteps ? .walkthrough : .ask,
-                          elements: wantsSteps ? scannedElements : [],
+                          elements: wantsSteps ? elements
+                              : Array(elements.prefix(SessionCoordinator.maximumPointableControls)),
                           history: history,
                           skills: SkillLibrary.notes(forBundleID: bundleID),
                           desktop: DesktopContextDetector.needsDesktopContext(text)
@@ -86,9 +92,15 @@ extension SessionCoordinator {
                     self.present(walkthrough)
                 } else {
                     self.discardCapture()
-                    self.conversation.record(question: text, answer: answer.text,
+                    // The marker line is machine-readable and belongs on the screen, not in the
+                    // sentence: it is stripped before the answer is recorded, shown or spoken.
+                    let pointed = AnnotationParser.parse(answer.text)
+                    var spoken = answer
+                    spoken.text = pointed.spoken
+                    self.conversation.record(question: text, answer: pointed.spoken,
                                              at: Date(), appBundleID: bundleID)
-                    self.present(answer, alreadySpoken: self.streamedSpeech)
+                    self.showAnnotations(pointed, elements: elements)
+                    self.present(spoken, alreadySpoken: self.streamedSpeech)
                 }
             }
         } catch is CancellationError {

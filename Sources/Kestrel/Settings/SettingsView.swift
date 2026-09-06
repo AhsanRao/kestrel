@@ -46,6 +46,10 @@ struct SettingsView: View {
 
             Toggle("Clean up dictated text with the model", isOn: model.binding(\.cleanupDictation))
             Toggle("Draw walkthroughs for \"how do I…\" questions", isOn: model.binding(\.walkthroughs))
+            Toggle("Point at what the answer is talking about", isOn: model.binding(\.answerAnnotations))
+            Text("Answers circle the control they name on the real screen, instead of describing "
+                 + "where it is.")
+                .font(.caption).foregroundStyle(.secondary)
             Toggle("Circle part of the screen while holding the ask key", isOn: model.binding(\.spatialContext))
             Toggle("Let Kestrel do things, not just describe them", isOn: model.binding(\.agentActions))
             Text("Nothing happens without permission: `~/.kestrel/policy.json` asks before every "

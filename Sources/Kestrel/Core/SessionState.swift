@@ -36,6 +36,8 @@ enum SessionEvent: Equatable {
     case injected
     case walkthroughReady
     case walkthroughAdvanced
+    /// The route ran out on this screen and Kestrel is asking for the rest of it.
+    case walkthroughContinuing
     case walkthroughFinished
     case actionsReady
     case actionsFinished
@@ -65,6 +67,12 @@ struct SessionMachine {
         switch (state, event) {
         // Guiding is handled first: leaving it must always take the drawing off the screen.
         case (.guiding, .walkthroughAdvanced):
+            return []
+
+        // Back to thinking, not to idle: the overlay has gone but the goal has not been reached,
+        // and the answer that comes back must be able to land as a walkthrough or as speech.
+        case (.guiding, .walkthroughContinuing):
+            state = .thinking
             return []
 
         case (.guiding, .walkthroughFinished), (.guiding, .cancelled):

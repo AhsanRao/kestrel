@@ -23,6 +23,12 @@ enum AXElementScanner {
     /// Bounds on the walk: some apps have enormous trees and Kestrel is on the user's clock.
     static let maximumDepth = 14
     static let maximumElements = 220
+    /// How far into the menu bar the planning scan walks: menus and their titles, not their items.
+    /// Every item of every menu would crowd out the window's own controls at `maximumElements`.
+    static let menuDepth = maximumDepth - 11
+    /// One level further, for finding an item inside a menu the user has just opened. Used by the
+    /// live re-targeting scan, where the open menu is exactly what is being looked for.
+    static let deepMenuDepth = maximumDepth - 9
 
     struct Element: Equatable {
         var id: Int
@@ -56,7 +62,7 @@ enum AXElementScanner {
     static var isAvailable: Bool { AXIsProcessTrusted() }
 
     /// The clickable controls of the frontmost app, numbered from 1.
-    static func scanFrontmostApp() -> [Element] {
+    static func scanFrontmostApp(menuDepth: Int = menuDepth) -> [Element] {
         guard isAvailable,
               let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return [] }
 
@@ -66,7 +72,7 @@ enum AXElementScanner {
 
         // The menu bar first: "how do I…" answers so often start with a menu.
         if let menuBar = child(of: application, attribute: kAXMenuBarAttribute as CFString) {
-            walk(menuBar, depth: maximumDepth - 11, into: &found, seen: &seen)
+            walk(menuBar, depth: menuDepth, into: &found, seen: &seen)
         }
         for window in children(of: application, attribute: kAXWindowsAttribute as CFString) {
             walk(window, depth: maximumDepth, into: &found, seen: &seen)

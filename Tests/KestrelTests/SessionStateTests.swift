@@ -103,6 +103,23 @@ final class SessionStateTests: XCTestCase {
         XCTAssertEqual(machine.state, .guiding)
     }
 
+    /// A route that runs past one screen goes back to thinking rather than ending, so the steps
+    /// that come next can still arrive — as a drawing, or as speech if the drawing fails.
+    func testAWalkthroughThatNeedsMoreGoesBackToThinking() {
+        var machine = machineInGuidingState()
+        XCTAssertEqual(machine.apply(.walkthroughContinuing), [])
+        XCTAssertEqual(machine.state, .thinking)
+        XCTAssertEqual(machine.apply(.walkthroughReady), [])
+        XCTAssertEqual(machine.state, .guiding)
+    }
+
+    func testAFailedContinuationStillLandsAsASpokenAnswer() {
+        var machine = machineInGuidingState()
+        machine.apply(.walkthroughContinuing)
+        XCTAssertEqual(machine.apply(.answered), [])
+        XCTAssertEqual(machine.state, .answering)
+    }
+
     func testFinishingAWalkthroughTakesTheDrawingOffTheScreen() {
         var machine = machineInGuidingState()
         XCTAssertEqual(machine.apply(.walkthroughFinished), [.clearOverlay, .reset])

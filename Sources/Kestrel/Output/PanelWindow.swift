@@ -22,11 +22,11 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         startLevelAnimation()
     }
 
-    /// Arrives by falling a few points into place. Short enough not to delay the answer, long
-    /// enough that the panel does not appear to teleport.
+    /// Arrives by dropping out of the top edge of the screen, so it reads as the notch opening
+    /// rather than as a window appearing somewhere near it.
     private func animateIn(_ panel: NSPanel) {
         let settled = panel.frame
-        panel.setFrameOrigin(NSPoint(x: settled.origin.x, y: settled.origin.y + 12))
+        panel.setFrameOrigin(NSPoint(x: settled.origin.x, y: settled.origin.y + settled.height))
         panel.alphaValue = 0
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.22
@@ -115,13 +115,17 @@ final class PanelWindow: NSObject, NSWindowDelegate {
                                   backing: .buffered, defer: false)
         panel.contentViewController = hosting
         panel.setContentSize(hosting.view.fittingSize)
-        panel.isMovableByWindowBackground = true
+        // Hung off the top edge of the display, not floated near it: dragging it away would break
+        // the one thing that makes it read as part of the machine.
+        panel.isMovableByWindowBackground = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
         // AppKit derives the shadow from the alpha of what is drawn, so the rounded card casts a
         // correct one outside the window. A SwiftUI shadow would be clipped by the window bounds.
         panel.hasShadow = true
-        panel.level = .floating
+        // Above the menu bar, or the panel would slide *under* the strip it is supposed to grow out
+        // of. `.nonactivatingPanel` still keeps the user's app frontmost.
+        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)))
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
@@ -132,18 +136,21 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     }
 
     private func position(_ panel: NSPanel) {
+        // The notch is read before the layout, because the panel's own width depends on it.
+        let notch = NotchMetrics.current()
+        if model.notch != notch { model.notch = notch }
         // Lay out before measuring, or the first showing is positioned against a stale size.
         panel.contentView?.layoutSubtreeIfNeeded()
         if let fitting = panel.contentViewController?.view.fittingSize, fitting.height > 1 {
             panel.setContentSize(fitting)
         }
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        guard let frame = screen?.visibleFrame else { return }
+        guard notch.screenFrame.width > 0 else { return }
         panel.layoutIfNeeded()
         let size = panel.frame.size
-        let origin = NSPoint(x: frame.midX - size.width / 2,
-                             y: frame.maxY - size.height - 24)
+        // Flush with the very top of the display — not the visible frame, which starts below the
+        // menu bar — and centred on the housing.
+        let origin = NSPoint(x: notch.screenFrame.midX - size.width / 2,
+                             y: notch.screenFrame.maxY - size.height)
         panel.setFrameOrigin(origin)
     }
 

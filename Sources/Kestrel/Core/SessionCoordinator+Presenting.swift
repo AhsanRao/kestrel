@@ -1,8 +1,8 @@
 import AppKit
 import Foundation
 
-/// How an answer reaches the user: spoken as it streams, drawn as a walkthrough, or read out when
-/// the drawing cannot be trusted. Split from the pipeline only to keep both files readable.
+/// How a spoken answer reaches the user: read out as it streams, marked on the screen where it
+/// points at something, and taken away again. Drawn routes live in `SessionCoordinator+Guiding`.
 extension SessionCoordinator {
     /// Clears the streamed-speech flag for a new turn. Call before the query goes out so the first
     /// sentence that streams back is recognised as the first.
@@ -10,11 +10,30 @@ extension SessionCoordinator {
         streamedSpeech = false
     }
 
+    /// Circles what the answer is pointing at, while it is being said.
+    ///
+    /// The marks are dismissed on the same clock as the panel, and by Esc, so nothing Kestrel drew
+    /// is ever left on the screen after the user has stopped listening.
+    func showAnnotations(_ pointed: AnnotationParser.Result, elements: [AXElementScanner.Element]) {
+        guard config.answerAnnotations, !pointed.isEmpty else { return annotations.hide() }
+        let marks = AnnotationParser.annotations(for: pointed, elements: elements)
+        guard !marks.isEmpty else { return annotations.hide() }
+        log.debug("annotating \(marks.count) control(s) alongside the answer")
+        annotations.show(marks)
+        // Esc takes the marks off, and the tap is torn down as soon as they are gone either way —
+        // an event tap left running after the drawing has faded is a tap for no reason.
+        annotations.onHide = { [weak self] in self?.escapeWatcher.stop() }
+        escapeWatcher.onEscape = { [weak self] in self?.annotations.hide() }
+        escapeWatcher.start()
+    }
+
     /// One sentence of the answer, as it is written. Shows in the panel and is queued for speech,
     /// so the reply begins out loud while the rest is still arriving — the model's own first
     /// sentence is what the user hears first, not a filler line.
     func speakStreamed(_ sentence: String) {
         guard case .thinking = machine.state else { return }
+        // The trailing marker line is an instruction to Kestrel, not part of the answer.
+        guard !AnnotationParser.isMarker(sentence) else { return }
         panel.model.answer = panel.model.answer.isEmpty ? sentence : panel.model.answer + " " + sentence
         guard config.speakAnswers else { return }
         let isFirstSentence = !streamedSpeech
@@ -33,50 +52,6 @@ extension SessionCoordinator {
         if !alreadySpoken, config.speakAnswers, speech.speak(answer.text, config: config) { return }
         if alreadySpoken, speech.isSpeaking { return }
         scheduleAutoHide()
-    }
-
-    /// Drawn walkthrough, with a spoken fallback whenever the drawing cannot be trusted.
-    func present(_ walkthrough: Walkthrough) {
-        guard let capture = pendingCapture else { return spokenFallback(walkthrough) }
-
-        let resolved = WalkthroughResolver.resolve(walkthrough, elements: scannedElements, capture: capture)
-        guard !resolved.isEmpty else { return spokenFallback(walkthrough) }
-        var usable = walkthrough
-        usable.steps = WalkthroughParser.sanitize(resolved.map(\.step))
-        let frames = resolved.map(\.frame)
-        log.debug("walkthrough: \(resolved.filter(\.isExact).count)/\(resolved.count) steps from accessibility")
-
-        guard self.walkthrough.start(usable, frames: frames, capture: capture) else {
-            // Following clicks needs Accessibility; ask once, then read the steps out instead.
-            TextInjector.requestAccessibilityPermission()
-            return spokenFallback(walkthrough)
-        }
-        panel.model.answer = WalkthroughParser.spokenSummary(usable)
-        apply(.walkthroughReady)
-        render()
-        panel.hideImmediately()          // the overlay is the UI now
-        speakStep(usable.steps[0])
-    }
-
-    private func spokenFallback(_ walkthrough: Walkthrough) {
-        discardCapture()
-        let summary = WalkthroughParser.spokenSummary(walkthrough)
-        present(Answer(text: summary, raw: summary, durationMs: 0, steps: walkthrough.steps))
-    }
-
-    func walkthroughAdvanced(to step: WalkthroughStep) {
-        apply(.walkthroughAdvanced)
-        speakStep(step)
-    }
-
-    func walkthroughEnded() {
-        apply(.walkthroughFinished)
-        render()
-    }
-
-    private func speakStep(_ step: WalkthroughStep) {
-        guard config.speakAnswers else { return }
-        speech.speak(step.instruction, config: config)
     }
 
     func runDictation(_ text: String) {
@@ -140,6 +115,8 @@ extension SessionCoordinator {
     func scheduleAutoHide() {
         guard case .answering = machine.state else { return }
         panel.hide(after: TimeInterval(config.panelAutoHideSeconds))
+        // A mark outlives the panel a little: the user is usually still looking at the control.
+        annotations.hide(after: TimeInterval(config.panelAutoHideSeconds) + 4)
         DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(config.panelAutoHideSeconds)) { [weak self] in
             guard let self, case .answering = self.machine.state else { return }
             self.apply(.autoHideElapsed)

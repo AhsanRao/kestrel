@@ -23,8 +23,14 @@ enum WalkthroughParser {
     static func sanitize(_ steps: [WalkthroughStep]) -> [WalkthroughStep] {
         steps
             .filter { !$0.instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            // A step must point at something: a control from the list, or a box on the screen.
-            .filter { $0.element != nil || (($0.target?.w ?? 0) > 0 && ($0.target?.h ?? 0) > 0) }
+            // A step must be findable: a control from the list, a box on the screen, or a name
+            // that a later scan can match. The last of those is how a step that does not exist
+            // yet — an item in a menu nobody has opened — survives long enough to be drawn.
+            .filter {
+                $0.element != nil
+                    || (($0.target?.w ?? 0) > 0 && ($0.target?.h ?? 0) > 0)
+                    || ($0.label?.count ?? 0) >= 2
+            }
             .prefix(maximumSteps)
             .enumerated()
             .map { index, step in

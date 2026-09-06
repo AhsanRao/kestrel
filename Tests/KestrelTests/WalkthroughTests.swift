@@ -85,6 +85,61 @@ final class WalkthroughParserTests: XCTestCase {
     }
 }
 
+final class WalkthroughStepSurvivalTests: XCTestCase {
+    private func element(_ id: Int, _ label: String, _ frame: CGRect) -> AXElementScanner.Element {
+        AXElementScanner.Element(id: id, label: label, role: "AXMenuItem", frame: frame)
+    }
+
+    /// The bug this guards: the second step of "File ▸ Export" points at a menu item that does not
+    /// exist until the menu is open, so it was thrown away, the route collapsed to a single step,
+    /// and the first click ended the walkthrough with nothing else shown.
+    func testAStepThatCannotBeLocatedYetIsKept() {
+        let json = #"""
+        {"goal":"Export as PDF","steps":[
+          {"n":1,"element":1,"label":"File","instruction":"Click the File menu"},
+          {"n":2,"label":"Export as PDF…","instruction":"Choose Export as PDF"}]}
+        """#
+        let walkthrough = WalkthroughParser.parse(json)
+        XCTAssertEqual(walkthrough?.steps.count, 2)
+
+        let elements = [element(1, "File", CGRect(x: 40, y: 900, width: 34, height: 22))]
+        let resolved = WalkthroughResolver.resolve(walkthrough!, elements: elements, capture: nil)
+        XCTAssertEqual(resolved.count, 2)
+        XCTAssertNotNil(resolved[0].frame)
+        XCTAssertNil(resolved[1].frame, "the menu item is not on screen yet, but the step stays")
+    }
+
+    func testAStepIsFoundAgainByNameOnceItsMenuIsOpen() {
+        let step = WalkthroughStep(n: 2, instruction: "Choose Export as PDF", label: "Export as PDF…")
+        let open = [element(1, "File", CGRect(x: 40, y: 900, width: 34, height: 22)),
+                    element(2, "Export as PDF…", CGRect(x: 44, y: 820, width: 160, height: 24))]
+        XCTAssertEqual(WalkthroughResolver.relocate(step, in: open), open[1].frame)
+    }
+
+    func testNamesMatchThroughCaseAndTrailingEllipsis() {
+        let step = WalkthroughStep(n: 1, instruction: "Choose Export", label: "export")
+        let elements = [element(1, "Export…", CGRect(x: 0, y: 0, width: 80, height: 20))]
+        XCTAssertEqual(WalkthroughResolver.relocate(step, in: elements), elements[0].frame)
+    }
+
+    func testAnExactNameWinsOverAPartialOne() {
+        let step = WalkthroughStep(n: 1, instruction: "Choose Export", label: "Export")
+        let elements = [element(1, "Export as PDF", CGRect(x: 0, y: 0, width: 80, height: 20)),
+                        element(2, "Export", CGRect(x: 0, y: 40, width: 80, height: 20))]
+        XCTAssertEqual(WalkthroughResolver.relocate(step, in: elements), elements[1].frame)
+    }
+
+    func testAStepWithNoNameAndNoTargetIsStillRejected() {
+        let steps = [WalkthroughStep(n: 1, instruction: "Do the thing")]
+        XCTAssertTrue(WalkthroughParser.sanitize(steps).isEmpty)
+    }
+
+    func testANamedStepSurvivesSanitizingWithNoCoordinatesAtAll() {
+        let steps = [WalkthroughStep(n: 1, instruction: "Choose Export", label: "Export as PDF…")]
+        XCTAssertEqual(WalkthroughParser.sanitize(steps).count, 1)
+    }
+}
+
 final class WalkthroughDetectorTests: XCTestCase {
     func testShowMeQuestionsWantAWalkthrough() {
         for question in ["How do I export as PDF in this app?",

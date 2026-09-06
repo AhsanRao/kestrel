@@ -6,6 +6,24 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Added
 
+- **Kestrel points at things.** A plain spoken answer can now circle what it is talking about on the
+  real screen. The model ends its reply with a `POINT:` line naming controls from the Accessibility
+  list it was given; Kestrel strips that line out of what is spoken, then draws a loop and an arrow
+  on each control while the sentence is being said. The ask prompt forbids describing a location at
+  all — "in the top-right", "the third icon along" — because pointing is the thing that makes this
+  an assistant looking at your screen rather than a chatbot describing a photograph of it.
+  Off with `answerAnnotations: false`; Esc takes the marks away.
+- **The drawing is drawn.** Rings, boxes and arrows are stroked on with `trim`, in a hand-drawn path
+  that is slightly out of round and carries past where it started, so a mark reads as a gesture
+  being made rather than a rectangle being pasted. Arrows run from the instruction to the control
+  and their heads land last. Reduce Motion gets the finished mark without watching it made.
+- **The panel hangs from the notch.** It is flush with the top edge of the display, centred on the
+  camera housing with the state on one side of it and the backend on the other, and it opens
+  downward only when there is something to read — a Dynamic Island rather than a floating card.
+  On a display without a notch the same shape slides out of the top edge.
+- `KESTREL_PREVIEW_OVERLAY=walkthrough|annotation` photographs the drawing on a live screen, the
+  way `KESTREL_PREVIEW_PANEL` already does for the panel. It caught a real bug on its first run.
+
 - **Kestrel can use the keyboard.** Three new action kinds and a richer `scroll`, closing the action
   surface against HeyClicky's computer-use driver tool for tool:
   - `key` — one keystroke or chord, parsed from `"return"`, `"cmd+s"`, `"cmd+shift+p"`, `"option-left"`.
@@ -29,6 +47,23 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Fixed
 
+- **A walkthrough no longer dies at its first click.** Three things were wrong at once:
+  - Steps whose control could not be located were thrown away, so "File ▸ Export" collapsed to a
+    single step — the menu item does not exist in the Accessibility tree until the menu is open —
+    and clicking File therefore *completed* the walkthrough. Steps are now kept, planned by name,
+    and looked up again in a fresh scan at the moment the user reaches them, retried a few times
+    because menus open with an animation. A step that still cannot be found is described instead of
+    drawn, and any click advances it.
+  - The overlay window covered only what was photographed, which is usually the front window. The
+    first step of a route is very often in the menu bar — outside it — so exactly the mark that
+    mattered most was clipped. It now spans every display.
+  - `needs_more` ended the run silently. Kestrel now photographs the new screen and asks for the
+    rest of the route, up to three times.
+- **The ring could be animated off the screen and never come back.** The overlay's window frame was
+  set after its view was built, so the first layout put every mark far off screen; the correction
+  then arrived on the same render pass as the breathing pulse, whose `repeatForever(autoreverses:)`
+  animation dutifully carried the ring back and forth between the wrong place and the right one.
+  Geometry is now known before the view exists, and the pulse owns nothing but its own scale.
 - **"Claude usage limit reached" after a perfectly good answer.** The quota check read the whole of
   stdout, which for `--output-format json` is an envelope of durations, token counts, a cost and two
   hex ids — and the needle list contained a bare `"429"`. Any request whose `duration_ms`,

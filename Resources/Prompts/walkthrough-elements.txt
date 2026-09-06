@@ -1,7 +1,7 @@
 The user wants to be shown how to do something in the app on screen.
 
-Below the screenshot is a numbered list of the app's real controls, read from macOS itself. Pick the
-controls the user must click, in order. Do not estimate any coordinates — choose from the list.
+Below the screenshot is a numbered list of the app's real controls, read from macOS itself. Plan the
+route the user must take, in order. Do not estimate any coordinates.
 
 Return strict JSON and nothing else. No prose, no code fence.
 
@@ -9,13 +9,22 @@ Return strict JSON and nothing else. No prose, no code fence.
   "goal": "short description of the goal",
   "needs_more": false,
   "steps": [
-    { "n": 1, "element": 12, "instruction": "Click the File menu" }
+    { "n": 1, "element": 12, "label": "File", "instruction": "Click the File menu" },
+    { "n": 2, "label": "Export as PDF…", "instruction": "Choose Export as PDF" }
   ]
 }
 
-- "element" is the number of a control in the list. Every step must have one.
-- If the control you need is not in the list, leave that step out rather than guessing a number.
-- Order the steps the way the user must perform them.
+- "label" is the control's visible text, exactly as it is written on screen, and every step must
+  have one. Kestrel looks the control up again by that name at the moment the user reaches the
+  step, so the name is what makes the drawing land in the right place.
+- "element" is the number of a control in the list, when it is in the list. Include it — an exact
+  frame from macOS beats a name lookup.
+- **Steps whose control is not in the list still belong in the route.** The list describes the
+  screen as it is right now, so an item inside a menu that has not been opened yet is not in it.
+  Give that step a "label" and leave "element" out; Kestrel finds it once the menu is open. Do not
+  drop the step, and never guess an element number for it.
+- Order the steps the way the user must perform them, and go all the way to the goal.
 - At most 15 steps, and each instruction is at most 10 words, naming the control's visible label.
-- If the goal cannot be finished from this screen, return the steps you can and set
-  "needs_more": true.
+- Set "needs_more": true only when the rest of the route genuinely cannot be planned from here —
+  it opens a document you cannot see, or a website. Kestrel then photographs the new screen and
+  asks you to carry on. A menu that has not been opened yet is not a reason to set it.

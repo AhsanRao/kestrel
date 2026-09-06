@@ -22,6 +22,7 @@ final class SessionCoordinator {
     let dragTracker = DragTracker()
     lazy var walkthrough = WalkthroughSession(overlay: overlay)
     let agentOverlay = AgentOverlay()
+    let annotations = AnnotationOverlay()
     let actuator = Actuator()
     let escapeWatcher = EscapeWatcher()
     var activeRun: ActionRunner?
@@ -33,8 +34,16 @@ final class SessionCoordinator {
     var pendingCapture: ScreenCapture?
     /// True once part of the answer has been read out while it streamed.
     var streamedSpeech = false
-    /// Controls read out of the frontmost app for the walkthrough currently being planned.
+    /// Controls read out of the frontmost app for the answer currently being planned.
     var scannedElements: [AXElementScanner.Element] = []
+    /// How many times the current walkthrough has been extended onto a new screen.
+    var walkthroughContinuations = 0
+    /// A walkthrough that runs past one screen is picked up again this many times before Kestrel
+    /// stops on its own. Enough for a menu ▸ dialog ▸ confirm route; short of a loop.
+    static let maximumContinuations = 3
+    /// How much of the control list a plain answer is offered. A walkthrough gets all of it; an
+    /// answer only needs enough to point at what it is talking about.
+    static let maximumPointableControls = 120
     /// The last few exchanges, so "the other one" has something to refer to.
     var conversation = Conversation()
     /// The region the user circled while holding the hotkey, in global AppKit points.
@@ -54,6 +63,7 @@ final class SessionCoordinator {
         audio.onLevel = { [weak self] level in self?.panel.model.level = Double(level) }
         walkthrough.onFinish = { [weak self] _ in self?.walkthroughEnded() }
         walkthrough.onAdvance = { [weak self] step in self?.walkthroughAdvanced(to: step) }
+        walkthrough.onNeedsMore = { [weak self] done in self?.continueWalkthrough(after: done) }
         dragTracker.onChange = { [weak self] points in self?.selection.update(points: points) }
 
         hotkeys.handler = { [weak self] action, phase in self?.handle(action, phase) }
@@ -73,6 +83,7 @@ final class SessionCoordinator {
 
     func stop() {
         sounds.stop()
+        annotations.hide()
         escapeWatcher.stop()
         activeRun?.cancel()
         dragTracker.end()
@@ -146,9 +157,11 @@ final class SessionCoordinator {
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
         case .clearOverlay:
+            walkthroughContinuations = 0
             walkthrough.stop(completed: false, notify: false)
             escapeWatcher.stop()
             agentOverlay.hide()
+            annotations.hide()
         case .reset: reset()
         }
     }

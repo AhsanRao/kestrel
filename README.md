@@ -69,17 +69,26 @@ Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The panel shows the answer and
-  speaks it. Press the hotkey again to interrupt.
+- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The answer drops out of the notch
+  and is spoken. When it names something you can click, that control is circled on the real screen
+  while the sentence is being said — Kestrel points instead of saying "in the top right". Press the
+  hotkey again to interrupt, Esc to take the marks off.
 - **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
 - **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
-  drawn on screen: click each highlighted control to advance, Esc to stop. Needs Accessibility;
-  without it Kestrel reads the steps out instead.
+  drawn on screen, one step at a time: the ring is stroked on around the control the way you would
+  draw it, an arrow runs from the instruction to it, and clicking advances. Esc stops. Needs
+  Accessibility; without it Kestrel reads the steps out instead.
 
-> Where the ring lands is only as good as the model's eye for a screenshot, and that is the weak
-> part of this feature — on a toolbar of near-identical buttons it can be a button or two out.
-> Each step also names its control, clicks near the ring count, and after two misses the overlay
-> lets you advance with a click anywhere.
+> Steps are planned by name as well as by position, and the control is looked up again in the
+> Accessibility tree at the moment you reach it — which is how a route survives its first click.
+> The item inside a menu does not exist until the menu is open, so it is found then rather than
+> guessed at now. If the route runs off this screen entirely, Kestrel photographs the new one and
+> asks for the rest.
+
+> Where the ring lands is only as good as what macOS reports, and on an app that exposes nothing
+> it falls back to the model's eye for a screenshot — which on a toolbar of near-identical buttons
+> can be a button or two out. Each step also names its control, clicks near the ring count, and
+> after two misses the overlay lets you advance with a click anywhere.
 - Both hotkeys are rebindable in Settings.
 
 `⌃⌘` is the quietest modifier pair on macOS — the system claims only `⌃⌘Space` (Emoji & Symbols),
@@ -113,6 +122,7 @@ you save. The Settings window writes the same file.
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
 | `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
+| `answerAnnotations` | `true` | circle what a spoken answer is pointing at |
 | `agentActions` | `true` | carry out instructions, gated by `policy.json` |
 | `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
 | `sounds` | `true` | short cues for each state change |
@@ -156,6 +166,13 @@ make deps      # scripts/check-deps.sh
         KESTREL_PREVIEW_OUT=/tmp/panel.png Kestrel.app/Contents/MacOS/Kestrel
 
   States: `listening`, `thinking`, `answer`, `error`. Without the env vars nothing changes.
+- **Seeing the drawing.** Same reason, same shape — strokes that animate onto a live screen cannot
+  be judged from a static render:
+
+      KESTREL_PREVIEW_OVERLAY=walkthrough \
+        KESTREL_PREVIEW_OUT=/tmp/overlay.png Kestrel.app/Contents/MacOS/Kestrel
+
+  `walkthrough` draws a two-step route, `annotation` draws the marks that accompany an answer.
 - `Tests/MANUAL.md` is the checklist for everything unit tests cannot reach.
 - Icons are generated from the original logo by `scripts/icon-tool.swift`; nothing is redrawn.
 - **CLI flags drift between releases.** Every invocation is confined to

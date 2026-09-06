@@ -10,7 +10,9 @@ struct PanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            header
+            // The top strip is the notch itself: nothing may be drawn under the camera housing, so
+            // the state lives to either side of it, the way the menu bar does.
+            notchBar
             if !model.transcript.isEmpty {
                 Text(model.transcript)
                     .font(.system(size: 11))
@@ -28,12 +30,16 @@ struct PanelView: View {
                     .font(.system(size: 11))
                     .transition(.opacity)
             }
-            footer
+            if model.isExpanded { footer }
         }
-        .padding(14)
-        .frame(width: 420, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.bottom, model.isExpanded ? 13 : 9)
+        .frame(width: model.width, alignment: .leading)
         .background(background)
         .overlay(border)
+        // The panel hangs off the top of the display in the notch's own colours, so its contents
+        // are always read against black rather than against the user's wallpaper.
+        .environment(\.colorScheme, .dark)
         // No SwiftUI shadow: the window is sized to this view, so a shadow drawn here is clipped
         // at the edges. The panel's own window shadow does the job properly.
         .compositingGroup()
@@ -42,6 +48,7 @@ struct PanelView: View {
         .animation(spring, value: model.transcript.isEmpty)
         .animation(spring, value: model.isFollowUp)
         .animation(.easeOut(duration: 0.22), value: model.answer)
+        .animation(spring, value: model.isExpanded)
         .onHover { model.isHovering = $0 }
         .modifier(PulseEffect(trigger: model.pulse))
     }
@@ -49,20 +56,71 @@ struct PanelView: View {
     // MARK: - Pieces
 
     private var background: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(.regularMaterial)
+        NotchShape(bottomRadius: model.isExpanded ? 24 : 18)
+            // Near-black rather than a material: on a notched Mac this edge has to be the same
+            // colour as the housing beside it, or the seam gives the whole thing away.
+            .fill(Color(white: 0.045))
             // A wash of the state colour, so the panel reads correctly before a word of it does.
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(model.accent.opacity(model.isError ? 0.10 : model.isRecording ? 0.07 : 0))
+                NotchShape(bottomRadius: model.isExpanded ? 24 : 18)
+                    .fill(model.accent.opacity(model.isError ? 0.16 : model.isRecording ? 0.12 : 0.04))
             )
     }
 
     /// The border carries the state colour, brightening while Kestrel is actually listening.
     private var border: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .strokeBorder(model.accent.opacity(model.isRecording ? 0.6 : 0.16),
-                          lineWidth: model.isRecording ? 1.5 : 1)
+        NotchShape(bottomRadius: model.isExpanded ? 24 : 18)
+            .stroke(model.accent.opacity(model.isRecording ? 0.55 : 0.14),
+                    lineWidth: model.isRecording ? 1.5 : 1)
+    }
+
+    /// State on the left of the housing, backend on the right — with a gap the exact width of the
+    /// notch between them.
+    ///
+    /// The two sides are given equal fixed widths rather than being pushed apart by spacers: the
+    /// panel is centred on the screen and the housing is centred on the panel, so the gap only
+    /// lands on the real notch if neither side can steal space from the other.
+    private var notchBar: some View {
+        let gap = model.notch.notchSize.width
+        let side = max((model.width - gap) / 2, 60)
+        return HStack(spacing: 0) {
+            HStack(spacing: 8) {
+                PanelIndicator(model: model)
+                Text(model.label)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(model.isExpanded ? 2 : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 14)
+            .frame(width: side, alignment: .leading)
+
+            Color.clear.frame(width: gap, height: 1)
+
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                if model.isFollowUp {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                }
+                Text(model.backend.displayName.uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.4)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(KestrelPalette.blue.opacity(0.22), in: Capsule())
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Backend: \(model.backend.displayName)")
+            }
+            .padding(.trailing, 14)
+            .frame(width: side, alignment: .trailing)
+        }
+        .frame(height: max(model.notch.barHeight - 4, 22))
+        // The bar spans the full width of the panel; the padding belongs to what sits under it.
+        .padding(.horizontal, -14)
     }
 
     private var header: some View {

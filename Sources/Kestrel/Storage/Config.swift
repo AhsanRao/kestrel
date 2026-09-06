@@ -29,6 +29,8 @@ struct Config: Codable, Equatable {
     var captureMode: CaptureMode
     var launchAtLogin: Bool
     var walkthroughs: Bool
+    /// Circle and point at what a spoken answer refers to, instead of describing where it is.
+    var answerAnnotations: Bool
     var agentActions: Bool
     var spatialContext: Bool
     var onboardingCompleted: Bool
@@ -58,6 +60,7 @@ struct Config: Codable, Equatable {
         captureMode: .window,
         launchAtLogin: false,
         walkthroughs: true,
+        answerAnnotations: true,
         agentActions: true,
         spatialContext: true,
         onboardingCompleted: false,
@@ -136,6 +139,7 @@ struct Config: Codable, Equatable {
         captureMode = v(.captureMode, d.captureMode)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
         walkthroughs = v(.walkthroughs, d.walkthroughs)
+        answerAnnotations = v(.answerAnnotations, d.answerAnnotations)
         agentActions = v(.agentActions, d.agentActions)
         spatialContext = v(.spatialContext, d.spatialContext)
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
@@ -152,7 +156,7 @@ struct Config: Codable, Equatable {
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
          screenshotMaxEdge: Int, captureMode: CaptureMode,
          launchAtLogin: Bool,
-         walkthroughs: Bool, agentActions: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
+         walkthroughs: Bool, answerAnnotations: Bool, agentActions: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
         self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.mcpForTasks = mcpForTasks; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.transcriptionHint = transcriptionHint
@@ -163,7 +167,8 @@ struct Config: Codable, Equatable {
         self.followUpSeconds = followUpSeconds
         self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
         self.launchAtLogin = launchAtLogin
-        self.walkthroughs = walkthroughs; self.agentActions = agentActions
+        self.walkthroughs = walkthroughs; self.answerAnnotations = answerAnnotations
+        self.agentActions = agentActions
         self.spatialContext = spatialContext
         self.onboardingCompleted = onboardingCompleted
         self.apiKeys = apiKeys

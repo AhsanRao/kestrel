@@ -12,7 +12,7 @@ Return strict JSON and nothing else. No prose, no code fence.
   "image": {"w": 1000, "h": 1000},
   "needs_more": false,
   "steps": [
-    { "n": 1, "instruction": "short imperative instruction",
+    { "n": 1, "instruction": "short imperative instruction", "label": "File",
       "target": {"x": 0, "y": 0, "w": 0, "h": 0}, "shape": "rect" }
   ]
 }
@@ -29,8 +29,14 @@ Coordinates:
 - A target should tightly enclose one control, not the region around it.
 
 Rules:
+- "label" is the control's visible text, exactly as written on screen. Give it on every step: when
+  the user reaches a step, Kestrel looks the control up by that name and corrects the drawing, so a
+  step whose control appears only later — an item in a menu you have not opened — still lands.
+- A step whose control is not visible on this screen yet is still part of the route. Give it a
+  "label" and its best-guess "target", or omit "target" entirely; do not drop the step.
 - "shape" is "rect" or "circle".
 - At most 15 steps. Prefer fewer, larger targets.
 - Each instruction names the control by its visible label, in at most 10 words.
-- If the goal cannot be completed on the current screen, return the first step only and set
-  "needs_more": true.
+- Plan the whole route to the goal. Set "needs_more": true only when the rest genuinely cannot be
+  planned from this screen — it continues in a document or a website you cannot see — in which case
+  return the steps you can and Kestrel will photograph the new screen and ask you to carry on.

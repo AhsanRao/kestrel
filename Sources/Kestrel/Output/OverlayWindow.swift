@@ -9,9 +9,17 @@ final class OverlayWindow {
 
     private var window: NSWindow?
 
-    func show(on captureFrame: CGRect) {
+    /// Covers every display, not just the window that was photographed.
+    ///
+    /// The screenshot Kestrel sends is usually the front window alone, and the first step of a
+    /// route is very often in the menu bar — outside that window. An overlay sized to the capture
+    /// clipped exactly the mark the user needed most, so it spans the whole desktop instead and the
+    /// marks are placed from global coordinates.
+    func show() {
+        let bounds = OverlayModel.desktopBounds
+        model.windowFrame = bounds
         let window = ensureWindow()
-        window.setFrame(captureFrame, display: true)
+        window.setFrame(bounds, display: true)
         window.orderFrontRegardless()
         model.breathing = true
     }
@@ -22,6 +30,11 @@ final class OverlayWindow {
     }
 
     var isVisible: Bool { window?.isVisible ?? false }
+
+    /// For `OverlayPreview` only: lift the capture exclusion so the drawing can be photographed.
+    func setExcludedFromCapture(_ excluded: Bool) {
+        window?.sharingType = excluded ? .none : .readOnly
+    }
 
     private func ensureWindow() -> NSWindow {
         if let window { return window }

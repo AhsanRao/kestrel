@@ -83,13 +83,19 @@ struct WalkthroughStep: Codable, Equatable {
     var element: Int?
     /// Fallback for apps with no usable Accessibility tree: coordinates in the model's own grid.
     var target: Target?
+    /// The control's visible label. This is what lets a later step be found again: a menu item only
+    /// exists once its menu is open, so the step is planned by name and located when the user
+    /// arrives at it (see `WalkthroughResolver.relocate`).
+    var label: String?
     var shape: String
 
-    init(n: Int, instruction: String, element: Int? = nil, target: Target? = nil, shape: String = "rect") {
+    init(n: Int, instruction: String, element: Int? = nil, target: Target? = nil,
+         label: String? = nil, shape: String = "rect") {
         self.n = n
         self.instruction = instruction
         self.element = element
         self.target = target
+        self.label = label
         self.shape = shape
     }
 
@@ -101,6 +107,8 @@ struct WalkthroughStep: Codable, Equatable {
         instruction = ((try? container.decodeIfPresent(String.self, forKey: .instruction)) ?? nil) ?? ""
         element = (try? container.decodeIfPresent(Int.self, forKey: .element)) ?? nil
         target = (try? container.decodeIfPresent(Target.self, forKey: .target)) ?? nil
+        label = ((try? container.decodeIfPresent(String.self, forKey: .label)) ?? nil)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         shape = ((try? container.decodeIfPresent(String.self, forKey: .shape)) ?? nil) ?? "rect"
     }
 }

@@ -8,6 +8,8 @@ extension SessionCoordinator {
 
     func beginRecording(intent: SessionIntent) {
         focusRegion = nil
+        // Marks from the last answer belong to the last answer.
+        annotations.hide()
         // While the hotkey is held the user may circle something; the trail is drawn as they go.
         if intent == .ask, config.spatialContext {
             selection.show()
