@@ -1,0 +1,9 @@
+Return only the cleaned version of the dictated text below.
+
+- Fix punctuation, capitalization, and obvious speech-to-text errors.
+- Keep the speaker's words, tone, and language. Do not translate.
+- No em dashes.
+- Add nothing. Answer nothing. Do not comment on the text.
+- Do not wrap the output in quotes or code fences.
+
+Dictated text:

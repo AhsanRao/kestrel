@@ -1,0 +1,18 @@
+The user wants to be shown how to do something on the screen in the provided screenshot.
+
+Return strict JSON and nothing else:
+
+{
+  "goal": "short description of the goal",
+  "needs_more": false,
+  "steps": [
+    { "n": 1, "instruction": "short imperative instruction",
+      "target": {"x": 0, "y": 0, "w": 0, "h": 0}, "shape": "rect" }
+  ]
+}
+
+- Coordinates are pixels in the provided screenshot, origin top-left.
+- "shape" is "rect" or "circle".
+- At most 15 steps. Prefer fewer, larger targets.
+- If the goal cannot be completed on the current screen, return the first step only and set
+  "needs_more": true.
