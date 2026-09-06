@@ -6,7 +6,7 @@ final class PanelModel: ObservableObject {
     @Published var transcript: String = ""
     @Published var answer: String = ""
     @Published var backend: BackendKind = .claude
-    @Published var askHint: String = "⌥⌘"
+    @Published var askHint: String = "⌃⌘A"
     @Published var dictateHint: String = "⌃⌘K"
     @Published var permissionURL: URL?
     @Published var pulse: Int = 0

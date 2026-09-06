@@ -10,6 +10,18 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Menu bar icon appears, no Dock icon, no window
 - [ ] `Quit Kestrel` leaves no process behind (`pgrep -x Kestrel`)
 
+## 0b. Setup window (test on a clean user account)
+
+- [ ] Opens by itself on first launch, listing every permission and tool
+- [ ] "Allow" on Microphone shows the system prompt; the row ticks without pressing anything else
+- [ ] "Allow" on Screen Recording offers a relaunch, and the row is ticked after it
+- [ ] Granting Accessibility in System Settings ticks that row within a couple of seconds
+- [ ] "Copy command" puts the right shell command on the clipboard
+- [ ] "Skip for now" closes it; it does not reappear on the next launch once everything required
+      is in place
+- [ ] Removing whisper-cli brings it back on the next launch
+- [ ] Menu bar ▸ Setup & permissions… reopens it
+
 ## 1. Permissions (test on a clean user account)
 
 - [ ] First hotkey press prompts for Microphone; denying shows the panel error with a working link
@@ -18,7 +30,7 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 2. Ask
 
-- [ ] Hold `⌥⌘`, ask "what app is this?", release → correct spoken answer
+- [ ] Hold `⌃⌘A`, ask "what app is this?", release → correct spoken answer
 - [ ] The screenshot never contains the Kestrel panel
 - [ ] Question about the display the mouse is on, with two displays connected
 - [ ] Press the hotkey while the answer is being spoken → speech stops, recording restarts
@@ -66,13 +78,11 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 6. Settings and config
 
-- [ ] Holding `⌥⌘` alone starts listening after a short beat
-- [ ] A quick `⌥⌘` tap does nothing
-- [ ] `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space`, `⌥⌘W` still do their macOS jobs and leave no recording running
-- [ ] Holding `⌥⌘` a beat, then pressing a key, discards the recording silently
-- [ ] `⌃⌘K` starts dictation without ever arming the ask chord
-- [ ] With Accessibility off, ask shows the permission error; granting it makes `⌥⌘` work without
-      relaunching
+- [ ] `⌃⌘A` starts listening on a machine where Accessibility has never been granted
+- [ ] `⌃⌘K` starts dictation
+- [ ] `⌃⌘Space`, `⌃⌘D`, `⌃⌘F`, `⌃⌘Q` still do their macOS jobs
+- [ ] Recording a bare `⌥⌘` chord in Settings works, prompts for Accessibility, and cancels cleanly
+      when a key is pressed while held
 - [ ] Rebind the ask hotkey; the new combination works immediately, the old one does not
 - [ ] A combination already owned by another app shows the conflict error
 - [ ] Edit `~/.kestrel/config.json` by hand → applied without relaunching

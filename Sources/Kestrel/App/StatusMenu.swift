@@ -5,6 +5,7 @@ import AppKit
 final class StatusMenu: NSObject, NSMenuDelegate {
     var onOpenSettings: (() -> Void)?
     var onCheckDependencies: (() -> Void)?
+    var onOpenOnboarding: (() -> Void)?
 
     private var statusItem: NSStatusItem?
     private let menu = NSMenu()
@@ -57,6 +58,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         addItem("Open memory file", #selector(openMemory))
+        addItem("Setup & permissions…", #selector(openOnboarding))
         addItem("Check dependencies…", #selector(checkDependencies))
         addItem("Settings…", #selector(openSettings), key: ",")
         menu.addItem(.separator())
@@ -98,5 +100,6 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     @objc private func openMemory() { MemoryStore.openInEditor() }
     @objc private func openSettings() { onOpenSettings?() }
     @objc private func checkDependencies() { onCheckDependencies?() }
+    @objc private func openOnboarding() { onOpenOnboarding?() }
     @objc private func quit() { NSApp.terminate(nil) }
 }

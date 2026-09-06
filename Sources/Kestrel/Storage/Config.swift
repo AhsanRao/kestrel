@@ -24,6 +24,7 @@ struct Config: Codable, Equatable {
     var screenshotMaxEdge: Int
     var launchAtLogin: Bool
     var walkthroughs: Bool
+    var onboardingCompleted: Bool
 
     var apiKeys: APIKeys
 
@@ -45,6 +46,7 @@ struct Config: Codable, Equatable {
         screenshotMaxEdge: 2048,
         launchAtLogin: false,
         walkthroughs: true,
+        onboardingCompleted: false,
         apiKeys: APIKeys(anthropic: nil, openai: nil)
     )
 
@@ -61,12 +63,12 @@ struct Config: Codable, Equatable {
         var ask: HotkeyBinding
         var dictate: HotkeyBinding
 
-        /// Ask is a bare ⌥⌘ chord: two adjacent keys, comfortable to hold, and nothing in macOS
-        /// fires on modifiers alone. Dictate deliberately sits on a *different* pair — ⌃⌘K — so
-        /// pressing it can never be mistaken for the start of an ask. K because macOS already owns
-        /// ⌃⌘Space (Emoji & Symbols), ⌃⌘D (Look Up), ⌃⌘F (Full Screen) and ⌃⌘Q (Lock Screen).
+        /// ⌃⌘ is the quietest modifier pair on macOS: the system claims only ⌃⌘Space (Emoji &
+        /// Symbols), ⌃⌘D (Look Up), ⌃⌘F (Full Screen) and ⌃⌘Q (Lock Screen), and few apps use it
+        /// at all. A and K are free in it. Both are ordinary keyed hotkeys, registered through
+        /// Carbon, so they need no permission and cannot be confused with a shortcut prefix.
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: nil, modifiers: ["option", "command"]),       // ⌥⌘
+            ask: HotkeyBinding(keyCode: 0, modifiers: ["control", "command"]),        // ⌃⌘A
             dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])    // ⌃⌘K
         )
     }
@@ -101,6 +103,7 @@ struct Config: Codable, Equatable {
         screenshotMaxEdge = v(.screenshotMaxEdge, d.screenshotMaxEdge)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
         walkthroughs = v(.walkthroughs, d.walkthroughs)
+        onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
         apiKeys = v(.apiKeys, d.apiKeys)
         clamp()
     }
@@ -109,14 +112,15 @@ struct Config: Codable, Equatable {
          whisperBinary: String, whisperModel: String, language: String, speakAnswers: Bool,
          voiceIdentifier: String?, voiceRate: Double, cleanupDictation: Bool, injectMode: InjectMode,
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, screenshotMaxEdge: Int, launchAtLogin: Bool,
-         walkthroughs: Bool, apiKeys: APIKeys) {
+         walkthroughs: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
         self.autoRoute = autoRoute; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.speakAnswers = speakAnswers; self.voiceIdentifier = voiceIdentifier
         self.voiceRate = voiceRate; self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
         self.screenshotMaxEdge = screenshotMaxEdge; self.launchAtLogin = launchAtLogin
-        self.walkthroughs = walkthroughs; self.apiKeys = apiKeys
+        self.walkthroughs = walkthroughs; self.onboardingCompleted = onboardingCompleted
+        self.apiKeys = apiKeys
         clamp()
     }
 

@@ -4,16 +4,21 @@ All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
 ## [0.4.0] - 2026-09-06 — M4 Walkthroughs
 
-- Ask is now the bare `⌥⌘` chord: hold both modifiers on their own, speak, let go. Carbon cannot
-  register a modifier-only hotkey, so it is watched through a listen-only event tap, which means
-  ask now needs Accessibility; Kestrel prompts for it and goes live the moment it is granted.
-- Because `⌥⌘` also opens `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space` and friends, it waits ~0.28 s before listening
-  and any key pressed while it is held cancels, discarding whatever recording had started. Those
-  shortcuts are untouched.
-- Dictate is now `⌃⌘K`, on a different modifier pair so it can never be read as the start of an
-  ask. K because macOS already owns `⌃⌘Space`, `⌃⌘D`, `⌃⌘F` and `⌃⌘Q`.
-- `keyCode` is optional in `config.json`: omit it for a bare chord. The settings recorder captures
-  one by holding two or more modifiers and releasing without pressing a key.
+- First-run setup window: every permission and tool in one checklist, each with what it is for and
+  a button that requests it. Polls while open, so granting something in System Settings ticks the
+  row live; offers the relaunch that Screen Recording needs. Reopens from the menu bar, and comes
+  back by itself if something required goes missing later.
+- `DependencyCheck` became the single source of truth for "can Kestrel work right now", shared by
+  the setup window and the menu bar report, and knows which pieces are optional (Codex,
+  Accessibility) and which are not.
+
+- Hotkeys are now `⌃⌘A` (ask) and `⌃⌘K` (dictate): free in the quietest modifier pair macOS has,
+  so nothing needs to be turned off, and both are plain Carbon hotkeys needing no permission.
+- Modifier-only hotkeys (holding `⌥⌘` on its own) are supported but no longer the default: they
+  need an event tap and therefore Accessibility, and they arm on the way into any shortkey starting
+  with the same modifiers. `ModifierChordDetector` waits out a dwell and cancels on any key press,
+  so they are usable when chosen deliberately in Settings.
+- `keyCode` is optional in `config.json`: omit it for a bare chord.
 
 - Ask "how do I …?" and Kestrel draws the answer on screen instead of only speaking it:
   a ring around the control to click, its number, and the instruction.

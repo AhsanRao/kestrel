@@ -10,7 +10,7 @@ only while you are holding the key.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌥⌘`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
+| **Ask** | Hold `⌃⌘A`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
 | **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
@@ -45,22 +45,28 @@ make run
 
 The menu bar gains a small falcon. There is no Dock icon and no window until you press a hotkey.
 
-### Permissions
+### First run
 
-macOS asks once for each, at the moment it is first needed:
+Kestrel opens a setup window on first launch listing everything it needs, what each thing is for,
+and a button that asks for it. It re-checks itself while open, so a switch flipped in System
+Settings ticks the row without coming back to press anything. Reopen it any time from the menu bar:
+**Setup & permissions…**
 
-| Permission | Asked when | If you miss the prompt |
+| | Needed for | Note |
 |---|---|---|
-| Accessibility | first ask, because `⌥⌘` is a modifier-only hotkey | System Settings ▸ Privacy & Security ▸ Accessibility |
-| Microphone | first hotkey press | System Settings ▸ Privacy & Security ▸ Microphone |
-| Screen Recording | first question | …▸ Screen Recording, **then relaunch Kestrel** |
+| Microphone | hearing the question | required |
+| Screen Recording | seeing the screen you ask about | required, **applies after a relaunch** — the window offers one |
+| Accessibility | pasting dictation, following clicks in a walkthrough | optional; ask works without it |
+| whisper-cli + model | local speech to text | required |
+| Claude Code CLI | answering | required |
+| Codex CLI | second backend | optional |
 
-
-Kestrel's error panel links straight to the right pane when one is missing.
+The window lets you skip and finish later; Kestrel's error panel also links straight to the right
+Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌥⌘`, say *"what is this window for?"*, release. The panel shows the answer and
+- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The panel shows the answer and
   speaks it. Press the hotkey again to interrupt.
 - **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
 - **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
@@ -73,22 +79,17 @@ Kestrel's error panel links straight to the right pane when one is missing.
 > lets you advance with a click anywhere.
 - Both hotkeys are rebindable in Settings.
 
-**Ask is the bare `⌥⌘` chord**: hold both modifiers on their own and speak. Nothing in macOS fires
-on modifiers alone, but those two keys do begin plenty of shortcuts — `⌥⌘Esc`, `⌥⌘D`, `⌥⌘Space`,
-`⌥⌘W` — so Kestrel waits about a quarter of a second before it starts listening, and *any* key
-pressed while they are held cancels and discards whatever had started. Those shortcuts keep working
-untouched; the only cost is a brief panel flash if you rest on `⌥⌘` for a beat before hitting the
-key. A modifier-only hotkey cannot be registered the ordinary way, so **ask needs Accessibility
-permission**; Kestrel asks on first use and goes live the moment it is granted, no relaunch.
+`⌃⌘` is the quietest modifier pair on macOS — the system claims only `⌃⌘Space` (Emoji & Symbols),
+`⌃⌘D` (Look Up), `⌃⌘F` (Full Screen) and `⌃⌘Q` (Lock Screen), and almost no app uses it. `A` and `K`
+are free, so **nothing has to be turned off for Kestrel to work**.
 
-Dictate is `⌃⌘K`, deliberately on a *different* modifier pair so pressing it can never look like the
-start of an ask. K because macOS already owns `⌃⌘Space` (Emoji & Symbols), `⌃⌘D` (Look Up), `⌃⌘F`
-(Full Screen) and `⌃⌘Q` (Lock Screen).
+Both are ordinary keyed hotkeys registered through Carbon: no permission needed, press and release
+delivered exactly, and no chance of being mistaken for the start of another shortcut.
 
-Both are rebindable in Settings ▸ General — hold two or more modifiers and release without pressing
-anything to record another bare chord. Prefer `⌃⌘` for ask if the flash bothers you: it is a much
-quieter prefix. One line in `config.json` does it:
-`"ask": {"modifiers": ["control", "command"]}`.
+Rebind either in Settings ▸ General. A modifier-only hotkey (holding `⌥⌘` on its own, say) is also
+supported there — hold two or more modifiers and release without pressing a key — but it has to be
+watched through an event tap, so it costs an Accessibility grant and briefly arms whenever you use
+any shortcut starting with those modifiers. The keyed defaults avoid both problems.
 
 ## Configuration
 
@@ -107,7 +108,7 @@ you save. The Settings window writes the same file.
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | premium voices are preferred when installed |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌥⌘` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |

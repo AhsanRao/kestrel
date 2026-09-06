@@ -89,12 +89,20 @@ final class ModifierChordTests: XCTestCase {
         XCTAssertEqual(HotkeyBinding(keyCode: nil, modifiers: ["cmd", "ctrl"]).display, "⌃⌘")
     }
 
-    func testTheShippedDefaultsAreAChordForAskAndAFreeKeyForDictate() {
-        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌥⌘")
-        XCTAssertTrue(Config.Hotkeys.defaults.ask.isModifierOnly)
-        // ⌃⌘K, chosen because macOS already owns ⌃⌘Space, ⌃⌘D, ⌃⌘F and ⌃⌘Q.
+    /// The shipped defaults are plain keyed hotkeys, so they need no Accessibility grant and can
+    /// never be mistaken for the prefix of a system shortcut. Bare chords remain opt-in.
+    func testTheShippedDefaultsAreOrdinaryKeyedHotkeys() {
+        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌘A")
         XCTAssertEqual(Config.Hotkeys.defaults.dictate.display, "⌃⌘K")
+        XCTAssertFalse(Config.Hotkeys.defaults.ask.isModifierOnly)
         XCTAssertFalse(Config.Hotkeys.defaults.dictate.isModifierOnly)
+    }
+
+    /// The four ⌃⌘ combinations macOS reserves. Neither default may sit on one.
+    func testTheDefaultsAvoidEveryReservedControlCommandShortcut() {
+        let reserved: Set<UInt32> = [49, 2, 3, 12]   // Space, D, F, Q
+        XCTAssertFalse(reserved.contains(Config.Hotkeys.defaults.ask.keyCode ?? 0))
+        XCTAssertFalse(reserved.contains(Config.Hotkeys.defaults.dictate.keyCode ?? 0))
     }
 
     func testAConfigFileCanOmitTheKeyCodeEntirely() throws {
