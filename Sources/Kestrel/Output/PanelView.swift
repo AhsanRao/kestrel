@@ -39,6 +39,7 @@ struct PanelView: View {
         .animation(spring, value: model.state)
         .animation(spring, value: model.answer.isEmpty)
         .animation(spring, value: model.transcript.isEmpty)
+        .animation(spring, value: model.isFollowUp)
         .onHover { model.isHovering = $0 }
         .modifier(PulseEffect(trigger: model.pulse))
     }
@@ -66,6 +67,13 @@ struct PanelView: View {
                 .contentTransition(.opacity)
                 .id(model.label)
             Spacer(minLength: 8)
+            if model.isFollowUp {
+                Label("follow-up", systemImage: "arrow.turn.down.right")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .labelStyle(.titleAndIcon)
+                    .transition(.opacity.combined(with: .scale(scale: 0.85)))
+            }
             Text(model.backend.displayName.uppercased())
                 .font(.system(size: 9, weight: .semibold))
                 .tracking(0.4)

@@ -41,6 +41,7 @@ enum PromptBuilder {
                 parts.append("Controls on screen:\n"
                              + query.elements.map(\.listing).joined(separator: "\n"))
             }
+            if let brief = Conversation.brief(query.history) { parts.append(brief) }
             parts.append("Question: \(query.text)")
             return parts.joined(separator: "\n\n")
         }

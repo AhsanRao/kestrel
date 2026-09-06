@@ -28,6 +28,8 @@ final class SessionCoordinator {
     var streamedSpeech = false
     /// Controls read out of the frontmost app for the walkthrough currently being planned.
     var scannedElements: [AXElementScanner.Element] = []
+    /// The last few exchanges, so "the other one" has something to refer to.
+    var conversation = Conversation()
     /// The region the user circled while holding the hotkey, in global AppKit points.
     var focusRegion: CGRect?
     var pendingCrop: URL?

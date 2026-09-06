@@ -40,6 +40,12 @@ extension SessionCoordinator {
     }
 
     func runAsk(_ text: String) {
+        // A question asked soon after the last one, in the same app, continues it.
+        let bundleID = TextInjector.frontmostBundleID()
+        let history = conversation.context(now: Date(),
+                                           window: TimeInterval(config.followUpSeconds),
+                                           frontmostBundleID: bundleID)
+        DispatchQueue.main.async { self.panel.model.isFollowUp = !history.isEmpty }
         // "How do I …?" is a request to be shown, not told (spec §8.15).
         let wantsSteps = WalkthroughDetector.wantsWalkthrough(text, config: config)
         // Say something straight away. The model takes seconds; silence for those seconds is what
@@ -62,7 +68,8 @@ extension SessionCoordinator {
         let query = Query(text: text, screenshot: gridded ?? pendingCapture?.url,
                           focusCrop: pendingCrop,
                           mode: wantsSteps ? .walkthrough : .ask,
-                          elements: wantsSteps ? scannedElements : [])
+                          elements: wantsSteps ? scannedElements : [],
+                          history: history)
         do {
             // A walkthrough answer is JSON, which must never be read out; a spoken answer streams.
             let onDelta: ((String) -> Void)? = wantsSteps ? nil : { [weak self] sentence in
@@ -74,6 +81,8 @@ extension SessionCoordinator {
                     self.present(walkthrough)
                 } else {
                     self.discardCapture()
+                    self.conversation.record(question: text, answer: answer.text,
+                                             at: Date(), appBundleID: bundleID)
                     self.present(answer, alreadySpoken: self.streamedSpeech)
                 }
             }

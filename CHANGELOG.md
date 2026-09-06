@@ -2,6 +2,15 @@
 
 All notable changes to Kestrel. Milestones follow `KESTREL_SPEC.md` §11.
 
+## [Unreleased]
+
+### T1 — Follow-up turns
+
+- A question asked within 90 seconds, in the same app, continues the last one, so "no, the other
+  one" and "what about that?" resolve. `followUpSeconds` sets the window; 0 turns it off.
+- Switching app ends the thread: a different app is a different subject.
+- At most three earlier turns are carried, and the panel marks a question as a follow-up.
+
 ## [0.5.0] - 2026-09-06 — M5 Spatial context, and a serious pass on latency, voice and accuracy
 
 **Latency.** A question took 16.9 s end to end; it now takes about 7 s. Almost all of the

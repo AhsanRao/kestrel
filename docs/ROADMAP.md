@@ -13,16 +13,18 @@ Status: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ---
 
-## T1 — Follow-up turns
+## T1 — Follow-up turns ✅
 
 Every hotkey press is currently a fresh `claude -p --no-session-persistence`, so the user cannot say
 "no, the *other* one". Keep the last exchange for a short window and continue it.
 
-- [ ] Carry the previous question and answer into the next prompt while a conversation is warm
-- [ ] Expire after `conversationWindowSeconds` (default 90) or when the frontmost app changes
-- [ ] A follow-up reuses the previous screenshot unless the screen has changed
-- [ ] Panel shows that a question is a follow-up
-- [ ] Tests: window expiry, app-change invalidation, prompt assembly, transcript threading
+- [x] Carry the previous question and answer into the next prompt while a conversation is warm
+- [x] Expire after `followUpSeconds` (default 90) or when the frontmost app changes
+- [x] ~~A follow-up reuses the previous screenshot unless the screen has changed~~ — dropped.
+      There is no cheap, reliable "has the screen changed" test, and the capture now runs in
+      parallel with transcription, so a fresh one costs almost nothing and can never be stale.
+- [x] Panel shows that a question is a follow-up
+- [x] Tests: window expiry, app-change invalidation, prompt assembly, retention limit
 
 ## T2 — Per-app skills
 

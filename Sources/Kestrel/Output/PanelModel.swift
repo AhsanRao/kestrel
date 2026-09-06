@@ -11,6 +11,8 @@ final class PanelModel: ObservableObject {
     @Published var permissionURL: URL?
     @Published var pulse: Int = 0
     @Published var isHovering: Bool = false
+    /// This question continues the previous one rather than starting fresh.
+    @Published var isFollowUp: Bool = false
     @Published var levelPhase: Double = 0
 
     var label: String {

@@ -25,6 +25,7 @@ struct Config: Codable, Equatable {
 
     var hotkeys: Hotkeys
     var panelAutoHideSeconds: Int
+    var followUpSeconds: Int
     var screenshotMaxEdge: Int
     var captureMode: CaptureMode
     var launchAtLogin: Bool
@@ -53,6 +54,7 @@ struct Config: Codable, Equatable {
         injectMode: .paste,
         hotkeys: .defaults,
         panelAutoHideSeconds: 20,
+        followUpSeconds: 90,
         screenshotMaxEdge: 2048,
         captureMode: .window,
         launchAtLogin: false,
@@ -130,6 +132,7 @@ struct Config: Codable, Equatable {
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
         panelAutoHideSeconds = v(.panelAutoHideSeconds, d.panelAutoHideSeconds)
+        followUpSeconds = v(.followUpSeconds, d.followUpSeconds)
         screenshotMaxEdge = v(.screenshotMaxEdge, d.screenshotMaxEdge)
         captureMode = v(.captureMode, d.captureMode)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
@@ -146,7 +149,8 @@ struct Config: Codable, Equatable {
          speakAnswers: Bool, acknowledgeWhileThinking: Bool,
          voiceIdentifier: String?, voiceRate: Double, voicePitch: Double,
          cleanupDictation: Bool, injectMode: InjectMode,
-         hotkeys: Hotkeys, panelAutoHideSeconds: Int, screenshotMaxEdge: Int, captureMode: CaptureMode,
+         hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
+         screenshotMaxEdge: Int, captureMode: CaptureMode,
          launchAtLogin: Bool,
          walkthroughs: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
@@ -156,6 +160,7 @@ struct Config: Codable, Equatable {
         self.voiceRate = voiceRate; self.voicePitch = voicePitch
         self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
+        self.followUpSeconds = followUpSeconds
         self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
         self.launchAtLogin = launchAtLogin
         self.walkthroughs = walkthroughs; self.spatialContext = spatialContext
@@ -169,6 +174,7 @@ struct Config: Codable, Equatable {
         voiceRate = min(max(voiceRate, 0.3), 0.7)
         voicePitch = min(max(voicePitch, 0.5), 1.5)
         panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
+        followUpSeconds = min(max(followUpSeconds, 0), 900)
         screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
     }
 }
