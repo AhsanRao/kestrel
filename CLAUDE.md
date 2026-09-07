@@ -11,9 +11,11 @@ deviating — and when a change lands, update the spec in the same commit. A spe
 code that no longer exists is worse than no spec.
 
 ## How we work
-- Build **one milestone at a time** (M0 → M6, see spec §11). Stop after each and report the build
-  output and a manual test summary. Wait for approval before the next milestone.
-- Every milestone ends with `make test` green, README updated, a `docs/CHANGELOG.md` entry, and a commit.
+- One change at a time. Stop after each and report the build output and a manual test summary.
+- Every change ends with `make test` green, the README and `docs/SPEC.md` corrected where they
+  now describe something untrue, a `docs/CHANGELOG.md` entry, and a commit.
+- The changelog records the shipped product, not the road to it. If something is built and later
+  taken out, take its entry out too — nobody reading it needs to know it existed.
 - Keep files small (< 200 lines) and in the folders defined in spec §7.
 - No third-party Swift packages without asking. Apple frameworks only: AppKit, SwiftUI,
   AVFoundation, Carbon, os.log.
