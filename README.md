@@ -208,3 +208,8 @@ Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every qu
 
 Working and in daily use by its author. See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what has
 changed and, more usefully, why.
+
+## Licence
+
+[MIT](LICENSE). Kestrel drives the Claude Code and Codex CLIs; it does not bundle them, and their
+own licences and terms of service are yours to keep to — in particular, the single-user note above.
