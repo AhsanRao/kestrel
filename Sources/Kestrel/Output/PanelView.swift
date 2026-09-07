@@ -46,8 +46,16 @@ struct PanelView: View {
     }
 
     private var shape: NotchShape {
-        NotchShape(bottomRadius: model.isExpanded ? 26 : 17, shoulder: 12)
+        NotchShape(bottomRadius: model.isExpanded ? 26 : 17, shoulder: PanelView.shoulder)
     }
+
+    /// The concave flare where the island meets the top of the screen.
+    static let shoulder: CGFloat = 12
+    /// Where text starts, measured from the island's frame.
+    ///
+    /// The shape's body is inset by the shoulder on both sides, so padding measured from the frame
+    /// is not the gap anyone actually sees: at 16 the text sat four points off the visible edge.
+    static var inset: CGFloat { shoulder + 18 }
 
     /// A hairline that fades out before it reaches the top edge: a border across the very top would
     /// be the one line that gives away where the housing ends and Kestrel begins.
@@ -77,7 +85,7 @@ struct PanelView: View {
                     .contentTransition(.opacity)
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 16)
+            .padding(.leading, PanelView.inset)
             .frame(width: side, alignment: .leading)
 
             Color.clear.frame(width: gap, height: 1)
@@ -92,7 +100,7 @@ struct PanelView: View {
                 }
                 trailing
             }
-            .padding(.trailing, 16)
+            .padding(.trailing, PanelView.inset)
             .frame(width: side, alignment: .trailing)
         }
         .frame(height: model.notch.barHeight)
@@ -156,9 +164,9 @@ struct PanelView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, PanelView.inset)
         .padding(.top, 10)
-        .padding(.bottom, 14)
+        .padding(.bottom, 16)
         .transition(.opacity)
     }
 }

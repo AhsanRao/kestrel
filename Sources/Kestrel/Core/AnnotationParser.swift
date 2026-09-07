@@ -74,11 +74,17 @@ enum AnnotationParser {
         var seen = Set<String>()
 
         func append(_ element: AXElementScanner.Element) {
-            let key = "\(Int(element.frame.minX)),\(Int(element.frame.minY))"
+            // Where it is now, not where it was when the app was scanned — that was before the
+            // model was even asked, and anything that scrolled since has moved the control out
+            // from under the mark. A control that can no longer be found is not drawn at all,
+            // because a mark in the wrong place is worse than no mark.
+            guard let frame = AXElementScanner.currentFrame(of: element)
+                    ?? (AXElementScanner.isOnScreen(element.frame) ? element.frame : nil) else { return }
+            let key = "\(Int(frame.minX)),\(Int(frame.minY))"
             guard seen.insert(key).inserted else { return }
             // A wide control reads better with a box round it; a small square one with a circle.
-            let ratio = element.frame.width / max(element.frame.height, 1)
-            found.append(Annotation(frame: element.frame, caption: element.label,
+            let ratio = frame.width / max(frame.height, 1)
+            found.append(Annotation(frame: frame, caption: element.label,
                                     shape: ratio > 2.2 ? .rect : .circle))
         }
 

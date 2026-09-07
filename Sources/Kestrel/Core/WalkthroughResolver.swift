@@ -27,13 +27,21 @@ enum WalkthroughResolver {
 
         return walkthrough.steps.map { step in
             if let id = step.element, let element = byID[id] {
-                return Resolved(step: step, frame: element.frame, isExact: true)
+                // Re-read rather than trusted: the scan happened before the model was asked, and
+                // the answer took a moment to come back.
+                let frame = AXElementScanner.currentFrame(of: element) ?? element.frame
+                return Resolved(step: step, frame: AXElementScanner.isOnScreen(frame) ? frame : nil,
+                                isExact: true)
             }
             if let frame = relocate(step, in: elements) {
                 return Resolved(step: step, frame: frame, isExact: true)
             }
             if let capture, let target = step.target, ScreenCapture.isPlausible(target, in: space) {
-                return Resolved(step: step, frame: capture.screenRect(for: target, in: space), isExact: false)
+                let frame = capture.screenRect(for: target, in: space)
+                // A guessed frame off the edge of every display is a guess that went wrong; say so
+                // by leaving the step undrawn rather than marking empty space.
+                return Resolved(step: step, frame: AXElementScanner.isOnScreen(frame) ? frame : nil,
+                                isExact: false)
             }
             return Resolved(step: step, frame: nil, isExact: false)
         }
@@ -52,11 +60,13 @@ enum WalkthroughResolver {
         for element in elements {
             let candidate = normalize(element.label)
             guard !candidate.isEmpty else { continue }
-            if candidate == wanted { return element.frame }
+            let frame = AXElementScanner.currentFrame(of: element) ?? element.frame
+            guard AXElementScanner.isOnScreen(frame) else { continue }
+            if candidate == wanted { return frame }
             // "Export…" against "Export as PDF…", or the other way round: good enough to point at,
             // but only if nothing matches exactly.
             if fallback == nil, candidate.contains(wanted) || wanted.contains(candidate) {
-                fallback = element.frame
+                fallback = frame
             }
         }
         return fallback

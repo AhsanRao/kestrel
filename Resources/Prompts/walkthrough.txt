@@ -2,8 +2,9 @@ The user wants to be shown how to do something on the screen in the provided scr
 
 A coordinate grid has been drawn over the screenshot for you, with its numbers printed in the dark
 margin along the top and left edges so that nothing in the interface is covered. The lines run from
-0 at the top-left corner of the screen to 1000 at its right edge and 1000 at its bottom edge, every
-100. Read each control's position off the lines it sits between rather than estimating.
+0 at the top-left corner of **the image** to 1000 at its right edge and 1000 at its bottom edge,
+every 100. Measure against the image itself, not against any idea of where things are on a screen:
+read each control's position off the lines it sits between rather than estimating.
 
 Return strict JSON and nothing else. No prose, no code fence.
 

@@ -90,7 +90,14 @@ enum AXElementScanner {
             walk(menuBar, depth: menuDepth, into: &found, seen: &seen,
                  limit: min(limit, menuBudget(for: limit)))
         }
-        for window in children(of: application, attribute: kAXWindowsAttribute as CFString) {
+        // The focused window first, and minimised or off-screen windows not at all. An app with
+        // several windows was offering controls from the one the user is *not* looking at, and a
+        // model picking by label has no way to tell them apart — which is a mark drawn confidently
+        // onto a window behind the one on screen.
+        let windows = children(of: application, attribute: kAXWindowsAttribute as CFString)
+        let focused = child(of: application, attribute: kAXFocusedWindowAttribute as CFString)
+        let ordered = focused.map { [$0] + windows.filter { $0 != focused! } } ?? windows
+        for window in ordered where isUsable(window) {
             walk(window, depth: maximumDepth, into: &found, seen: &seen, limit: limit)
         }
 
@@ -117,10 +124,37 @@ enum AXElementScanner {
         }
     }
 
+    /// A window worth reading: on screen, not minimised, and somewhere a user could see it.
+    private static func isUsable(_ window: AXUIElement) -> Bool {
+        var minimized: CFTypeRef?
+        if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimized) == .success,
+           (minimized as? Bool) == true { return false }
+        guard let frame = frame(of: window) else { return true }
+        return isOnScreen(frame)
+    }
+
+    /// True when the rect actually overlaps a display. A frame that does not is either stale or
+    /// belongs to a window parked off screen; either way a mark drawn there lands nowhere.
+    static func isOnScreen(_ frame: CGRect) -> Bool {
+        guard frame.width > 0, frame.height > 0 else { return false }
+        return NSScreen.screens.contains { $0.frame.intersects(frame) }
+    }
+
+    /// Where this control is **now**.
+    ///
+    /// The frame in an `Element` was true when the app was scanned, which for an answer is several
+    /// seconds and one model round trip ago. Anything that scrolled, resized or reflowed in between
+    /// moved the control out from under the mark. Asking macOS again costs one call and is the
+    /// difference between pointing at the button and pointing at where it used to be.
+    static func currentFrame(of element: Element) -> CGRect? {
+        guard let ref = element.ref, let frame = frame(of: ref), isOnScreen(frame) else { return nil }
+        return frame
+    }
+
     private static func describe(_ element: AXUIElement) -> Element? {
         guard let role = string(element, kAXRoleAttribute), clickableRoles.contains(role) else { return nil }
         guard let frame = frame(of: element), frame.width >= 8, frame.height >= 8,
-              frame.width < 3000, frame.height < 2000 else { return nil }
+              frame.width < 3000, frame.height < 2000, isOnScreen(frame) else { return nil }
 
         let label = [string(element, kAXTitleAttribute),
                      string(element, kAXDescriptionAttribute),
@@ -130,52 +164,5 @@ enum AXElementScanner {
             .first { !$0.isEmpty && $0.count <= 60 } ?? ""
 
         return Element(id: 0, label: label, role: role, frame: frame, ref: element)
-    }
-
-    // MARK: - Attributes
-
-    private static func string(_ element: AXUIElement, _ attribute: String) -> String? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
-        return value as? String
-    }
-
-    private static func children(of element: AXUIElement, attribute: CFString) -> [AXUIElement] {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success,
-              let array = value as? [AXUIElement] else { return [] }
-        return array
-    }
-
-    private static func child(of element: AXUIElement, attribute: CFString) -> AXUIElement? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success, let value else { return nil }
-        guard CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return (value as! AXUIElement)
-    }
-
-    /// Accessibility reports top-left screen coordinates; the overlay wants AppKit's.
-    private static func frame(of element: AXUIElement) -> CGRect? {
-        var positionValue: CFTypeRef?
-        var sizeValue: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionValue) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success
-        else { return nil }
-
-        var point = CGPoint.zero
-        var size = CGSize.zero
-        guard let positionValue, let sizeValue,
-              CFGetTypeID(positionValue) == AXValueGetTypeID(), CFGetTypeID(sizeValue) == AXValueGetTypeID(),
-              AXValueGetValue(positionValue as! AXValue, .cgPoint, &point),
-              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
-
-        return ScreenGrabber.appKitFrame(fromCoreGraphics: CGRect(origin: point, size: size))
-    }
-
-    static func friendlyRole(_ role: String) -> String {
-        role.replacingOccurrences(of: "AX", with: "")
-            .replacingOccurrences(of: "MenuBarItem", with: "menu")
-            .replacingOccurrences(of: "MenuItem", with: "menu item")
-            .lowercased()
     }
 }

@@ -67,8 +67,20 @@ extension SessionCoordinator {
         // The Accessibility tree is the accurate way to point at a control; the gridded screenshot
         // is only the fallback for apps that expose nothing useful.
         var gridded: URL?
-        if wantsSteps, elements.isEmpty, let original = pendingCapture?.url {
-            gridded = GridAnnotator.annotate(original)
+        if wantsSteps, elements.isEmpty {
+            // No Accessibility tree to point with, so the model has to read positions off the grid
+            // — and the grid can only be trusted if it covers everything a step might point at.
+            // The default screenshot is the front window alone, which does not include the menu
+            // bar; a step aiming at File then got coordinates mapped inside the window, and the
+            // mark landed in the middle of the document. The whole display is captured instead.
+            if config.captureMode == .window,
+               let display = try? ScreenGrabber.capture(maxEdge: config.screenshotMaxEdge,
+                                                        mode: .display) {
+                let previous = pendingCapture
+                DispatchQueue.main.sync { self.pendingCapture = display }
+                if let previous { try? FileManager.default.removeItem(at: previous.url) }
+            }
+            if let original = pendingCapture?.url { gridded = GridAnnotator.annotate(original) }
         }
         defer { if let gridded { try? FileManager.default.removeItem(at: gridded) } }
 

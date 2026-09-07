@@ -20,6 +20,51 @@ enum OverlayPreview {
         let button = CGRect(x: screen.midX - 60, y: screen.midY, width: 132, height: 30)
 
         switch ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OVERLAY"] {
+        case "live":
+            // The one that can actually catch a mark landing in the wrong place: real controls,
+            // read out of whatever app is in front, drawn where Kestrel thinks they are. Every
+            // other mode uses made-up frames and so agrees with itself by construction.
+            // Optionally bring a known-good app forward first, so the probe is not at the mercy of
+            // whatever happened to be in front.
+            if let bundleID = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_APP"],
+               let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
+                NSWorkspace.shared.openApplication(at: app, configuration: configuration,
+                                                   completionHandler: nil)
+                Thread.sleep(forTimeInterval: 2.0)
+            }
+            let elements = AXElementScanner.scanFrontmostApp(menuDepth: AXElementScanner.deepMenuDepth)
+            let chosen = Array(elements.filter { $0.frame.width > 24 && $0.frame.height > 12 }.prefix(4))
+            var report = ["accessibility trusted: \(AXElementScanner.isAvailable)",
+                          "elements: \(elements.count)",
+                          "screens: " + NSScreen.screens.map { "\($0.frame)" }.joined(separator: " "),
+                          "desktop: \(OverlayModel.desktopBounds)",
+                          "frontmost: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")"]
+            report += chosen.map { "  \($0.label) role=\($0.role) frame=\($0.frame)" }
+            FileHandle.standardError.write(Data((report.joined(separator: "\n") + "\n").utf8))
+            coordinator.annotations.show(chosen.map {
+                Annotation(frame: $0.frame, caption: $0.label,
+                           shape: $0.frame.width / max($0.frame.height, 1) > 2.2 ? .rect : .circle)
+            })
+        case "calibrate":
+            // Landmarks at known global AppKit points. If the mapping is right, "bottom left" is
+            // drawn at the bottom left. Nothing here depends on Accessibility, so it isolates the
+            // screen-to-overlay conversion from everything that feeds it.
+            let inset: CGFloat = 40
+            let box = CGSize(width: 180, height: 70)
+            coordinator.annotations.show([
+                Annotation(frame: CGRect(x: screen.minX + inset, y: screen.minY + inset,
+                                         width: box.width, height: box.height),
+                           caption: "bottom left", shape: .rect),
+                Annotation(frame: CGRect(x: screen.maxX - inset - box.width,
+                                         y: screen.maxY - inset - box.height,
+                                         width: box.width, height: box.height),
+                           caption: "top right", shape: .rect),
+                Annotation(frame: CGRect(x: screen.midX - box.width / 2, y: screen.midY - box.height / 2,
+                                         width: box.width, height: box.height),
+                           caption: "centre", shape: .rect),
+            ])
         case "annotation":
             coordinator.annotations.show([
                 Annotation(frame: button, caption: "Export as PDF", shape: .rect),

@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import XCTest
 @testable import Kestrel
@@ -85,4 +86,24 @@ final class AnnotationParserTests: XCTestCase {
                                                  elements: elements)
         XCTAssertEqual(marks.count, 1)
     }
+
+    // MARK: - Where the control is now
+
+    /// A mark is only worth drawing if the control can still be found on a display. An element
+    /// scanned before the model was asked may since have scrolled away, and a mark in the wrong
+    /// place is worse than no mark.
+    func testAControlThatIsNoLongerOnScreenIsNotMarked() {
+        let offscreen = element(1, "Share", CGRect(x: -9000, y: -9000, width: 40, height: 24))
+        XCTAssertTrue(AnnotationParser.annotations(for: AnnotationParser.parse("x\nPOINT: 1"),
+                                                   elements: [offscreen]).isEmpty)
+    }
+
+    func testAControlOnADisplayIsStillMarked() {
+        guard let screen = NSScreen.screens.first else { return }
+        let onscreen = element(1, "Share", CGRect(x: screen.frame.midX, y: screen.frame.midY,
+                                                  width: 40, height: 24))
+        XCTAssertEqual(AnnotationParser.annotations(for: AnnotationParser.parse("x\nPOINT: 1"),
+                                                    elements: [onscreen]).count, 1)
+    }
+
 }

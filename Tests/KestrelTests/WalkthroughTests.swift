@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import Kestrel
 
@@ -114,6 +115,16 @@ final class WalkthroughStepSurvivalTests: XCTestCase {
         let open = [element(1, "File", CGRect(x: 40, y: 900, width: 34, height: 22)),
                     element(2, "Export as PDF…", CGRect(x: 44, y: 820, width: 160, height: 24))]
         XCTAssertEqual(WalkthroughResolver.relocate(step, in: open), open[1].frame)
+    }
+
+    /// A guessed frame that lands off every display is a guess that went wrong; the step is
+    /// described rather than drawn on empty space.
+    func testAnOffscreenGuessIsNotDrawn() {
+        XCTAssertFalse(AXElementScanner.isOnScreen(CGRect(x: -8000, y: -8000, width: 40, height: 20)))
+        XCTAssertFalse(AXElementScanner.isOnScreen(CGRect(x: 0, y: 0, width: 0, height: 0)))
+        if let screen = NSScreen.screens.first {
+            XCTAssertTrue(AXElementScanner.isOnScreen(screen.frame.insetBy(dx: 20, dy: 20)))
+        }
     }
 
     func testNamesMatchThroughCaseAndTrailingEllipsis() {
