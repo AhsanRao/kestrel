@@ -26,11 +26,12 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 - [ ] First hotkey press prompts for Microphone; denying shows the panel error with a working link
 - [ ] First question prompts for Screen Recording; after granting and relaunching, capture works
-- [ ] First dictation prompts for Accessibility; denying shows the panel error with a working link
+- [ ] Without Accessibility the `⌃⌥` hotkey cannot fire at all — the error says so and links to the pane
+- [ ] After a rebuild, both grants still hold (they do not, if `make-signing-cert.sh` was never run)
 
 ## 2. Ask
 
-- [ ] Hold `⌃⌘A`, ask "what app is this?", release → correct spoken answer
+- [ ] Hold `⌃⌥`, ask "what app is this?", release → correct spoken answer
 - [ ] The screenshot never contains the Kestrel panel
 - [ ] Question about the display the mouse is on, with two displays connected
 - [ ] Press the hotkey while the answer is being spoken → speech stops, recording restarts
@@ -88,6 +89,8 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Asking "what does this do?" about the circled control answers about that control
 - [ ] A tiny twitch of the mouse is ignored, and the question behaves as normal
 - [ ] The trail never appears in the screenshot that is sent
+- [ ] Circling text in a browser does not select it, and circling a link does not follow it
+- [ ] Circling does not open the context menu, even though the hotkey holds Control
 
 ## 5d. Voice and timing
 
@@ -105,34 +108,19 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Write `~/.kestrel/skills/default.md` and confirm the answer reflects it, with no relaunch
 - [ ] A cue plays on hotkey down, on release, on answer and on error; muting the Mac silences them
 
-## 5f. Acting (T5–T9)
+## 5f. Opening an app
 
-- [ ] "Open Slack" launches it; "how do I open Slack?" explains instead
-- [ ] An action in an app with no policy entry asks first, and Stop leaves nothing changed
-- [ ] "Send it" in Mail is confirmed even after allowing Mail
-- [ ] An action in Terminal is refused outright
-- [ ] The overlay names each step and counts them; Esc stops mid-run
-- [ ] The real cursor does not move and focus is not stolen while a run is in progress
-- [ ] `~/.kestrel/logs/actions.jsonl` has one line per action, with the decision recorded
-- [ ] A task leaves a folder in `~/.kestrel/projects/`
-
-### 5g. Keyboard actions
-
-- [ ] "save this" in TextEdit presses ⌘S rather than walking the File menu
-- [ ] "add a line saying hello" appends rather than replacing what is in the document
-- [ ] "press Return" in a chat app is confirmed first, even if that app is set to `allow`
-- [ ] Typing lands in the target app while you keep working in another — the frontmost app does not
-      change, and neither does the cursor
-- [ ] After answering a confirmation, you are put back in the app you were in
-- [ ] "right click that" opens the control's context menu
-- [ ] "page down" moves a screenful, not a nudge
-- [ ] `open -n Kestrel.app --env KESTREL_PROBE_ACTIONS=1 --stdout /tmp/probe.txt` reports the marker
-      in the file and an unchanged frontmost app
+- [ ] "Open Slack" launches it
+- [ ] "How do I open Slack?" explains instead of launching
+- [ ] "Open Spotify and play something" opens Spotify and says the rest was not done
+- [ ] "Switch to the Finder app" works — the trailing "app" is a filler, not part of the name
+- [ ] "Open Thingamajig Pro" is treated as a question, not a launch
 
 ## 6. Settings and config
 
-- [ ] `⌃⌘A` starts listening on a machine where Accessibility has never been granted
-- [ ] `⌃⌘K` starts dictation
+- [ ] Holding `⌃⌥` starts listening; a quick tap of it does not
+- [ ] `⌃⌥` on the way to another shortcut (press a key while held) does not start a question
+- [ ] `⌃⌘K` starts dictation on a machine where Accessibility has never been granted
 - [ ] `⌃⌘Space`, `⌃⌘D`, `⌃⌘F`, `⌃⌘Q` still do their macOS jobs
 - [ ] Recording a bare `⌥⌘` chord in Settings works, prompts for Accessibility, and cancels cleanly
       when a key is pressed while held

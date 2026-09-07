@@ -71,8 +71,8 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 - `KESTREL_PREVIEW_OVERLAY=walkthrough|annotation` photographs the drawing on a live screen, the
   way `KESTREL_PREVIEW_PANEL` already does for the panel. It caught a real bug on its first run.
 
-- **Kestrel can use the keyboard.** Three new action kinds and a richer `scroll`, closing the action
-  surface against HeyClicky's computer-use driver tool for tool:
+- **Kestrel can use the keyboard.** Three new action kinds and a richer `scroll`, closing out the
+  action surface:
   - `key` — one keystroke or chord, parsed from `"return"`, `"cmd+s"`, `"cmd+shift+p"`, `"option-left"`.
     Often the shortest path there is: ⌘S is one step where File ▸ Save is two.
   - `typeText` — types **alongside** what is already there, where `setValue` replaces a field
@@ -243,8 +243,6 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
   kinds, the Accessibility scan and its bounds, the act-vs-explain decision, the JSON contract with
   the model, the policy decision order, the actuator's mechanics and fallbacks, the overlay and Esc,
   the audit log format, task folders, and an explicit list of what Kestrel deliberately cannot do.
-- **`docs/VS-HEYCLICKY.md`** — feature-by-feature comparison against the installed HeyClicky build,
-  tool by tool, with the remaining gaps ranked by what they cost to close.
 - Markdown moved out of the repository root into `docs/`: `KESTREL_SPEC.md` → `docs/SPEC.md`,
   `CHANGELOG.md` → `docs/CHANGELOG.md`, joined by `docs/README.md` as an index. Only `README.md` and
   `CLAUDE.md` stay at the root, both because tooling reads them there. `build.sh` reads the version

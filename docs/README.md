@@ -1,14 +1,10 @@
 # Kestrel documentation
 
-Only `README.md` (the front page) and `CLAUDE.md` (working rules, which Claude Code reads from the
-repository root) live outside this folder. Everything else is here.
-
 | | |
 |---|---|
-| [SPEC.md](SPEC.md) | The design of record: scope, architecture, folder layout, module contracts, milestones M0–M6, acceptance criteria. Read first. |
-| [VS-HEYCLICKY.md](VS-HEYCLICKY.md) | Feature-by-feature comparison with HeyClicky: what we have, what is missing, what is deliberately not being copied, and what is worth building next. |
-| [ROADMAP.md](ROADMAP.md) | T1–T9, the work that closed the first HeyClicky gap analysis. All complete. |
-| [CHANGELOG.md](CHANGELOG.md) | Released changes, newest first. |
+| [SPEC.md](SPEC.md) | The design of record: scope, architecture, folder layout, module contracts. Read this first if you are changing anything. |
+| [CHANGELOG.md](CHANGELOG.md) | What changed, newest first — and, more usefully, why. |
 
-Manual test steps that unit tests cannot reach live beside the tests, in
-[../Tests/MANUAL.md](../Tests/MANUAL.md).
+The front page is [`../README.md`](../README.md); the working rules for anyone (or anything) writing
+code here are in [`../CLAUDE.md`](../CLAUDE.md). Manual test steps that unit tests cannot reach live
+beside the tests, in [`../Tests/MANUAL.md`](../Tests/MANUAL.md).

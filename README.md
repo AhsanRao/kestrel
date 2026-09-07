@@ -1,7 +1,7 @@
 # Kestrel
 
-**Hover. Ask. Do.** — a voice-first, screen-aware assistant for macOS that runs on *your* Claude and
-ChatGPT subscriptions.
+**Ask. Look. Point.** — a voice-first, screen-aware assistant for macOS that runs on *your* Claude
+and ChatGPT subscriptions.
 
 Hold a key, ask about what is on screen, hear the answer. Tap another key to dictate into any app.
 Speech-to-text is local. There is no Kestrel backend, no account, and no telemetry: the only things
@@ -41,8 +41,9 @@ npm i -g @openai/codex && codex login          # optional second backend
 brew install whisper-cpp
 
 # 3. Kestrel
-git clone <this repo> && cd kestrel
+git clone https://github.com/AhsanRao/kestrel.git && cd kestrel
 ./scripts/download-whisper-model.sh            # ~148 MB into ~/.kestrel/models
+./scripts/make-signing-cert.sh                 # once; see below
 ./scripts/check-deps.sh                        # everything should be ✓
 make run
 ```
@@ -60,13 +61,19 @@ Settings ticks the row without coming back to press anything. Reopen it any time
 |---|---|---|
 | Microphone | hearing the question | required |
 | Screen Recording | seeing the screen you ask about | required, **applies after a relaunch** — the window offers one |
-| Accessibility | reading the screen's contents, drawing on them, pasting dictation | strongly recommended; without it Kestrel can only see the screenshot |
+| Accessibility | the `⌃⌥` hotkey, reading the screen's contents, circling a region, pasting dictation | required for the default hotkey |
 | whisper-cli + model | local speech to text | required |
 | Claude Code CLI | answering | required |
 | Codex CLI | second backend | optional |
 
 The window lets you skip and finish later; Kestrel's error panel also links straight to the right
 Privacy pane whenever something turns out to be missing mid-use.
+
+> **Run `./scripts/make-signing-cert.sh` before granting anything.** An ad-hoc signature is a hash
+> of the binary, so without a stable certificate *every rebuild is a different app* as far as macOS
+> is concerned — it silently stops honouring Accessibility and Screen Recording while leaving the
+> checkbox ticked, which is a miserable thing to debug. The script creates a self-signed code-signing
+> certificate once; `build.sh` picks it up automatically and the grants then survive every rebuild.
 
 ## Using it
 
@@ -77,34 +84,23 @@ Privacy pane whenever something turns out to be missing mid-use.
   something without marking it, Kestrel works out what it meant and marks it anyway. Your real
   pointer is never touched. Press the hotkey again to interrupt, Esc to take the marks off.
 - **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
-- **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
-  drawn on screen, one step at a time: the ring is stroked on around the control the way you would
-  draw it, an arrow runs from the instruction to it, and clicking advances. Esc stops. Needs
-  Accessibility; without it Kestrel reads the steps out instead.
+- **Be shown:** ask *"how do I upload a file here?"* and you get a sentence plus a mark on the
+  thing it names. Nothing waits for you to click and nothing takes a second screenshot — do the
+  thing, and ask again if you want the next part. That question gets a fresh look at the new screen.
+- **Write something:** *"draft a reply to this"* gives you one spoken line and the draft in a card
+  with a **Copy** button. Drafts are never read aloud.
+- Both hotkeys are rebindable in Settings ▸ General.
 
-> Steps are planned by name as well as by position, and the control is looked up again in the
-> Accessibility tree at the moment you reach it — which is how a route survives its first click.
-> The item inside a menu does not exist until the menu is open, so it is found then rather than
-> guessed at now. If the route runs off this screen entirely, Kestrel photographs the new one and
-> asks for the rest.
+**Why these keys.** Asking is held down for as long as you are talking, so it is a bare chord —
+`⌃⌥` is one shape the hand already makes, macOS claims nothing on it, and with no letter it cannot
+collide with an app's shortcut. It fires after a short dwell so `⌃⌥` on its way to some other
+shortcut is not mistaken for a question, and any key pressed while it is held cancels it. Because
+Carbon cannot register a bare chord it is watched through an event tap, which is why the ask hotkey
+needs Accessibility.
 
-> Where the ring lands is only as good as what macOS reports, and on an app that exposes nothing
-> it falls back to the model's eye for a screenshot — which on a toolbar of near-identical buttons
-> can be a button or two out. Each step also names its control, clicks near the ring count, and
-> after two misses the overlay lets you advance with a click anywhere.
-- Both hotkeys are rebindable in Settings.
-
-`⌃⌘` is the quietest modifier pair on macOS — the system claims only `⌃⌘Space` (Emoji & Symbols),
-`⌃⌘D` (Look Up), `⌃⌘F` (Full Screen) and `⌃⌘Q` (Lock Screen), and almost no app uses it. `A` and `K`
-are free, so **nothing has to be turned off for Kestrel to work**.
-
-Both are ordinary keyed hotkeys registered through Carbon: no permission needed, press and release
-delivered exactly, and no chance of being mistaken for the start of another shortcut.
-
-Rebind either in Settings ▸ General. A modifier-only hotkey (holding `⌥⌘` on its own, say) is also
-supported there — hold two or more modifiers and release without pressing a key — but it has to be
-watched through an event tap, so it costs an Accessibility grant and briefly arms whenever you use
-any shortcut starting with those modifiers. The keyed defaults avoid both problems.
+Dictation is a tap rather than a hold, so it stays an ordinary keyed hotkey needing no permission of
+its own. `⌃⌘` is the quietest modifier pair on macOS — the system claims only `⌃⌘Space`, `⌃⌘D`,
+`⌃⌘F` and `⌃⌘Q` — and `K` is free in it, so **nothing has to be turned off for Kestrel to work**.
 
 ## Configuration
 
@@ -148,16 +144,15 @@ then point `whisperModel` at `~/.kestrel/models/ggml-small.bin` and set `languag
 ## Development
 
 ```bash
-make build     # swift build -c release + assemble Kestrel.app (ad-hoc signed)
+make build     # swift build -c release + assemble Kestrel.app
 make run       # build, then launch
 make test      # swift test
 make icon      # regenerate icons from assets/kestrel-logo.svg
 make deps      # scripts/check-deps.sh
 ```
 
-- [`docs/`](docs/) holds everything: [`SPEC.md`](docs/SPEC.md) is the design of record,
-  [`VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) is the feature comparison. `CLAUDE.md` holds the
-  working rules.
+- [`docs/SPEC.md`](docs/SPEC.md) is the design of record: architecture, folder layout, module
+  contracts. `CLAUDE.md` holds the working rules for anyone (or anything) writing code here.
 - **Seeing the real panel.** Offscreen SwiftUI renders cannot show window chrome, materials or
   shadows, which is where panel bugs actually live. To photograph the real thing:
 
@@ -211,7 +206,5 @@ Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every qu
 
 ## Status
 
-**M0**–**M6** complete: skeleton, ask, dictate + Codex, polish, pointing, spatial context, and
-agent tasks. [`docs/ROADMAP.md`](docs/ROADMAP.md) records what was closed against HeyClicky, and
-[`docs/VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) compares the two apps feature by feature.
-See [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
+Working and in daily use by its author. See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for what has
+changed and, more usefully, why.

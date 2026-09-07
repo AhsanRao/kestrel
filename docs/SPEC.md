@@ -1,15 +1,16 @@
 # Kestrel — Implementation Specification
 
-**Version:** 0.1 (handoff draft) · **Date:** 2026-09-06 · **Owner:** 0xash
+The design of record. Where this document and the code disagree, the code is right and this
+should be corrected — see `CLAUDE.md`.
 **Platform:** macOS 14+ (Apple Silicon), native Swift · **Status:** approved for build
 
 ---
 
 ## 1. One-paragraph brief
 
-Kestrel is a personal, voice-first, screen-aware assistant for macOS. Hold a hotkey, ask a question about what is on screen, and hear the answer. Toggle another hotkey to dictate into any app. Later, Kestrel draws on the screen to walk the user through unfamiliar software, and runs background agent tasks through MCP connectors. It runs entirely on the user's existing **Claude Pro/Max** and/or **ChatGPT Plus/Pro** subscriptions by delegating to the vendors' own CLIs (`claude -p`, `codex exec`), which is the sanctioned way to use those plans programmatically. Speech-to-text is local. There is no Kestrel backend, no accounts, no telemetry.
+Kestrel is a personal, voice-first, screen-aware assistant for macOS. Hold a hotkey, ask a question about what is on screen, and hear the answer. Toggle another hotkey to dictate into any app. It draws on the real screen while it talks, marking whatever the answer is about, and writes drafts you can copy. It runs entirely on the user's existing **Claude Pro/Max** and/or **ChatGPT Plus/Pro** subscriptions by delegating to the vendors' own CLIs (`claude -p`, `codex exec`), which is the sanctioned way to use those plans programmatically. Speech-to-text is local. There is no Kestrel backend, no accounts, no telemetry.
 
-Kestrel is inspired by HeyClicky but is a single-user tool: everything that exists in HeyClicky to serve thousands of users (auth, billing, routing servers, proactive tracking) is intentionally absent.
+Kestrel is a single-user tool. Everything a commercial assistant needs in order to serve thousands of people — accounts, billing, a routing backend, telemetry, proactive tracking — is intentionally absent. It runs on the machine, on the owner's own subscriptions, and there is nowhere for it to phone home to.
 
 ---
 
@@ -31,7 +32,7 @@ Kestrel is inspired by HeyClicky but is a single-user tool: everything that exis
 | Plan | Mechanism | Notes |
 |---|---|---|
 | Claude Pro / Max | `claude -p` (headless Claude Code), which is Agent SDK usage | Since 2026-06-15, Pro/Max users claim a separate monthly **Agent SDK credit**; `claude -p` bills against it, not interactive limits. Must be claimed in account settings. Ref: https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan |
-| ChatGPT Plus / Pro | `codex exec` with ChatGPT sign-in (`codex login`) | Same approach HeyClicky uses. Rate limits are set by OpenAI; verify current limits in Codex docs before relying on them. |
+| ChatGPT Plus / Pro | `codex exec` with ChatGPT sign-in (`codex login`) | Rate limits are set by OpenAI; verify current limits in the Codex docs before relying on them. |
 | Either | API key mode | Optional fallback: if the user sets an API key in config, the same CLIs accept `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` env vars. Pay-as-you-go. |
 
 **Hard rule for the build:** Kestrel is single-user. If it is ever shared with another person, it must use API keys. The code should make this obvious in comments and README.
@@ -53,9 +54,14 @@ Kestrel is inspired by HeyClicky but is a single-user tool: everything that exis
 - Drawing on screen: the answer names what it is talking about and a pencil marks it, one mark after another
 - Spatial context: user draws a circle on screen before asking; region is cropped and sent as focus
 
-### v3 (M6) — "Do it"
-- Agent tasks via MCP connectors (Gmail, Calendar, Drive, Notion, Linear) using the CLIs' native MCP support
-- Agent HUD with cancel/retry, confirmation on destructive actions
+### v3 — "Do it" — built, then removed
+Agent tasks via MCP connectors, an agent HUD, a permission policy and confirmations on destructive
+actions were all built and then deleted. Every plan went stale the moment anything on screen moved,
+every step needed a confirmation, and the confirmations became something to click through rather
+than read. What made Kestrel worth having was never that it could press Send.
+
+Opening an app survives, because it is different in kind: one verb, nothing to undo, no permission
+theatre. Anything after that is not done, and Kestrel says so rather than half-doing it.
 
 ### Explicitly out of scope
 - Realtime streaming voice, wake word, always-on listening
@@ -158,9 +164,7 @@ kestrel/
 ├── docs/
 │   ├── SPEC.md                   # this document
 │   ├── CHANGELOG.md
-│   ├── ROADMAP.md                # gap analysis against HeyClicky, T1–T9
 │   ├── INTERACTIONS.md           # the system-interaction reference
-│   └── VS-HEYCLICKY.md           # feature-by-feature comparison
 ├── Package.swift
 ├── build.sh                      # swift build → Kestrel.app, ad-hoc codesign
 ├── Makefile                      # make build / run / test / clean / icon
@@ -284,7 +288,7 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 
 ### 8.8 BackendRouter
 - v1: returns the backend named in config. Exposes `switch(to:)` and `current`.
-- v2 option (config flag `autoRoute`): a cheap heuristic picks Codex for short factual questions and Claude for screen-heavy/deep ones, mirroring HeyClicky's router. Off by default.
+- v2 option (config flag `autoRoute`): a cheap heuristic picks Codex for short factual questions and Claude for screen-heavy/deep ones. Off by default.
 
 ### 8.9 SpeechOutput
 - Speaks `Answer.text` with a configurable rate (0.3–0.7) and voice identifier. Strips markdown (code fences, bullets, headers) before speaking; the panel keeps the formatted text.
@@ -366,10 +370,6 @@ answer, marks that stay put.
   with a **Copy** button that puts subject and body on the clipboard. It is never spoken: the split
   is made as the answer streams, so speech stops at the marker rather than reading an email aloud.
 
-### 8.17 Agents (v3)
-- Reuse the CLIs' MCP support. Kestrel's job: connector setup UI (which writes `claude mcp add` / Codex config), an agent HUD with live status from the CLI's streaming JSON output, cancel/retry, and a confirmation prompt before any tool call that sends, deletes, or pays.
-- Intent detection: the ask prompt asks the model to reply with either an answer or `{"agent_task": "..."}`; the coordinator spawns a longer-running session for the latter.
-
 ---
 
 ## 9. Prompts (content, not code)
@@ -407,7 +407,7 @@ thing and mark it. Ends with the `MARK:` contract of §8.15, and the `DRAFT:` co
 | **M3** | Polish | Settings window, hotkey rebinding, voice picker, launch at login, config hot-reload, app icon, README | A fresh Mac can follow README and reach M1 without reading code |
 | **M4** | Marks | The answer marks what it names, drawn in sequence, Esc clears | "How do I upload a file here?" answers in a sentence and rings the right control |
 | **M5** | Spatial context | Drag-to-circle while holding the hotkey; crop sent with the query | Circling one of several buttons and asking "what does this do?" answers about the circled one |
-| **M6** | Agents | MCP connector setup, agent HUD, confirmations | "Add a Linear ticket for the bug on screen" creates the ticket after one confirmation |
+| **M6** | Agents | Built, then removed — see §3. Only "open an app" remains | — |
 
 Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG.md` entry.
 
@@ -436,15 +436,6 @@ Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG
 
 ---
 
-## 14. Open questions for the owner
-
-1. Default hotkeys OK (`⌃⌥Space`, `⌃⌥D`), or prefer Fn-based like HeyClicky? (Fn requires CGEventTap + Accessibility.)
-2. Should dictation cleanup default **on** (better text, +1–2 s) or **off** (instant)?
-3. Whisper model default: `base.en` (fast, English) or `small` (multilingual, ~2× slower)?
-4. Is a Settings window required for v1, or is editing `config.json` acceptable until M3?
-
----
-
 ## 15. Brand
 
 | Element | Spec |
@@ -457,33 +448,3 @@ Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG
 | Panel states | idle gray · listening amber pulse · thinking blue · answering cream · error coral `#D85A30` |
 | Typography | SF Pro (system). Panel: 13 pt body, 11 pt secondary. Never below 10 pt |
 | Voice | Concise, friendly, no filler. Answers sound like a colleague looking over your shoulder |
-
----
-
-## 16. Reference: what Kestrel borrows from HeyClicky and what it drops
-
-| HeyClicky | Kestrel |
-|---|---|
-| Notch UI | Floating panel + menu bar (notch-docking is a v3 nicety) |
-| Bundled Codex agent harness | Same idea, but the CLIs stay external and user-installed so they update independently |
-| Backend model router | Local config switch; optional heuristic router in v2 |
-| PROFILE.md + VOLATILE.md | Single `KESTREL.md` with two sections, loaded natively by both CLIs |
-| Skills library | `~/.kestrel/skills/*.md` injected by frontmost bundle id (v2) |
-| Realtime voice | Turn-based; deliberate trade-off |
-| Proactive agents / activity tracking | Never |
-| Accounts, billing, teams | None |
-
----
-
-## 17. Handoff instructions for Claude Code
-
-Place `CLAUDE.md` (provided alongside this spec) at the repo root. Start with:
-
-> "Read docs/SPEC.md fully. Implement milestone M0, then stop and show me the build output. Do not implement later milestones until I approve each one."
-
-Working agreement for the build:
-- One milestone per session; each ends with `make test` green and a commit.
-- Before writing any CLI invocation, run `claude --help` and `codex exec --help` and paste the relevant flags into the code comments.
-- Never store or read OAuth tokens; never call `api.anthropic.com` or `api.openai.com` directly unless an API key is explicitly configured.
-- Prefer small files (< 200 lines) mirroring §7; do not introduce third-party Swift packages without asking.
-- When a macOS API is uncertain, write the smallest possible spike, build it, and report before integrating.
