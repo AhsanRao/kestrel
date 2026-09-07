@@ -70,7 +70,11 @@ struct AnnotationView: View {
 
     /// Rough time for one arrow plus one loop, which is all the sequencing needs to be — a mark
     /// that finishes a little early simply leaves the cursor resting on it for a moment.
-    private static let perMark: Double = 0.95
+    ///
+    /// Not private: how long the marks stay on screen is worked out from it, and a lifetime that
+    /// does not know how long the drawing takes can take the first mark away before the last one
+    /// has been made.
+    static let perMark: Double = 0.95
 
     private func comesFromLeft(_ rect: CGRect) -> Bool { rect.minX > 190 }
 

@@ -91,8 +91,11 @@ enum AnnotationParser {
         return result
     }
 
-    /// More than a few marks is a diagram, not a gesture; the screen stops being readable.
-    static let maximumMarks = 4
+    /// The ceiling, not the target: a pointed question still gets one or two marks. Six is what a
+    /// question about the whole screen needs — "what's happening here" over an editor with a
+    /// terminal, a source control pane and a graph in it has five or six real areas, and marking
+    /// two of them while the answer names five leaves the user hunting for the rest.
+    static let maximumMarks = 6
 
     /// Turns the marker into things to draw, against the numbered list the model chose from.
     ///

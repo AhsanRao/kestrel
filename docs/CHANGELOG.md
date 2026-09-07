@@ -22,6 +22,12 @@ and it is re-read at the moment of drawing in case anything moved.
 The prompt forbids describing where something is. "In the top right" makes the user do the
 pointing; naming the thing and marking it does not.
 
+How many marks follows the question. A pointed one — "what does this button do" — gets one or
+two. "What's happening on this screen" gets one per area the answer names, up to six, because
+marking two of five areas leaves the user hunting for the rest. They stay up on a clock measured
+from the drawing rather than from the answer, since the marks are made one at a time and the last
+one of six arrives several seconds after the first.
+
 An answer is two sentences by default. If the model names something without marking it, Kestrel
 searches the answer for the visible names of things on screen and marks the best match itself —
 but only when it could actually read the screen's content, because guessing among a browser's

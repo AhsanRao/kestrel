@@ -350,7 +350,14 @@ Each module lists responsibility, interface (described, not coded), and edge cas
   visible label in quotes. Each becomes one mark, drawn in sequence with a pencil while the sentence
   is spoken: a control is ringed, a block of content is shaded and named. Frames come from the
   Accessibility tree and are re-read at the moment of drawing, so nothing is estimated.
-- Cleared by Esc, by the auto-hide timer, or by the next question.
+- How many marks depends on the question. One or two for a pointed one; up to six — the ceiling in
+  `AnnotationParser.maximumMarks` — when the question is about the whole screen, one per area the
+  answer actually names. Marking two areas while talking about five leaves the user hunting for the
+  other three, and marking everything is a diagram rather than a gesture.
+- Cleared by Esc, by the next question, or by a timer that is measured from the *drawing*, not from
+  the answer: marks are made one at a time, so six of them are still being drawn when two would
+  have been finished for four seconds (`AnnotationOverlay.lifetime`). Never shorter than the
+  panel's own clock plus four seconds.
 
 **Superseded design.** This began as *walkthroughs*: the model returned a numbered route as JSON with
 its own coordinates, an overlay drew one step at a time, and a listen-only `CGEventTap` advanced it

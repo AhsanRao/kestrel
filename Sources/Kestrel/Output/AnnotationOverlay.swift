@@ -30,6 +30,25 @@ final class AnnotationOverlay {
         window.orderFrontRegardless()
     }
 
+    /// How many marks are up, so their lifetime can be worked out from the drawing they imply.
+    var markCount: Int { model.annotations.count }
+
+    /// How long the marks should stay.
+    ///
+    /// They are drawn one at a time — the cursor travels to a control, rings it, then moves on —
+    /// so six marks are still being made at the moment two would have been finished for four
+    /// seconds. A fixed lifetime measured from the answer therefore gives the last mark of a long
+    /// answer a fraction of the time the first one got. This measures the drawing itself and
+    /// leaves a reading beat after it, never coming out shorter than the panel's own clock.
+    static func lifetime(forMarks count: Int, atLeast minimum: TimeInterval) -> TimeInterval {
+        guard count > 0 else { return minimum }
+        let drawing = Sketch.leadIn + Double(count) * AnnotationView.perMark + 1.5
+        return max(minimum, drawing + AnnotationOverlay.readingBeat)
+    }
+
+    /// Time to look at the last mark after the pencil has left it.
+    static let readingBeat: TimeInterval = 10
+
     /// Marks outlive the panel by a moment: the user is usually still looking at the control when
     /// the answer has finished being spoken.
     func hide(after seconds: TimeInterval) {

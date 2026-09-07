@@ -172,7 +172,11 @@ extension SessionCoordinator {
         guard case .answering = machine.state else { return }
         panel.hide(after: TimeInterval(config.panelAutoHideSeconds))
         // A mark outlives the panel a little: the user is usually still looking at the control.
-        annotations.hide(after: TimeInterval(config.panelAutoHideSeconds) + 4)
+        // How much longer depends on how many marks there are, because they are drawn one after
+        // another — see `AnnotationOverlay.lifetime`.
+        annotations.hide(after: AnnotationOverlay.lifetime(
+            forMarks: annotations.markCount,
+            atLeast: TimeInterval(config.panelAutoHideSeconds) + 4))
         DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(config.panelAutoHideSeconds)) { [weak self] in
             guard let self, case .answering = self.machine.state else { return }
             self.apply(.autoHideElapsed)
