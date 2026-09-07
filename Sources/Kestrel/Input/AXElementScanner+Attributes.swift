@@ -44,6 +44,27 @@ extension AXElementScanner {
         return ScreenGrabber.appKitFrame(fromCoreGraphics: CGRect(origin: point, size: size))
     }
 
+    /// Asks a Chromium app to build its web content into the Accessibility tree.
+    ///
+    /// Without this, Chrome offers its toolbar, its tab strip and its bookmarks bar and *nothing
+    /// whatsoever from the page* — measured on a real window: 72 controls, every one of them
+    /// browser furniture, and not a single character of page text. Chromium keeps the renderer's
+    /// tree switched off until an assistive client asks for it, because building it costs memory on
+    /// every tab. `AXManualAccessibility` is the documented way to ask; it is the same switch
+    /// VoiceOver throws, without pretending to be VoiceOver.
+    ///
+    /// Setting an attribute an app does not have simply fails, so this is safe to call on anything.
+    /// The tree is built asynchronously — the first read after switching it on may still be thin,
+    /// and the one after it is not.
+    static func enableWebContent(for application: AXUIElement) {
+        guard enabledApplications.insert(application).inserted else { return }
+        AXUIElementSetAttributeValue(application, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+    }
+
+    /// Apps already asked, so only the first question in a browser pays for switching it on. Only
+    /// ever touched from the serial background queue that owns every scan.
+    private nonisolated(unsafe) static var enabledApplications = Set<AXUIElement>()
+
     static func friendlyRole(_ role: String) -> String {
         role.replacingOccurrences(of: "AX", with: "")
             .replacingOccurrences(of: "MenuBarItem", with: "menu")

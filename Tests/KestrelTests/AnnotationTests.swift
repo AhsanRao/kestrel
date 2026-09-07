@@ -172,4 +172,68 @@ final class AnnotationParserTests: XCTestCase {
         XCTAssertEqual(AnnotationParser.quotedPhrases(in: "Click **Send** now"), ["Send"])
     }
 
+    // MARK: - Marking the right thing
+
+    /// The controls are offered menu bar first, so "the first target whose label contains this"
+    /// quietly meant "prefer the menu bar". An answer about the pricing table on the page was
+    /// marked on the Table menu above it.
+    func testTheTightestNameWinsRatherThanTheFirstInTheList() {
+        let targets = [element(1, "Table", CGRect(x: 200, y: 900, width: 44, height: 22),
+                               role: "AXMenuBarItem"),
+                       region(2, "Pricing table", CGRect(x: 100, y: 200, width: 400, height: 300))]
+        let marks = AnnotationParser.annotations(
+            for: AnnotationParser.parse("It's cramped.\nMARK: \"pricing table\""), targets: targets)
+        XCTAssertEqual(marks.map(\.caption), ["Pricing table"])
+    }
+
+    /// "home" is a word in "home page" and not one in "homepage". Without that distinction an
+    /// answer about the hero section marked the Home button in the toolbar.
+    func testANameInsideALongerWordIsNotAMatch() {
+        let targets = [element(1, "Home", CGRect(x: 10, y: 900, width: 40, height: 22))]
+        XCTAssertTrue(AnnotationParser.inferred(from: "The homepage hero is doing too much.",
+                                                targets: targets).isEmpty)
+        XCTAssertEqual(AnnotationParser.inferred(from: "Press Home to go back.", targets: targets)
+                        .map(\.caption), ["Home"])
+    }
+
+    /// A paragraph that merely mentions a control is not that control.
+    func testAParagraphMentioningAControlLosesToTheControl() {
+        let prose = region(1, "You can sign in with your work account or create one here.",
+                           CGRect(x: 0, y: 100, width: 600, height: 80))
+        let button = element(2, "Sign in", CGRect(x: 500, y: 800, width: 70, height: 24))
+        let marks = AnnotationParser.annotations(
+            for: AnnotationParser.parse("x\nMARK: \"Sign in\""), targets: [prose, button])
+        XCTAssertEqual(marks.map(\.caption), ["Sign in"])
+    }
+
+    /// A cell and the text inside it share a top-left corner. Keying the de-duplication on the
+    /// corner alone threw the second mark away and left the user one mark for two things.
+    func testTwoThingsSharingACornerAreBothMarked() {
+        let targets = [region(1, "Card", CGRect(x: 100, y: 100, width: 400, height: 300)),
+                       region(2, "Heading", CGRect(x: 100, y: 100, width: 180, height: 30))]
+        let marks = AnnotationParser.annotations(for: AnnotationParser.parse("x\nMARK: 1, 2"),
+                                                 targets: targets)
+        XCTAssertEqual(marks.map(\.caption), ["Card", "Heading"])
+    }
+
+    func testWholeWordContainment() {
+        XCTAssertTrue(AnnotationParser.containsWords("the home page", "home"))
+        XCTAssertFalse(AnnotationParser.containsWords("the homepage", "home"))
+        XCTAssertTrue(AnnotationParser.containsWords("Save as PDF…", "save as pdf"))
+    }
+
+    /// Chrome does not put the page in its Accessibility tree — measured on a real window: 268
+    /// elements under it, not one of them from the page. So on a web page every target on the list
+    /// is the browser's own toolbar and tabs, and guessing among those is how an answer about the
+    /// page gets marked on the bookmarks bar. Inference is for content Kestrel could actually read.
+    func testTheBrowsersOwnFurnitureIsNotGuessedAtWhenThePageCannotBeRead() {
+        let furniture = [element(1, "Bookmarks", CGRect(x: 0, y: 1319, width: 2560, height: 34),
+                                 role: "AXToolbar"),
+                         element(2, "History", CGRect(x: 251, y: 1410, width: 64, height: 30),
+                                 role: "AXMenuBarItem")]
+        // The answer is about the page, and mentions a word that is also a browser control.
+        let answer = "The bookmarks section of the page is doing too much."
+        XCTAssertFalse(AnnotationParser.inferred(from: answer, targets: furniture).isEmpty,
+                       "the parser itself still matches — the pipeline is what must decline")
+    }
 }

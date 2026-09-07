@@ -53,12 +53,23 @@ final class SketchShapeTests: XCTestCase {
         XCTAssertEqual(Sketch.duration(forSpan: 100000), 0.75, accuracy: 0.001)
     }
 
-    /// The cursor hangs down and to the right of the point it marks, like the real one, so its own
-    /// path must start at the origin of its frame.
-    func testTheCursorGlyphIsDrawnFromItsTip() {
-        let arrow = CursorArrow().path(in: CGRect(x: 0, y: 0, width: 15, height: 22))
-        XCTAssertEqual(firstPoint(of: arrow), .zero)
-        XCTAssertEqual(arrow.boundingRect.width, 15, accuracy: 1.5)
+    /// The pencil hangs down and to the right of the point it marks, so its own path has to begin
+    /// at the top of its frame: that point is where the stroke has got to.
+    func testThePencilIsDrawnFromItsPoint() {
+        let frame = CGRect(origin: .zero, size: KestrelCursor.size)
+        let path = Pencil(part: .body).path(in: frame)
+        let tip = firstPoint(of: path)
+        XCTAssertEqual(tip?.y ?? .nan, frame.minY, accuracy: 0.01)
+        // A barrel's half-width of clearance, so the side that swings left of the point still fits.
+        XCTAssertEqual(tip?.x ?? .nan, 3.83, accuracy: 0.5)
+        XCTAssertTrue(frame.contains(path.boundingRect), "the pencil has to fit inside its frame")
+    }
+
+    /// The nib is the sharpened end of the same silhouette, so it starts where the body starts.
+    func testTheNibSharesThePencilsPoint() {
+        let frame = CGRect(origin: .zero, size: KestrelCursor.size)
+        XCTAssertEqual(firstPoint(of: Pencil(part: .nib).path(in: frame)),
+                       firstPoint(of: Pencil(part: .body).path(in: frame)))
     }
 }
 
@@ -78,13 +89,17 @@ final class MarkPlanTests: XCTestCase {
                                  bounds: bounds, captionWidth: 300)
         XCTAssertFalse(roomBelow.isBelow)
         XCTAssertEqual(roomBelow.ringStart, .top)
-        XCTAssertEqual(roomBelow.arrow.to.y, roomBelow.target.minY - 13, accuracy: 0.5)
+        // Measured from the ring, not the control, and standing off further than the head is long:
+        // an arrowhead drawn inside the box it points at reads as a scribble.
+        XCTAssertEqual(roomBelow.arrow.to.y, roomBelow.ring.minY - Sketch.arrowStandoff, accuracy: 0.5)
+        XCTAssertLessThan(roomBelow.arrow.to.y, roomBelow.ring.minY, "the head must land outside the ring")
 
         let nearBottom = MarkPlan(target: CGRect(x: 600, y: 840, width: 90, height: 28),
                                   bounds: bounds, captionWidth: 300)
         XCTAssertTrue(nearBottom.isBelow)
         XCTAssertEqual(nearBottom.ringStart, .bottom)
-        XCTAssertEqual(nearBottom.arrow.to.y, nearBottom.target.maxY + 13, accuracy: 0.5)
+        XCTAssertEqual(nearBottom.arrow.to.y, nearBottom.ring.maxY + Sketch.arrowStandoff, accuracy: 0.5)
+        XCTAssertGreaterThan(nearBottom.arrow.to.y, nearBottom.ring.maxY, "the head must land outside the ring")
     }
 
     func testTheCaptionIsKeptOnScreen() {

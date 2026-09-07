@@ -46,6 +46,8 @@ enum AXContentReader {
             return Screen(regions: [], text: "", url: nil, document: nil)
         }
         let application = AXUIElementCreateApplication(pid)
+        // A browser that has not been asked returns its own toolbar and none of the page.
+        AXElementScanner.enableWebContent(for: application)
         guard let window = AXElementScanner.child(of: application,
                                                   attribute: kAXFocusedWindowAttribute as CFString)
                 ?? AXElementScanner.children(of: application,
@@ -64,18 +66,28 @@ enum AXContentReader {
                                         role: candidate.role, frame: candidate.frame,
                                         kind: .region, ref: candidate.ref))
         }
-        let screen = Screen(regions: regions,
-                            text: readingOrderText(found),
-                            url: AXElementScanner.string(window, "AXURL")
+        let place = location(url: AXElementScanner.string(window, "AXURL")
                                 ?? found.compactMap { $0.url }.first,
-                            document: AXElementScanner.string(window, kAXDocumentAttribute))
+                             document: AXElementScanner.string(window, kAXDocumentAttribute))
+        let screen = Screen(regions: regions, text: readingOrderText(found),
+                            url: place.url, document: place.document)
         log.debug("read \(regions.count) regions, \(screen.text.count) characters")
         return screen
     }
 
+    /// Splits what the window reports into the page it is showing and the document it has open.
+    ///
+    /// Chrome sets no `AXURL` on its window and puts the page address on `AXDocument` instead, so
+    /// the model was told "the open document is dashboard" — the last path component of a URL —
+    /// rather than where the user actually was. A document that is a web address is a page.
+    static func location(url: String?, document: String?) -> (url: String?, document: String?) {
+        let isPage = document?.hasPrefix("http") == true
+        return (url ?? (isPage ? document : nil), isPage ? nil : document)
+    }
+
     // MARK: - Walking
 
-    private struct Candidate {
+    struct Candidate {
         var label: String
         var role: String
         var frame: CGRect
@@ -119,9 +131,18 @@ enum AXContentReader {
     /// Reading order, not tree order: the model is looking at a picture of this, and a list that
     /// jumps around the screen is a list it will mis-read. Unlabelled containers are kept — a card
     /// with no accessible name is still a card, and "tighten this" has to be able to point at it.
-    private static func rank(_ candidates: [Candidate]) -> [Candidate] {
-        candidates
-            .filter { !$0.label.isEmpty || $0.frame.width * $0.frame.height > 12000 }
+    static func rank(_ candidates: [Candidate]) -> [Candidate] {
+        // The page itself is not a section of the page. A browser nests the web area, the body, the
+        // main and the section as four unnamed rectangles of almost exactly the same size, and
+        // offering four numbers for one block is how a mark ends up on the wrong one — or shaded
+        // over most of the screen, which reads as a bug rather than as pointing.
+        let largest = candidates.map { $0.frame.width * $0.frame.height }.max() ?? 0
+        let ordered = candidates
+            .filter { candidate in
+                let area = candidate.frame.width * candidate.frame.height
+                guard candidate.label.isEmpty else { return true }
+                return area > 12000 && area < largest * 0.8
+            }
             .sorted { first, second in
                 // Top of the screen first; AppKit measures up, so that is descending y.
                 if abs(first.frame.maxY - second.frame.maxY) > 12 {
@@ -129,8 +150,22 @@ enum AXContentReader {
                 }
                 return first.frame.minX < second.frame.minX
             }
-            .prefix(maximumRegions)
-            .map { $0 }
+
+        // What is left still repeats: a group wrapping a single card is that card. An unnamed
+        // rectangle within a few points of one already kept is the same thing seen again.
+        var kept: [Candidate] = []
+        for candidate in ordered where kept.count < maximumRegions {
+            if candidate.label.isEmpty,
+               kept.contains(where: { isEffectivelyTheSame($0.frame, candidate.frame) }) { continue }
+            kept.append(candidate)
+        }
+        return kept
+    }
+
+    /// Two rectangles a user could not tell apart, and so could not choose between.
+    static func isEffectivelyTheSame(_ first: CGRect, _ second: CGRect, tolerance: CGFloat = 8) -> Bool {
+        abs(first.minX - second.minX) <= tolerance && abs(first.minY - second.minY) <= tolerance
+            && abs(first.maxX - second.maxX) <= tolerance && abs(first.maxY - second.maxY) <= tolerance
     }
 
     /// The words on screen, in the order a person would read them.

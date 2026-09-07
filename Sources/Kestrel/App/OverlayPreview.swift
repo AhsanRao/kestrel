@@ -34,18 +34,49 @@ enum OverlayPreview {
                                                    completionHandler: nil)
                 Thread.sleep(forTimeInterval: 2.0)
             }
+            // Built exactly as the real pipeline builds it, or the probe answers a different
+            // question than the one being asked: controls first, numbered from one, then the
+            // content regions numbered on after them.
             let elements = AXElementScanner.scanFrontmostApp(menuDepth: AXElementScanner.deepMenuDepth)
-            let chosen = Array(elements.filter { $0.frame.width > 24 && $0.frame.height > 12 }.prefix(4))
+            var targets = Array(elements.prefix(SessionCoordinator.maximumPointableControls))
+                .map(\.asTarget)
+            let screen = AXContentReader.read(startingAt: targets.count + 1)
+            targets += screen.regions
+
             var report = ["accessibility trusted: \(AXElementScanner.isAvailable)",
-                          "elements: \(elements.count)",
+                          "frontmost: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")",
                           "screens: " + NSScreen.screens.map { "\($0.frame)" }.joined(separator: " "),
                           "desktop: \(OverlayModel.desktopBounds)",
-                          "frontmost: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")"]
-            report += chosen.map { "  \($0.label) role=\($0.role) frame=\($0.frame)" }
-            FileHandle.standardError.write(Data((report.joined(separator: "\n") + "\n").utf8))
-            coordinator.annotations.show(chosen.map {
-                Annotation(frame: $0.frame, caption: $0.label,
-                           shape: $0.frame.width / max($0.frame.height, 1) > 2.2 ? .rect : .circle)
+                          "page: \(screen.url ?? "—")  document: \(screen.document ?? "—")",
+                          "controls: \(elements.count)  regions: \(screen.regions.count)"
+                            + "  text: \(screen.text.count) chars",
+                          "",
+                          "--- the numbered list the model is given ---"]
+            report += targets.map { target in
+                let frame = target.frame
+                return "\(target.kind == .control ? "C" : "R") \(target.listing)"
+                    + "  frame=(\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))×\(Int(frame.height)))"
+            }
+            report += ["", "--- what the screen says ---", screen.text, ""]
+            if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier {
+                report += AXCensus.report(pid: pid)
+            }
+            let text = report.joined(separator: "\n") + "\n"
+            FileHandle.standardError.write(Data(text.utf8))
+            // Launched with `open`, so that Accessibility is granted to the bundle rather than to
+            // whatever shell started it — which means stderr goes nowhere. The report is written
+            // beside the screenshot instead.
+            if let out = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] {
+                try? text.write(to: URL(fileURLWithPath: out).appendingPathExtension("txt"),
+                                atomically: true, encoding: .utf8)
+            }
+
+            // Draw the regions, not the controls: controls were already proven, and whether a
+            // region lands on a real block of the page is the open question.
+            let drawn = Array(screen.regions.prefix(3))
+            coordinator.annotations.show(drawn.map {
+                Annotation(frame: $0.frame, caption: $0.label.isEmpty ? $0.role : $0.label,
+                           shape: $0.preferredShape, isRegion: true)
             })
         case "calibrate":
             // Landmarks at known global AppKit points. If the mapping is right, "bottom left" is

@@ -94,6 +94,51 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Fixed
 
+- **Every build silently revoked Accessibility and Screen Recording.** An ad-hoc signature is a
+  hash of the binary, so every rebuild was a different identity as far as macOS was concerned, and
+  TCC quietly stopped honouring a grant whose checkbox was still ticked — which is why the content
+  reader had never once been run against a real app. `scripts/make-signing-cert.sh` creates a stable
+  self-signed certificate and `build.sh` uses it when present, so the Designated Requirement no
+  longer changes when the code does. This is what `build.sh` always claimed to do in its own header
+  comment.
+- **Chrome was offering its toolbar and calling it the page.** Measured on a real window: 268
+  elements under it, 72 offered as controls and 8 as content — the menu bar, the tab strip, the
+  bookmarks bar — and not one `AXWebArea`, `AXStaticText` or `AXLink` among them. Chromium does not
+  build its renderer's Accessibility tree unless asked, and this build refuses both switches
+  (`AXManualAccessibility` → `attributeUnsupported`, `AXEnhancedUserInterface` → `notImplemented`).
+  So on any web page the whole numbered list was browser furniture, and the "always point at
+  something" fallback would search the answer for those labels and mark whichever matched — an
+  answer about the page landing on the bookmarks bar. Kestrel no longer guesses when it could not
+  read the screen's content; it says what it means in words instead.
+- **The page address was filed as a document.** Chrome sets no `AXURL` on its window and puts the
+  address on `AXDocument`, so the model was told "the open document is dashboard" — the last path
+  component of a URL — rather than where the user actually was.
+
+- **Marks landed on the wrong thing.** Three faults, all in *choosing* the target rather than in
+  drawing it — the screen-to-overlay mapping was correct all along:
+  - A name was matched against the *first* target in list order whose label contained it. The list
+    is offered menu bar first, so that quietly meant "prefer the menu bar": an answer about the
+    pricing table on the page was marked on the Table menu above it. Matching is now scored, and the
+    tightest label — the one with the least text around the name — wins wherever it sits in the list.
+  - Matching was on raw substrings, so "home" matched "homepage" and an answer about the hero section
+    marked the Home button. Names now have to appear as whole words.
+  - The whole page was offered as a section of itself. A browser nests the web area, the body, the
+    main and the section as four unnamed rectangles of almost the same size; each was a number the
+    model could pick, and shading any of them covered most of the screen. Unnamed containers at or
+    near the size of the largest one are dropped, and unnamed near-duplicates collapse to one.
+- **Two things named in one answer could produce one mark.** Marks were de-duplicated on their
+  top-left corner alone, and a cell and the text inside it share a corner all over an Accessibility
+  tree. The whole rectangle is the key now.
+- **"Switch to the Finder app" opened nothing.** The word "app" was stripped as a prefix and never as
+  a suffix, so the commonest spoken phrasing resolved to an app named "finder app", which is not
+  installed. It is a filler wherever it sits.
+- **The test target had not compiled since the last commit.** `Actuator`, `CursorArrow`,
+  `Config.mcpForTasks` and `QueryMode.agent` were deleted with the acting code, but four tests still
+  named them, so `swift test` failed to build and every one of the 292 tests was silently unrun. Two
+  further tests asserted behaviour that had been deliberately reversed — a step that cannot be placed
+  is kept and left undrawn rather than dropped, and the arrow stands off the ring rather than the
+  control. All 302 now run and pass.
+
 - **The arrowhead was drawn inside the box it pointed at.** The ring is inset ten points beyond the
   control, but the arrow stopped three points short of the *control*, which put its head well inside
   the ring. Arrows now stand off the drawn edge by more than the head is long.

@@ -119,7 +119,8 @@ extension SessionCoordinator {
                     // "I'm working on the billing rewrite" is worth keeping; the rest of what was
                     // on screen is not. Written off the main thread — it touches disk.
                     self.work.async { MemoryWriter.note(question: text) }
-                    self.showAnnotations(pointed, targets: targets)
+                    self.showAnnotations(pointed, targets: targets,
+                                         readContent: !(screen?.text.isEmpty ?? true))
                     self.present(spoken, alreadySpoken: self.streamedSpeech)
                 }
             }

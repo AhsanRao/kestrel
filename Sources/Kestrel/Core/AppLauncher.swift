@@ -26,6 +26,11 @@ enum AppLauncher {
             name = String(name.dropFirst(filler.count))
         }
         name = name.trimmingCharacters(in: CharacterSet(charactersIn: " .,!?\"'"))
+        // "switch to the Finder app" names Finder. The word is a filler wherever it sits, and
+        // stripping it only from the front left the commonest spoken phrasing unrecognised.
+        for filler in [" app", " application"] where name.hasSuffix(filler) {
+            name = String(name.dropLast(filler.count)).trimmingCharacters(in: .whitespaces)
+        }
         // "open spotify and play something" is still an app to open; the rest is not Kestrel's job
         // any more, and saying so is better than half-doing it.
         for tail in [" and ", " then ", " to ", " for "] {

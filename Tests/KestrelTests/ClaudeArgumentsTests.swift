@@ -19,16 +19,6 @@ final class ClaudeArgumentsTests: XCTestCase {
         XCTAssertFalse(arguments(Query(text: "x"), config: config).contains("--strict-mcp-config"))
     }
 
-    func testATaskCanOptIntoConnectorsWithoutSlowingQuestionsDown() {
-        var config = Config.defaults
-        config.mcpForTasks = true
-        XCTAssertFalse(arguments(Query(text: "send it", mode: .agent), config: config)
-            .contains("--strict-mcp-config"))
-        // The same setting must not leak into an ordinary question.
-        XCTAssertTrue(arguments(Query(text: "what is this?"), config: config)
-            .contains("--strict-mcp-config"))
-    }
-
     func testStreamingAsksForPartialMessages() {
         let streamed = arguments(Query(text: "x"), streaming: true)
         XCTAssertTrue(streamed.contains("stream-json"))

@@ -14,12 +14,18 @@ extension SessionCoordinator {
     ///
     /// The marks are dismissed on the same clock as the panel, and by Esc, so nothing Kestrel drew
     /// is ever left on the screen after the user has stopped listening.
-    func showAnnotations(_ pointed: AnnotationParser.Result, targets: [ScreenTarget]) {
+    func showAnnotations(_ pointed: AnnotationParser.Result, targets: [ScreenTarget],
+                         readContent: Bool = true) {
         guard config.answerAnnotations else { return annotations.hide() }
         // An answer that named nothing still gets a mark if Kestrel can work out what it meant:
         // saying "tighten the card spacing" and highlighting nothing leaves the user hunting.
         var marks = AnnotationParser.annotations(for: pointed, targets: targets)
-        if marks.isEmpty, !pointed.declaredNothing {
+        // Unless there was no content to read. Chrome does not put the page in its Accessibility
+        // tree — measured: 268 elements under the window, not one of them from the page — so on a
+        // web page the whole list is the browser's own toolbar and tabs. Guessing among those is
+        // how an answer about the page ends up marked on the bookmarks bar. Better to say it in
+        // words than to point confidently at the wrong thing.
+        if marks.isEmpty, !pointed.declaredNothing, readContent {
             marks = AnnotationParser.inferred(from: pointed.spoken, targets: targets)
         }
         guard !marks.isEmpty else { return annotations.hide() }

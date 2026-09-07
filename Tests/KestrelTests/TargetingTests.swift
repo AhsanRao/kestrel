@@ -36,12 +36,17 @@ final class WalkthroughResolverTests: XCTestCase {
         XCTAssertFalse(resolved[0].isExact)
     }
 
-    func testAStepPointingAtNothingUsableIsDropped() {
+    /// A step nothing can place is kept and left undrawn, not thrown away: half a route is worse
+    /// than a route with one unmarked stop, and the instruction still names the control.
+    func testAStepPointingAtNothingUsableIsKeptButNotDrawn() {
         let walkthrough = Walkthrough(goal: "Export", steps: [
             WalkthroughStep(n: 1, instruction: "Click something", element: 99),
             WalkthroughStep(n: 2, instruction: "Click elsewhere", target: .init(x: 5000, y: 5000, w: 10, h: 10)),
         ], image: .init(w: 1000, h: 1000))
-        XCTAssertTrue(WalkthroughResolver.resolve(walkthrough, elements: elements, capture: capture).isEmpty)
+        let resolved = WalkthroughResolver.resolve(walkthrough, elements: elements, capture: capture)
+        XCTAssertEqual(resolved.count, 2)
+        XCTAssertTrue(resolved.allSatisfy { $0.frame == nil })
+        XCTAssertEqual(resolved.map(\.step.instruction), ["Click something", "Click elsewhere"])
     }
 
     func testWithNoAccessibilityListEverythingFallsBackToCoordinates() {

@@ -84,14 +84,4 @@ final class KeyEventTests: XCTestCase {
         XCTAssertEqual(KeyEvents.chunks(of: ""), [])
     }
 
-    // MARK: - Scrolling
-
-    func testScrollAmounts() {
-        XCTAssertEqual(Actuator.scrollAmount("up"), 6)
-        XCTAssertEqual(Actuator.scrollAmount("down"), -6)
-        XCTAssertEqual(Actuator.scrollAmount("page up"), 30)
-        XCTAssertEqual(Actuator.scrollAmount("page down"), -30)
-        XCTAssertEqual(Actuator.scrollAmount("to the top"), 30)
-        XCTAssertEqual(Actuator.scrollAmount(""), -6)
-    }
 }

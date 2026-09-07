@@ -112,7 +112,10 @@ enum AnnotationParser {
             // wrong place is worse than no mark.
             guard let frame = target.currentFrame
                     ?? (AXElementScanner.isOnScreen(target.frame) ? target.frame : nil) else { return }
-            let key = "\(Int(frame.minX)),\(Int(frame.minY))"
+            // The whole rect, not just its corner: a cell and the text inside it share a top-left
+            // corner all over an Accessibility tree, and keying on the corner threw the second mark
+            // away — leaving one mark where the answer had named two things.
+            let key = "\(Int(frame.minX)),\(Int(frame.minY)),\(Int(frame.width)),\(Int(frame.height))"
             guard seen.insert(key).inserted else { return }
             found.append(Annotation(frame: frame, caption: Annotation.shorten(target.label),
                                     shape: target.preferredShape, isRegion: target.kind == .region))
@@ -141,7 +144,7 @@ enum AnnotationParser {
         }
         if candidates.isEmpty {
             let mentioned = targets
-                .filter { $0.label.count >= 4 && lowered.contains($0.label.lowercased()) }
+                .filter { $0.label.count >= 4 && AnnotationParser.containsWords(lowered, $0.label) }
                 .sorted { $0.label.count > $1.label.count }
             if let best = mentioned.first { candidates.append(best) }
         }
@@ -165,16 +168,5 @@ enum AnnotationParser {
             }
         }
         return phrases
-    }
-
-    /// A target whose visible name is the one written here.
-    static func match(_ label: String, in targets: [ScreenTarget]) -> ScreenTarget? {
-        let wanted = label.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard wanted.count >= 2 else { return nil }
-        if let exact = targets.first(where: { $0.label.lowercased() == wanted }) { return exact }
-        return targets.first {
-            let candidate = $0.label.lowercased()
-            return candidate.count >= 3 && (candidate.contains(wanted) || wanted.contains(candidate))
-        }
     }
 }

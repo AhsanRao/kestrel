@@ -79,6 +79,7 @@ enum AXElementScanner {
     static func scan(pid: pid_t, menuDepth: Int = menuDepth, limit: Int = maximumElements) -> [Element] {
         guard isAvailable else { return [] }
         let application = AXUIElementCreateApplication(pid)
+        enableWebContent(for: application)
         var found: [Element] = []
         var seen = Set<String>()
 

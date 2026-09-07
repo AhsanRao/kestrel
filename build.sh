@@ -32,8 +32,21 @@ fi
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp assets/MenuBarIcon.png "$APP/Contents/Resources/MenuBarIcon.png"
 
-echo "==> ad-hoc codesign"
-codesign --force --deep --sign - --identifier dev.0xash.kestrel "$APP"
+# Ad-hoc signing (`--sign -`) derives the signature from a hash of the binary, so *every* rebuild
+# produces a new identity and macOS silently drops Accessibility and Screen Recording — the grant
+# stays ticked in System Settings and stops working, which is a miserable thing to debug. A stable
+# self-signed certificate fixes it: the Designated Requirement is then the certificate, which does
+# not change when the code does. `scripts/make-signing-cert.sh` creates one; without it this falls
+# back to ad-hoc, and the permissions have to be re-granted after each build.
+IDENTITY="${KESTREL_SIGN_IDENTITY:-Kestrel Dev}"
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+  echo "==> codesign as \"$IDENTITY\" (grants survive rebuilds)"
+  codesign --force --deep --sign "$IDENTITY" --identifier dev.0xash.kestrel "$APP"
+else
+  echo "==> ad-hoc codesign — permissions will need re-granting after this build"
+  echo "    run scripts/make-signing-cert.sh once to stop that happening"
+  codesign --force --deep --sign - --identifier dev.0xash.kestrel "$APP"
+fi
 codesign --verify --verbose=1 "$APP" 2>&1 | sed 's/^/    /'
 
 echo "==> built $APP"
