@@ -19,6 +19,10 @@ extension SessionCoordinator {
                     self.discardCapture()
                     self.apply(.transcriptionEmpty)
                     self.render()
+                    // Nothing was heard, so there is nothing to read: the line is a nudge to say it
+                    // again, not a message to study. Three seconds, the same as a finished
+                    // dictation — an error worth reading gets the longer eight.
+                    self.dismiss(after: 3)
                 }
                 return
             }

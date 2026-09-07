@@ -137,6 +137,9 @@ because a card is not a button. Only what is visible is read.
 
 - The panel is an island docked to the notch, opening only when there is something to read. Black,
   and a shade taller than the camera housing, so the housing has no edge left showing.
+- The panel takes itself down and clears the session with it: twenty seconds after an answer,
+  eight after an error, three after "Didn't catch that" — nothing was heard, so there is nothing
+  to read. Hovering pauses the clock.
 - Sound cues on hotkey down, release, answer and error, following system mute.
 - A setup window listing every permission and tool, what each is for, and a button that asks for
   it. It re-checks itself while open, so a switch flipped in System Settings ticks the row without

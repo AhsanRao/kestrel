@@ -136,7 +136,28 @@ extension SessionCoordinator {
         apply(.failed(message))
         render()
         panel.show()
-        panel.hide(after: 8)
+        dismiss(after: 8)
+    }
+
+    /// Takes a line down again once it has been read, and puts the session back to idle with it.
+    ///
+    /// Hiding the window is not enough on its own. The machine stays in `.error` with the failed
+    /// message in it, so the next press starts out of an error state carrying a stale transcript;
+    /// worse, an error that arrives on a path which never calls this at all — an empty transcript
+    /// used to be one — leaves the island open on screen with nothing to dismiss it.
+    func dismiss(after seconds: TimeInterval) {
+        panel.hide(after: seconds)
+        // A beat behind the window, which fades over 0.2s: clearing the text on the same tick
+        // empties the island while the user can still see it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds + 0.3) { [weak self] in
+            // Only if nothing has happened since: a question asked inside the window is now the
+            // live session, and clearing it would take the user's own answer off the screen.
+            guard let self, case .error = self.machine.state else { return }
+            // Hovering means it is being read, and the panel pauses its own timer for exactly
+            // that. The state has to wait with it, or the message goes blank under the pointer.
+            guard !self.panel.model.isHovering else { return self.dismiss(after: 3) }
+            self.apply(.autoHideElapsed)
+        }
     }
 
     func reset() {

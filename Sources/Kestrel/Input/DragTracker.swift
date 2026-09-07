@@ -40,7 +40,7 @@ final class DragTracker {
     func begin() {
         end()
         points = []
-        guard !startTap() else { return }
+        guard !startTap() else { return log.debug("circling armed — events swallowed") }
         log.info("no accessibility permission — circling will click through")
         startPassiveMonitors()
     }
@@ -56,6 +56,7 @@ final class DragTracker {
         monitors.forEach { NSEvent.removeMonitor($0) }
         monitors.removeAll()
         let rect = DragTracker.boundingBox(of: points)
+        log.debug("circled \(self.points.count) point(s) → \(String(describing: rect))")
         points = []
         return rect
     }
@@ -96,6 +97,7 @@ final class DragTracker {
     /// what the overlay and the crop both want, so nothing has to be flipped here.
     fileprivate func record(_ isPress: Bool) {
         if isPress { points = [NSEvent.mouseLocation] } else { points.append(NSEvent.mouseLocation) }
+        if points.count == 1 { log.debug("circling from \(String(describing: self.points.first))") }
         let snapshot = points
         DispatchQueue.main.async { self.onChange?(snapshot) }
     }

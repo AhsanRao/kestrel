@@ -309,7 +309,9 @@ Each module lists responsibility, interface (described, not coded), and edge cas
   seam around the notch. It opens downward only when there is something to read.
 - Shows: state dot + label, backend badge, transcript (secondary), answer, draft card, hotkey hint.
   Everything is laid out at its full height; nothing scrolls, per §8.17.
-- Auto-hide timers: 20 s after answer, 3 s after dictation, 8 s after error. Hover pauses the timer.
+- Auto-hide timers: 20 s after answer, 3 s after dictation, 8 s after error, 3 s after "Didn't
+  catch that" — nothing was heard, so there is nothing to read. Hover pauses the timer, and the
+  session state is cleared on the same clock as the window, not left in `.error` behind it.
 - Must be excluded from screenshots (see 8.3).
 
 ### 8.12 StatusMenu
