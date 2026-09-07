@@ -23,11 +23,14 @@ enum AXElementScanner {
     /// Bounds on the walk: some apps have enormous trees and Kestrel is on the user's clock.
     static let maximumDepth = 14
     static let maximumElements = 220
+    /// Acting needs more of the app than describing it does: driving Spotify means reaching
+    /// Playback ▸ Next, which is a menu item, not a button on the window.
+    static let maximumElementsWhenActing = 420
     /// How far into the menu bar the planning scan walks: menus and their titles, not their items.
     /// Every item of every menu would crowd out the window's own controls at `maximumElements`.
     static let menuDepth = maximumDepth - 11
-    /// One level further, for finding an item inside a menu the user has just opened. Used by the
-    /// live re-targeting scan, where the open menu is exactly what is being looked for.
+    /// Two levels further: the items inside each menu, not just the menu titles. Used by the live
+    /// re-targeting scan and by anything that has to actually drive the app.
     static let deepMenuDepth = maximumDepth - 9
 
     struct Element: Equatable {
@@ -62,20 +65,33 @@ enum AXElementScanner {
     static var isAvailable: Bool { AXIsProcessTrusted() }
 
     /// The clickable controls of the frontmost app, numbered from 1.
-    static func scanFrontmostApp(menuDepth: Int = menuDepth) -> [Element] {
-        guard isAvailable,
-              let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return [] }
+    ///
+    /// - Parameters:
+    ///   - menuDepth: how far into the menu bar to walk. The default reaches the menu titles;
+    ///     `deepMenuDepth` reaches the items inside them.
+    ///   - limit: total elements to return.
+    static func scanFrontmostApp(menuDepth: Int = menuDepth,
+                                 limit: Int = maximumElements) -> [Element] {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return [] }
+        return scan(pid: pid, menuDepth: menuDepth, limit: limit)
+    }
 
+    static func scan(pid: pid_t, menuDepth: Int = menuDepth, limit: Int = maximumElements) -> [Element] {
+        guard isAvailable else { return [] }
         let application = AXUIElementCreateApplication(pid)
         var found: [Element] = []
         var seen = Set<String>()
 
-        // The menu bar first: "how do I…" answers so often start with a menu.
+        // The menu bar first — "how do I…" answers so often start with a menu — but on its own
+        // budget. A deep walk of every menu in an app like Spotify runs to hundreds of items, and
+        // without a separate allowance those would use up the whole scan before a single control
+        // in the window itself was seen.
         if let menuBar = child(of: application, attribute: kAXMenuBarAttribute as CFString) {
-            walk(menuBar, depth: menuDepth, into: &found, seen: &seen)
+            walk(menuBar, depth: menuDepth, into: &found, seen: &seen,
+                 limit: min(limit, menuBudget(for: limit)))
         }
         for window in children(of: application, attribute: kAXWindowsAttribute as CFString) {
-            walk(window, depth: maximumDepth, into: &found, seen: &seen)
+            walk(window, depth: maximumDepth, into: &found, seen: &seen, limit: limit)
         }
 
         for index in found.indices { found[index].id = index + 1 }
@@ -83,18 +99,21 @@ enum AXElementScanner {
         return found
     }
 
+    /// Menus may take at most half the scan.
+    static func menuBudget(for limit: Int) -> Int { max(limit / 2, 40) }
+
     // MARK: - Walking
 
     private static func walk(_ element: AXUIElement, depth: Int,
-                             into found: inout [Element], seen: inout Set<String>) {
-        guard depth > 0, found.count < maximumElements else { return }
+                             into found: inout [Element], seen: inout Set<String>, limit: Int) {
+        guard depth > 0, found.count < limit else { return }
 
         if let candidate = describe(element), !candidate.label.isEmpty {
             let key = "\(candidate.role)|\(candidate.label)|\(Int(candidate.frame.minX)),\(Int(candidate.frame.minY))"
             if seen.insert(key).inserted { found.append(candidate) }
         }
         for child in children(of: element, attribute: kAXChildrenAttribute as CFString) {
-            walk(child, depth: depth - 1, into: &found, seen: &seen)
+            walk(child, depth: depth - 1, into: &found, seen: &seen, limit: limit)
         }
     }
 

@@ -9,14 +9,47 @@ import SwiftUI
 enum Sketch {
     /// How long a mark of a given path length should take, so a small circle is not sluggish and a
     /// long arrow is not a flicker.
+    /// A beat before the first stroke, so the cursor is seen arriving rather than already there.
+    static let leadIn: Double = 0.12
+
     static func duration(forSpan span: CGFloat) -> Double {
         min(0.75, max(0.32, Double(span) / 1400))
     }
 }
 
-/// A circle drawn the way a hand draws one: slightly out of round, started at the top, and carried
-/// a little past where it began.
+/// Which side of the mark the stroke begins on.
+///
+/// It matters because the cursor draws the arrow first and the loop second: if the loop began
+/// somewhere other than where the arrow's tip landed, the cursor would teleport across the control
+/// between the two, and the whole point is that one hand is making one gesture.
+enum SketchStart {
+    case top, trailing, bottom, leading
+
+    /// Where on a circle this side is, in the degrees `SketchEllipse` measures in.
+    var degrees: Double {
+        switch self {
+        case .top: return -95
+        case .trailing: return -5
+        case .bottom: return 85
+        case .leading: return 175
+        }
+    }
+
+    /// How far around a rounded rectangle's clockwise path this side sits.
+    var rectRotation: Int {
+        switch self {
+        case .top: return 0
+        case .trailing: return 3
+        case .bottom: return 6
+        case .leading: return 9
+        }
+    }
+}
+
+/// A circle drawn the way a hand draws one: slightly out of round, and carried a little past where
+/// it began.
 struct SketchEllipse: Shape {
+    var start: SketchStart = .top
     /// Extra sweep past 360°, so the stroke visibly closes over its own start.
     var overshoot: Double = 26
     var wobble: CGFloat = 0.018
@@ -28,7 +61,7 @@ struct SketchEllipse: Shape {
         let total = 360 + overshoot
         let steps = 96
         for step in 0...steps {
-            let degrees = -95 + total * Double(step) / Double(steps)
+            let degrees = start.degrees + total * Double(step) / Double(steps)
             let radians = degrees * .pi / 180
             // A slow three-lobed swell is enough to look drawn rather than plotted.
             let swell = 1 + wobble * sin(3 * radians + 0.7)
@@ -40,30 +73,68 @@ struct SketchEllipse: Shape {
     }
 }
 
-/// A rounded rectangle drawn as one stroke from the top edge, closing past its own start.
+/// A rounded rectangle drawn as one continuous stroke, from whichever side the cursor arrives on,
+/// closing a little past where it began.
 struct SketchRect: Shape {
     var cornerRadius: CGFloat = 10
+    var start: SketchStart = .top
     /// How far past the start point the stroke carries, as a fraction of the top edge.
     var overshoot: CGFloat = 0.12
 
     func path(in rect: CGRect) -> Path {
         let radius = min(cornerRadius, min(rect.width, rect.height) / 2)
+        // One clockwise lap as twelve moves, so it can be started from any of the four side
+        // midpoints by rotating the list rather than by writing the path out four times.
+        enum Move {
+            case line(CGPoint)
+            case corner(to: CGPoint, control: CGPoint)
+
+            var end: CGPoint {
+                switch self {
+                case .line(let point): return point
+                case .corner(let point, _): return point
+                }
+            }
+        }
+        let moves: [Move] = [
+            .line(CGPoint(x: rect.maxX - radius, y: rect.minY)),
+            .corner(to: CGPoint(x: rect.maxX, y: rect.minY + radius),
+                    control: CGPoint(x: rect.maxX, y: rect.minY)),
+            .line(CGPoint(x: rect.maxX, y: rect.midY)),
+            .line(CGPoint(x: rect.maxX, y: rect.maxY - radius)),
+            .corner(to: CGPoint(x: rect.maxX - radius, y: rect.maxY),
+                    control: CGPoint(x: rect.maxX, y: rect.maxY)),
+            .line(CGPoint(x: rect.midX, y: rect.maxY)),
+            .line(CGPoint(x: rect.minX + radius, y: rect.maxY)),
+            .corner(to: CGPoint(x: rect.minX, y: rect.maxY - radius),
+                    control: CGPoint(x: rect.minX, y: rect.maxY)),
+            .line(CGPoint(x: rect.minX, y: rect.midY)),
+            .line(CGPoint(x: rect.minX, y: rect.minY + radius)),
+            .corner(to: CGPoint(x: rect.minX + radius, y: rect.minY),
+                    control: CGPoint(x: rect.minX, y: rect.minY)),
+            .line(CGPoint(x: rect.midX, y: rect.minY)),
+        ]
+
+        let rotation = start.rectRotation
+        let ordered = Array(moves[rotation...] + moves[..<rotation])
         var path = Path()
-        let start = CGPoint(x: rect.midX, y: rect.minY)
-        path.move(to: start)
-        path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
-        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + radius),
-                          control: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - radius))
-        path.addQuadCurve(to: CGPoint(x: rect.maxX - radius, y: rect.maxY),
-                          control: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
-        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - radius),
-                          control: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
-        path.addQuadCurve(to: CGPoint(x: rect.minX + radius, y: rect.minY),
-                          control: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLine(to: CGPoint(x: start.x + rect.width * overshoot, y: rect.minY))
+        path.move(to: moves[(rotation + moves.count - 1) % moves.count].end)
+        for move in ordered {
+            switch move {
+            case .line(let point): path.addLine(to: point)
+            case .corner(let point, let control): path.addQuadCurve(to: point, control: control)
+            }
+        }
+        // A little past the start, along the edge it began on.
+        if let last = path.currentPoint {
+            let overrun = rect.width * overshoot
+            switch start {
+            case .top: path.addLine(to: CGPoint(x: min(last.x + overrun, rect.maxX - 1), y: last.y))
+            case .bottom: path.addLine(to: CGPoint(x: max(last.x - overrun, rect.minX + 1), y: last.y))
+            case .trailing: path.addLine(to: CGPoint(x: last.x, y: min(last.y + overrun, rect.maxY - 1)))
+            case .leading: path.addLine(to: CGPoint(x: last.x, y: max(last.y - overrun, rect.minY + 1)))
+            }
+        }
         return path
     }
 }
@@ -100,31 +171,4 @@ struct SketchArrow: Shape {
     }
 
     var span: CGFloat { hypot(to.x - from.x, to.y - from.y) }
-}
-
-/// Strokes a shape on as though it were being drawn, once, when it appears.
-///
-/// Give it an `.id()` that changes per step: the draw-on is an `onAppear` animation, so a new
-/// identity is what makes the next mark draw itself rather than snap into place.
-struct DrawsOn<S: Shape>: View {
-    let shape: S
-    var color: Color = KestrelPalette.cyan
-    var lineWidth: CGFloat = 3.5
-    var duration: Double = 0.5
-    var delay: Double = 0
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var progress: CGFloat = 0
-
-    var body: some View {
-        shape
-            .trim(from: 0, to: progress)
-            .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
-            .shadow(color: color.opacity(0.55), radius: 9)
-            .onAppear {
-                // Reduce Motion still gets the mark, it just does not watch it being made.
-                guard !reduceMotion else { progress = 1; return }
-                withAnimation(.easeOut(duration: duration).delay(delay)) { progress = 1 }
-            }
-    }
 }

@@ -1,14 +1,27 @@
 import AppKit
 import SwiftUI
 
-/// Non-activating floating panel, top-center of the display under the mouse (spec §8.11).
+/// The window the island lives in: non-activating, borderless, and hung from the top edge of the
+/// display under the mouse (spec §8.11, amended — it was top-*centre* and floating).
+///
+/// The window follows the island rather than the island fitting the window. AppKit measures a
+/// window from its bottom-left corner, so letting it resize itself around growing content pushed
+/// the top edge up past the screen and the island off the display; here every size change is
+/// applied as an explicit frame whose top edge is pinned to the screen, and animated, which is
+/// also what makes opening look like one object growing rather than two.
 /// `sharingType = .none` keeps it out of every screenshot, including Kestrel's own.
 final class PanelWindow: NSObject, NSWindowDelegate {
     let model = PanelModel()
 
-    private var panel: NSPanel?
+    /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
+    var panel: NSPanel?
     private var hideTimer: DispatchWorkItem?
-    private var levelTimer: Timer?
+    /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
+    var levelTimer: Timer?
+    /// The island's own size, as SwiftUI last measured it.
+    private var islandSize: CGSize = .zero
+    /// True until the first frame has been placed, so the opening is not animated from nothing.
+    var isPlacing = true
 
     var onOpenPermission: ((URL) -> Void)?
 
@@ -16,39 +29,11 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         let panel = ensurePanel()
         cancelHideTimer()
         let wasVisible = panel.isVisible
+        if !wasVisible { isPlacing = true }
         position(panel)
         panel.orderFrontRegardless()
         if !wasVisible { animateIn(panel) }
         startLevelAnimation()
-    }
-
-    /// Arrives by dropping out of the top edge of the screen, so it reads as the notch opening
-    /// rather than as a window appearing somewhere near it.
-    private func animateIn(_ panel: NSPanel) {
-        let settled = panel.frame
-        panel.setFrameOrigin(NSPoint(x: settled.origin.x, y: settled.origin.y + settled.height))
-        panel.alphaValue = 0
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.22
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().alphaValue = 1
-            panel.animator().setFrame(settled, display: true)
-        }
-    }
-
-    /// Fades out when it is leaving of its own accord, rather than blinking off.
-    private func fadeOut() {
-        guard let panel, panel.isVisible else { return }
-        stopLevelAnimation()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        } completionHandler: { [weak self] in
-            guard let self, let panel = self.panel, panel.alphaValue < 0.05 else { return }
-            panel.orderOut(nil)
-            panel.alphaValue = 1
-        }
     }
 
     /// Ordered out synchronously so the screenshot taken right after cannot contain the panel.
@@ -102,7 +87,10 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         })
         // The panel grows as an answer arrives; letting AppKit follow SwiftUI's layout each frame
         // makes that a resize rather than a jump.
-        hosting.sizingOptions = [.preferredContentSize]
+        // Off deliberately: the window is placed by `apply(size:)`, pinned to the top of the
+        // screen. Letting AppKit size it from the content as well means two owners of one frame,
+        // and the one that measures from the bottom-left wins by moving the island off screen.
+        hosting.sizingOptions = []
         // Borderless, not a titled window with its titlebar hidden. A titled NSPanel still installs
         // a titlebar view above the content: with a clear window background and a rounded card
         // inside, that showed as a broken strip across the top edge. `.fullSizeContentView` only
@@ -115,6 +103,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
                                   backing: .buffered, defer: false)
         panel.contentViewController = hosting
         panel.setContentSize(hosting.view.fittingSize)
+        model.onSizeChange = { [weak self] size in self?.apply(size: size) }
         // Hung off the top edge of the display, not floated near it: dragging it away would break
         // the one thing that makes it read as part of the machine.
         panel.isMovableByWindowBackground = false
@@ -122,7 +111,9 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         panel.backgroundColor = .clear
         // AppKit derives the shadow from the alpha of what is drawn, so the rounded card casts a
         // correct one outside the window. A SwiftUI shadow would be clipped by the window bounds.
-        panel.hasShadow = true
+        // The island draws its own shadow: a window shadow would be cast by the window's rectangle,
+        // and the whole point of the shape is that its corners are not the window's corners.
+        panel.hasShadow = false
         // Above the menu bar, or the panel would slide *under* the strip it is supposed to grow out
         // of. `.nonactivatingPanel` still keeps the user's app frontmost.
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)))
@@ -136,38 +127,41 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     }
 
     private func position(_ panel: NSPanel) {
-        // The notch is read before the layout, because the panel's own width depends on it.
+        // The notch is read before the layout, because the island's own width depends on it.
         let notch = NotchMetrics.current()
         if model.notch != notch { model.notch = notch }
-        // Lay out before measuring, or the first showing is positioned against a stale size.
         panel.contentView?.layoutSubtreeIfNeeded()
-        if let fitting = panel.contentViewController?.view.fittingSize, fitting.height > 1 {
-            panel.setContentSize(fitting)
-        }
-        guard notch.screenFrame.width > 0 else { return }
-        panel.layoutIfNeeded()
-        let size = panel.frame.size
-        // Flush with the very top of the display — not the visible frame, which starts below the
-        // menu bar — and centred on the housing.
-        let origin = NSPoint(x: notch.screenFrame.midX - size.width / 2,
-                             y: notch.screenFrame.maxY - size.height)
-        panel.setFrameOrigin(origin)
+        let fitting = panel.contentViewController?.view.fittingSize ?? .zero
+        let size = islandSize.height > 1 ? islandSize : fitting
+        apply(size: size, animated: false)
     }
 
-    /// Cheap breathing animation while recording; no audio metering, so no extra tap on the input.
-    private func startLevelAnimation() {
-        guard levelTimer == nil else { return }
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            guard self.model.isRecording else { self.model.levelPhase = 0; return }
-            self.model.levelPhase = self.model.levelPhase > 0.5 ? 0 : 1
+    /// Places the window at the size the island reported, flush with the top of the display — the
+    /// real top, not the visible frame, which starts below the menu bar — and centred on the
+    /// housing.
+    private func apply(size: CGSize, animated: Bool = true) {
+        guard size.width > 1, size.height > 1 else { return }
+        islandSize = size
+        guard let panel else { return }
+        let screen = model.notch.screenFrame
+        guard screen.width > 0 else { return }
+        // The island sits at the top of the window with a margin around the rest of it, so the
+        // window's own top edge is the island's top edge.
+        let frame = NSRect(x: (screen.midX - size.width / 2).rounded(),
+                           y: (screen.maxY - size.height).rounded(),
+                           width: size.width.rounded(), height: size.height.rounded())
+        guard frame != panel.frame else { return }
+        guard animated, panel.isVisible, !isPlacing else {
+            panel.setFrame(frame, display: true)
+            return
         }
-    }
-
-    private func stopLevelAnimation() {
-        levelTimer?.invalidate()
-        levelTimer = nil
-        model.levelPhase = 0
+        // Matched to the island's own spring closely enough that the black shape and the window
+        // holding it appear to be the same object changing size.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
+            panel.animator().setFrame(frame, display: true)
+        }
     }
 }
 

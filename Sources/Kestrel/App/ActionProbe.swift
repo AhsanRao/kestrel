@@ -56,7 +56,7 @@ enum ActionProbe {
         let policy = ActionPolicy(fallback: .allow, apps: [:], blockedKinds: [], confirmDestructive: false)
         let runner = ActionRunner(performer: Actuator()) { action, _ in
             out.append("unexpectedly asked about: \(action.describe)")
-            return false
+            return .no
         }
         let result = runner.run(plan, elements: [], policy: policy, bundleID: "com.apple.TextEdit",
                                 appPID: textEdit.processIdentifier)

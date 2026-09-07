@@ -6,7 +6,7 @@ import Foundation
 /// The run happens on the background queue so the UI stays live, but every decision the user is
 /// part of — the confirmation, the overlay, the summary — hops to the main thread.
 extension SessionCoordinator {
-    func runAgent(_ text: String, bundleID: String?) {
+    func runAgent(_ text: String, bundleID: String?, continuing: ActionContinuation? = nil) {
         // Without Accessibility, the scan below always comes back empty — which used to be read as
         // "nothing to act on" and silently downgraded to a spoken description. That looked like
         // Kestrel refusing to act for no reason. Say what is actually missing instead.
@@ -18,7 +18,10 @@ extension SessionCoordinator {
         // Pinned now, while the app the user was looking at is still frontmost. By the time a
         // keystroke runs, a confirmation dialog may have made Kestrel frontmost instead.
         let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let elements = AXElementScanner.scanFrontmostApp()
+        // Acting reaches into the menus: driving a media app means Playback ▸ Next, which is a menu
+        // item and not a button on the window.
+        let elements = AXElementScanner.scanFrontmostApp(menuDepth: AXElementScanner.deepMenuDepth,
+                                                         limit: AXElementScanner.maximumElementsWhenActing)
         guard !elements.isEmpty else {
             // Permission is granted but this screen genuinely has nothing to act on: answer the
             // question instead of guessing at coordinates.
@@ -29,7 +32,8 @@ extension SessionCoordinator {
         // A task gets its own folder, so anything it writes has somewhere to land and the CLI has
         // a working directory that cannot wander outside ~/.kestrel.
         let project = ProjectStore.create(for: text)
-        let query = Query(text: text, screenshot: pendingCapture?.url, mode: .agent,
+        let query = Query(text: continuing?.prompt(for: text) ?? text,
+                          screenshot: pendingCapture?.url, mode: .agent,
                           elements: elements, skills: SkillLibrary.notes(forBundleID: bundleID),
                           workingDirectory: project)
         do {
@@ -46,7 +50,8 @@ extension SessionCoordinator {
             }
             discardCapture()
             DispatchQueue.main.async {
-                self.begin(plan, elements: elements, bundleID: bundleID, appPID: targetPID)
+                self.begin(plan, elements: elements, bundleID: bundleID, appPID: targetPID,
+                           request: text, continuing: continuing)
             }
         } catch is CancellationError {
             discardCapture()
@@ -59,8 +64,10 @@ extension SessionCoordinator {
     // MARK: - Running
 
     private func begin(_ plan: ActionPlan, elements: [AXElementScanner.Element], bundleID: String?,
-                       appPID: pid_t?) {
-        apply(.actionsReady)
+                       appPID: pid_t?, request: String, continuing: ActionContinuation?) {
+        // A continued run is already acting; re-entering the state would be a no-op that also
+        // resets the overlay the user is watching.
+        if machine.state != .acting { apply(.actionsReady) }
         render()
         panel.hideImmediately()
 
@@ -68,8 +75,10 @@ extension SessionCoordinator {
         agentOverlay.show()
 
         let runner = ActionRunner(performer: actuator) { [weak self] action, app in
-            self?.askPermission(for: action, app: app) ?? false
+            self?.askPermission(for: action, app: app) ?? .no
         }
+        // Whatever the user has already said yes to carries into this leg of the run.
+        for app in grantedApps { runner.grant(app) }
         activeRun = runner
         escapeWatcher.onEscape = { [weak self] in self?.stopRun() }
         escapeWatcher.start()
@@ -88,53 +97,13 @@ extension SessionCoordinator {
                 // A beat between steps: the user has to be able to see what is happening.
                 Thread.sleep(forTimeInterval: 0.45)
             })
-            DispatchQueue.main.async { self.finished(result) }
-        }
-    }
-
-    /// Modal, and deliberately so: this is the one moment the user has to be in the loop.
-    private func askPermission(for action: Action, app: String?) -> Bool {
-        var allowed = false
-        let ask = {
-            // The alert has to come forward to be answered, which takes the user out of the app
-            // being worked on. Put them back afterwards.
-            let previous = NSWorkspace.shared.frontmostApplication
-            defer {
-                if let previous, previous.processIdentifier != ProcessInfo.processInfo.processIdentifier {
-                    previous.activate()
+            DispatchQueue.main.async {
+                if let app = result.launchedApp, result.needsReplan {
+                    self.replan(after: app, request: request, done: result, continuing: continuing)
+                } else {
+                    self.finished(result)
                 }
             }
-            NSApp.activate(ignoringOtherApps: true)
-            let alert = NSAlert()
-            alert.messageText = action.describe
-            alert.informativeText = app.map { "Kestrel wants to do this in \($0)." }
-                ?? "Kestrel wants to do this."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Do it")
-            alert.addButton(withTitle: "Stop")
-            allowed = alert.runModal() == .alertFirstButtonReturn
         }
-        if Thread.isMainThread { ask() } else { DispatchQueue.main.sync(execute: ask) }
-        return allowed
-    }
-
-    func stopRun() {
-        activeRun?.cancel()
-    }
-
-    private func finished(_ result: ActionRunner.Result) {
-        escapeWatcher.stop()
-        activeRun = nil
-        agentOverlay.model.isFinishing = true
-        agentOverlay.hide()
-
-        sounds.play(result.completed ? .answered : .failed, config: config)
-        panel.model.answer = result.summary
-        apply(.actionsFinished)
-        panel.model.state = machine.state
-        panel.model.answer = result.summary
-        panel.show()
-        if config.speakAnswers { speech.speak(result.summary, config: config) }
-        panel.hide(after: 6)
     }
 }

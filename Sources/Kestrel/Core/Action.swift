@@ -51,6 +51,33 @@ struct ActionPlan: Codable, Equatable {
     }
 }
 
+/// What has already happened in a run that is being planned a second time.
+///
+/// A task like "open Spotify and play something" cannot be planned in one go: the controls that
+/// would play something do not exist until the app is open. So the run is planned in rounds, and
+/// this is what carries between them — enough for the model to know it is halfway through a job
+/// rather than starting a new one.
+struct ActionContinuation: Equatable {
+    /// The steps already carried out, in the words the user was shown.
+    var done: [String]
+    /// How many times this task has been re-planned.
+    var rounds: Int
+
+    func advanced(with steps: [String], app: String) -> ActionContinuation {
+        ActionContinuation(done: Array((done + steps).suffix(12)), rounds: rounds + 1)
+    }
+
+    /// The request, restated with what has already been done.
+    func prompt(for request: String) -> String {
+        let already = done.isEmpty ? "the app was opened" : done.joined(separator: "; ")
+        return """
+        \(request)
+
+        This is a continuation. Already done: \(already). The app is now open and its controls are         in the list below. Plan only what still has to happen to finish the request, using those         controls. Do not open the app again.
+        """
+    }
+}
+
 /// Words that mean an action cannot be quietly undone. Anything matching is confirmed with the
 /// user first, whatever the policy says about the app.
 enum DestructiveVerbs {

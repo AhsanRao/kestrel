@@ -6,6 +6,19 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Added
 
+- **Kestrel has a cursor, and it draws with it.** Marks are no longer stroked on by an invisible
+  hand: Kestrel's own pointer — cyan, glowing, unmistakably not the system one — travels to the
+  control, draws the arrow, then loops the control, and rests there. The user's real pointer is
+  never moved, borrowed or hidden. Only one cursor is ever on screen: each stroke hands it to the
+  next, and the loop begins on the side the arrow arrived at so the hand never jumps.
+- **The island is a proper Dynamic Island.** Pure black, because the camera housing is pure black
+  and anything else draws a seam across the middle of it; a top row exactly as tall as the housing,
+  so the housing has nothing to stick out of; state to the left of it, the live level or the
+  backend to the right, and a gap between them the exact width of the notch. It opens downward when
+  there is something to read and closes to a bar when there is not.
+- **"Always allow this app."** The confirmation has three answers now instead of two, and saying
+  yes once covers the rest of that run in that app. A step that sends, deletes, buys or posts still
+  asks every single time, whatever the app is allowed to do.
 - **Kestrel points at things.** A plain spoken answer can now circle what it is talking about on the
   real screen. The model ends its reply with a `POINT:` line naming controls from the Accessibility
   list it was given; Kestrel strips that line out of what is spoken, then draws a loop and an arrow
@@ -47,6 +60,28 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Fixed
 
+- **"It opens Spotify but never plays anything."** Three faults, one after another:
+  - `launchApp` returned the instant the request was filed — several seconds before a cold-starting
+    app has a window, a menu bar or anything in its Accessibility tree. It now waits for the app to
+    actually be there.
+  - Everything planned after a launch pointed at controls in the app the user *was* in: element
+    numbers only mean anything in the scan they came from. A launch now ends the plan, and the
+    newly-opened app is scanned fresh and asked what to do next, with what has already happened
+    spelled out. `agent.txt` says so too, so the model stops trying to plan through the gap.
+  - The control list stopped at menu *titles*, so Playback ▸ Next was never on offer. Acting now
+    reads the items inside the menus, on a budget of half the scan so they cannot crowd out the
+    window's own controls.
+  - `play`, `pause`, `skip`, `shuffle`, `put on` and friends were not in the imperative list at all,
+    so "play something on Spotify" was answered rather than done.
+- **Every step asked for permission separately.** A four-step task in one app was four identical
+  alerts, which is how a confirmation stops being read. The policy now says *why* it wants to ask,
+  and the two reasons are treated differently: "this app is not vouched for" is a question the user
+  answers once, "this step sends something" is asked every time.
+- **The island grew upward off the screen.** AppKit measures a window from its bottom-left corner,
+  so letting it size itself around growing content pushed the top edge past the top of the display.
+  The window now follows the island's own measured size, pinned to the screen edge and animated.
+  The answer text also sat in a `ScrollView`, which takes whatever height it is offered — here, the
+  height that measurement was still deciding. It lays out at full height instead.
 - **A walkthrough no longer dies at its first click.** Three things were wrong at once:
   - Steps whose control could not be located were thrown away, so "File ▸ Export" collapsed to a
     single step — the menu item does not exist in the Accessibility tree until the menu is open —

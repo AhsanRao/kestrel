@@ -37,19 +37,49 @@ struct ActionPolicy: Codable, Equatable {
         return (try? encoder.encode(ActionPolicy.default)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
     }
 
+    /// A decision plus *why*, because the two reasons to confirm are not interchangeable: an app
+    /// the user has not vouched for yet is a question they can answer once, and a step that sends
+    /// or deletes something is a question that must be asked every single time.
+    struct Ruling: Equatable {
+        var decision: Decision
+        var isDestructive: Bool
+    }
+
     func decision(for action: Action, bundleID: String?, elementLabel: String?) -> Decision {
-        if blockedKinds.contains(action.kind) { return .deny }
+        ruling(for: action, bundleID: bundleID, elementLabel: elementLabel).decision
+    }
+
+    func ruling(for action: Action, bundleID: String?, elementLabel: String?) -> Ruling {
+        if blockedKinds.contains(action.kind) { return Ruling(decision: .deny, isDestructive: false) }
         let app = bundleID.flatMap { apps[$0] }
-        if app == .deny { return .deny }
+        if app == .deny { return Ruling(decision: .deny, isDestructive: false) }
 
         if confirmDestructive {
             let text = [action.describe, elementLabel, action.value].compactMap { $0 }.joined(separator: " ")
-            if DestructiveVerbs.isDestructive(text) { return .confirm }
             // A chord's own meaning, which its description usually understates: "Press Return" is
             // how a message gets sent, and ⌘Q closes the app with the draft still in it.
-            if action.kind == .key, KeyChord.isIrreversible(action.value) { return .confirm }
+            if DestructiveVerbs.isDestructive(text)
+                || (action.kind == .key && KeyChord.isIrreversible(action.value)) {
+                return Ruling(decision: .confirm, isDestructive: true)
+            }
         }
-        return app ?? fallback
+        return Ruling(decision: app ?? fallback, isDestructive: false)
+    }
+
+    /// Records that the user has vouched for an app, so Kestrel stops asking about every step in it.
+    /// Never widens anything else: a denied app stays denied, and destructive steps still confirm.
+    static func allow(app bundleID: String) {
+        var policy = load()
+        guard policy.apps[bundleID] != .deny else { return }
+        policy.apps[bundleID] = .allow
+        policy.save()
+    }
+
+    func save() {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(self) else { return }
+        try? data.write(to: Paths.policy, options: .atomic)
     }
 
     // MARK: - Disk

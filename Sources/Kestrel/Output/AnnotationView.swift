@@ -21,40 +21,60 @@ struct AnnotationView: View {
     private func mark(_ annotation: Annotation, index: Int, bounds: CGSize) -> some View {
         let rect = model.viewRect(for: annotation.frame).insetBy(dx: -9, dy: -7)
         let span = (rect.width + rect.height) * 2
-        // Marks land one after another, so several of them read as a sequence of gestures rather
-        // than as a diagram appearing at once.
-        let delay = 0.1 + Double(index) * 0.28
+        let ringDuration = Sketch.duration(forSpan: span)
+        // The cursor is one hand, so the marks are made one after another: it arrives at the first
+        // control, rings it, travels to the next, and rings that.
+        let arrival = start(index)
+        let travel = arrow(into: rect, bounds: bounds, delay: arrival)
+        let fromLeft = comesFromLeft(rect)
+        let isLast = index == model.annotations.count - 1
 
         return ZStack(alignment: .topLeading) {
+            travel.view
             Group {
                 if annotation.shape == .circle {
-                    DrawsOn(shape: SketchEllipse(), lineWidth: 3.5,
-                            duration: Sketch.duration(forSpan: span), delay: delay)
+                    DrawsOn(shape: SketchEllipse(start: fromLeft ? .leading : .trailing),
+                            lineWidth: 3.5, duration: ringDuration,
+                            delay: arrival + travel.duration, restsAfterDrawing: isLast)
                 } else {
-                    DrawsOn(shape: SketchRect(cornerRadius: 8), lineWidth: 3.5,
-                            duration: Sketch.duration(forSpan: span), delay: delay)
+                    DrawsOn(shape: SketchRect(cornerRadius: 8, start: fromLeft ? .leading : .trailing),
+                            lineWidth: 3.5, duration: ringDuration,
+                            delay: arrival + travel.duration, restsAfterDrawing: isLast)
                 }
             }
             .frame(width: max(rect.width, 14), height: max(rect.height, 14))
             .offset(x: rect.minX, y: rect.minY)
 
-            arrow(into: rect, bounds: bounds, delay: delay)
-
             if model.annotations.count > 1, !annotation.caption.isEmpty {
-                badge(index: index, caption: annotation.caption, rect: rect, delay: delay)
+                badge(index: index, caption: annotation.caption, rect: rect,
+                      delay: arrival + travel.duration + ringDuration)
             }
         }
     }
 
+    /// When the cursor gets to this mark: after everything before it has been drawn.
+    private func start(_ index: Int) -> Double {
+        Sketch.leadIn + Double(index) * AnnotationView.perMark
+    }
+
+    /// Rough time for one arrow plus one loop, which is all the sequencing needs to be — a mark
+    /// that finishes a little early simply leaves the cursor resting on it for a moment.
+    private static let perMark: Double = 0.95
+
+    private func comesFromLeft(_ rect: CGRect) -> Bool { rect.minX > 190 }
+
     /// The arrow comes in from whichever side has room, so it never crosses the control it points at.
-    private func arrow(into rect: CGRect, bounds: CGSize, delay: Double) -> some View {
-        let fromLeft = rect.minX > 190
-        let start = CGPoint(x: fromLeft ? max(rect.minX - 120, 20) : min(rect.maxX + 120, bounds.width - 20),
-                            y: rect.midY + (rect.minY > 120 ? -70 : 70))
-        let tip = CGPoint(x: fromLeft ? rect.minX - 10 : rect.maxX + 10, y: rect.midY)
-        let shape = SketchArrow(from: start, to: tip, bow: fromLeft ? 20 : -20)
-        return DrawsOn(shape: shape, lineWidth: 3,
-                       duration: Sketch.duration(forSpan: shape.span), delay: delay + 0.16)
+    private func arrow(into rect: CGRect, bounds: CGSize, delay: Double)
+        -> (view: AnyView, duration: Double) {
+        let fromLeft = comesFromLeft(rect)
+        let from = CGPoint(x: fromLeft ? max(rect.minX - 120, 20) : min(rect.maxX + 120, bounds.width - 20),
+                           y: rect.midY + (rect.minY > 120 ? -70 : 70))
+        let tip = CGPoint(x: fromLeft ? rect.minX - 9 : rect.maxX + 9, y: rect.midY)
+        let shape = SketchArrow(from: from, to: tip, bow: fromLeft ? 20 : -20)
+        let duration = Sketch.duration(forSpan: shape.span)
+        return (AnyView(DrawsOn(shape: shape, lineWidth: 3, duration: duration, delay: delay,
+                                restsAfterDrawing: false)),
+                duration)
     }
 
     private func badge(index: Int, caption: String, rect: CGRect, delay: Double) -> some View {

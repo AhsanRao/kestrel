@@ -20,6 +20,9 @@ enum AgentDetector {
         "send", "reply", "forward", "archive", "delete", "remove", "move", "copy", "paste",
         "scroll", "search for", "go to", "turn on", "turn off", "enable", "disable",
         "save", "export", "print", "share", "start", "stop", "run", "check", "mark",
+        // Media, which is most of what anyone asks a voice assistant to do to an app it opened.
+        "play", "pause", "resume", "skip", "shuffle", "mute", "unmute", "put on", "queue",
+        "next track", "previous track", "volume",
     ]
 
     static func wantsAction(_ text: String, config: Config) -> Bool {

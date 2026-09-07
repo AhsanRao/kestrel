@@ -37,7 +37,7 @@ final class ActionRunnerTests: XCTestCase {
     func testAnAllowedPlanRunsThrough() {
         let performer = FakePerformer()
         let runner = ActionRunner(performer: performer, confirm: { _, _ in
-            XCTFail("nothing here should need confirming"); return false
+            XCTFail("nothing here should need confirming"); return .no
         })
         let result = runner.run(plan([
             Action(kind: .press, element: 1, describe: "Open the File menu"),
@@ -51,7 +51,7 @@ final class ActionRunnerTests: XCTestCase {
 
     func testADeniedAppStopsBeforeDoingAnything() {
         let performer = FakePerformer()
-        let runner = ActionRunner(performer: performer, confirm: { _, _ in true })
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
         let result = runner.run(plan([Action(kind: .press, element: 1, describe: "Run it")]),
                                 elements: elements, policy: .default, bundleID: "com.apple.Terminal")
 
@@ -64,7 +64,7 @@ final class ActionRunnerTests: XCTestCase {
         let performer = FakePerformer()
         var asked: [String] = []
         let runner = ActionRunner(performer: performer, confirm: { action, _ in
-            asked.append(action.describe); return true
+            asked.append(action.describe); return .once
         })
         _ = runner.run(plan([
             Action(kind: .press, element: 1, describe: "Open the compose window"),
@@ -77,7 +77,7 @@ final class ActionRunnerTests: XCTestCase {
 
     func testDecliningAStepAbandonsTheRest() {
         let performer = FakePerformer()
-        let runner = ActionRunner(performer: performer, confirm: { _, _ in false })
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .no })
         let result = runner.run(plan([
             Action(kind: .press, element: 1, describe: "Click Send"),
             Action(kind: .press, element: 2, describe: "Click Export"),
@@ -92,7 +92,7 @@ final class ActionRunnerTests: XCTestCase {
     func testAFailedStepStopsTheSequence() {
         let performer = FakePerformer()
         performer.failOn = .setValue
-        let runner = ActionRunner(performer: performer, confirm: { _, _ in true })
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
         let result = runner.run(plan([
             Action(kind: .press, element: 1, describe: "Open the field"),
             Action(kind: .setValue, element: 2, value: "hello", describe: "Type the title"),
@@ -108,7 +108,7 @@ final class ActionRunnerTests: XCTestCase {
     func testCancellingPartWayThroughStopsTheRest() {
         let performer = FakePerformer()
         var runner: ActionRunner?
-        runner = ActionRunner(performer: performer, confirm: { _, _ in true })
+        runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
         let result = runner!.run(plan([
             Action(kind: .press, element: 1, describe: "Step one"),
             Action(kind: .press, element: 2, describe: "Step two"),
@@ -121,7 +121,7 @@ final class ActionRunnerTests: XCTestCase {
 
     func testAPlanIsCappedSoItCannotRunAway() {
         let performer = FakePerformer()
-        let runner = ActionRunner(performer: performer, confirm: { _, _ in true })
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
         let many = (1...40).map { Action(kind: .press, element: 1, describe: "Step \($0)") }
         _ = runner.run(plan(many), elements: elements, policy: allowSafari, bundleID: "com.apple.Safari")
         XCTAssertEqual(performer.performed.count, ActionPlan.maximumActions)
@@ -131,7 +131,7 @@ final class ActionRunnerTests: XCTestCase {
         // The performer decides it cannot find the control; the runner does not silently skip it.
         let performer = FakePerformer()
         performer.failOn = .press
-        let runner = ActionRunner(performer: performer, confirm: { _, _ in true })
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
         let result = runner.run(plan([Action(kind: .press, element: 99, describe: "Click ghost")]),
                                 elements: elements, policy: allowSafari, bundleID: "com.apple.Safari")
         XCTAssertTrue(result.stoppedEarly)
@@ -139,9 +139,93 @@ final class ActionRunnerTests: XCTestCase {
     }
 
     func testAnEmptyPlanSaysSo() {
-        let runner = ActionRunner(performer: FakePerformer(), confirm: { _, _ in true })
+        let runner = ActionRunner(performer: FakePerformer(), confirm: { _, _ in .once })
         let result = runner.run(plan([]), elements: elements, policy: allowSafari, bundleID: "x")
         XCTAssertEqual(result.summary, "Nothing to do.")
         XCTAssertTrue(result.completed)
     }
+
+    // MARK: - Asking once, not every time
+
+    /// The complaint that started this: an app the user has already vouched for asked again on
+    /// every single step, which is how a confirmation stops being read.
+    func testAnAppIsConfirmedOnceForTheWholeRun() {
+        let performer = FakePerformer()
+        var asked = 0
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in asked += 1; return .once })
+        let result = runner.run(plan([
+            Action(kind: .press, element: 1, describe: "Click Library"),
+            Action(kind: .press, element: 2, describe: "Click Liked Songs"),
+            Action(kind: .press, element: 1, describe: "Click Play"),
+        ]), elements: elements, policy: .default, bundleID: "com.spotify.client")
+
+        XCTAssertEqual(asked, 1)
+        XCTAssertEqual(result.performed, 3)
+    }
+
+    /// Saying yes to one irreversible step must never authorise the next one.
+    func testADestructiveStepIsAskedEveryTime() {
+        let performer = FakePerformer()
+        var asked: [String] = []
+        let runner = ActionRunner(performer: performer, confirm: { action, _ in
+            asked.append(action.describe); return .once
+        })
+        _ = runner.run(plan([
+            Action(kind: .press, element: 1, describe: "Click Send"),
+            Action(kind: .press, element: 2, describe: "Click Delete"),
+        ]), elements: elements, policy: .default, bundleID: "com.apple.Mail")
+
+        XCTAssertEqual(asked, ["Click Send", "Click Delete"])
+    }
+
+    func testAlwaysAllowStopsAskingWithinTheRunToo() {
+        let performer = FakePerformer()
+        var asked = 0
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in asked += 1; return .always })
+        _ = runner.run(plan([
+            Action(kind: .press, element: 1, describe: "Click Library"),
+            Action(kind: .press, element: 2, describe: "Click Play"),
+        ]), elements: elements, policy: .default, bundleID: "com.example.notreal")
+        XCTAssertEqual(asked, 1)
+    }
+
+    func testAnAppGrantedUpFrontIsNotAskedAboutAtAll() {
+        let performer = FakePerformer()
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in
+            XCTFail("already vouched for"); return .no
+        })
+        runner.grant("com.spotify.client")
+        _ = runner.run(plan([Action(kind: .press, element: 1, describe: "Click Play")]),
+                       elements: elements, policy: .default, bundleID: "com.spotify.client")
+        XCTAssertEqual(performer.performed.count, 1)
+    }
+
+    // MARK: - Launching
+
+    /// Element numbers belong to the scan they came from. Once a different app is in front, every
+    /// number still in the plan describes a control that is no longer on screen — so the run stops
+    /// there and the rest is planned again. "Opens Spotify but never plays anything" was this.
+    func testLaunchingAnAppEndsTheRunAndAsksForAReplan() {
+        let performer = FakePerformer()
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
+        let result = runner.run(plan([
+            Action(kind: .launchApp, value: "com.spotify.client", describe: "Open Spotify"),
+            Action(kind: .press, element: 2, describe: "Click Play"),
+        ]), elements: elements, policy: .default, bundleID: "com.apple.Safari")
+
+        XCTAssertEqual(result.launchedApp, "com.spotify.client")
+        XCTAssertTrue(result.needsReplan)
+        XCTAssertFalse(result.stoppedEarly)
+        XCTAssertEqual(performer.performed.count, 1, "the stale step must not run")
+    }
+
+    func testAFailedRunIsNotMistakenForOneThatNeedsReplanning() {
+        let performer = FakePerformer()
+        performer.failOn = .press
+        let runner = ActionRunner(performer: performer, confirm: { _, _ in .once })
+        let result = runner.run(plan([Action(kind: .press, element: 1, describe: "Click Play")]),
+                                elements: elements, policy: .default, bundleID: "com.spotify.client")
+        XCTAssertFalse(result.needsReplan)
+    }
+
 }

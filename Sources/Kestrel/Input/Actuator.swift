@@ -109,14 +109,6 @@ final class Actuator: ActionPerforming {
         }
     }
 
-    private func launch(bundleID: String?) throws {
-        guard let bundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
-        else { throw KestrelError.actionFailed("find that app") }
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        NSWorkspace.shared.openApplication(at: url, configuration: configuration, completionHandler: nil)
-    }
-
     // MARK: - Fallback
 
     /// Lines per scroll. A page is a screenful rather than a nudge, which is what "page down" and

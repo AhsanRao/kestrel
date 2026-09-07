@@ -19,7 +19,32 @@ enum PanelPreview {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"]
     }
 
+    /// A plain backdrop behind the panel, because a black island on a black desktop tells you
+    /// nothing about its edges — and its edges are the entire design. `KESTREL_PREVIEW_BACKDROP`
+    /// takes `light` or `grid`.
+    private static var backdrop: NSWindow?
+
+    private static func showBackdrop() {
+        guard let kind = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_BACKDROP"],
+              let screen = NSScreen.main else { return }
+        let window = NSWindow(contentRect: screen.frame, styleMask: [.borderless],
+                              backing: .buffered, defer: false)
+        window.setFrame(screen.frame, display: true)
+        window.level = .normal
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        window.isReleasedWhenClosed = false
+        let view = NSView(frame: screen.frame)
+        view.wantsLayer = true
+        view.layer?.backgroundColor = kind == "grid"
+            ? NSColor.systemTeal.withAlphaComponent(0.85).cgColor
+            : NSColor.white.cgColor
+        window.contentView = view
+        window.orderFrontRegardless()
+        backdrop = window
+    }
+
     static func run(on panel: PanelWindow) {
+        showBackdrop()
         switch ProcessInfo.processInfo.environment["KESTREL_PREVIEW_STATE"] ?? "answer" {
         case "listening":
             panel.model.state = .listening

@@ -103,6 +103,13 @@ struct SessionMachine {
             state = .idle
             return [.clearOverlay, .reset]
 
+        // A run that ends up with nothing to do says so out loud instead of standing there. This
+        // is reachable now that a run can be re-planned: the second round may come back with an
+        // explanation rather than a plan, and the first round already put the machine in `.acting`.
+        case (.acting, .answered):
+            state = .answering
+            return [.clearOverlay]
+
         case (.acting, .failed(let message)):
             state = .error(message)
             return [.clearOverlay]

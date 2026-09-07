@@ -40,7 +40,7 @@ struct AgentOverlayView: View {
                 .shadow(color: KestrelPalette.cyan.opacity(0.5), radius: 10)
                 .offset(x: ring.minX, y: ring.minY)
             AgentPointer()
-                .offset(x: (rect?.midX ?? 0) - 9, y: (rect?.midY ?? 0) - 9)
+                .offset(x: (rect?.midX ?? 0) - 4, y: (rect?.midY ?? 0) - 4)
         }
         .opacity(visible ? 1 : 0)
     }
@@ -90,27 +90,25 @@ struct AgentOverlayView: View {
     }
 }
 
-/// Kestrel's own pointer: a filled dot inside a slow pulse, so it never looks like the user's
-/// cursor has been taken over.
+/// Kestrel's own pointer, the same one that draws the marks — so whether it is showing you
+/// something or doing it, the thing moving is recognisably the same hand. The user's real cursor is
+/// never touched.
 private struct AgentPointer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             Circle()
-                .fill(KestrelPalette.cyan.opacity(0.35))
-                .frame(width: pulse ? 26 : 14, height: pulse ? 26 : 14)
+                .fill(KestrelPalette.cyan.opacity(0.3))
+                .frame(width: pulse ? 30 : 16, height: pulse ? 30 : 16)
                 .opacity(pulse ? 0 : 0.9)
-            Circle()
-                .fill(KestrelPalette.cyan)
-                .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.5))
-                .frame(width: 14, height: 14)
-                .shadow(radius: 4)
+                .offset(x: -7, y: -7)
+            KestrelCursor()
         }
-        .frame(width: 18, height: 18)
+        .frame(width: 16, height: 22, alignment: .topLeading)
         .onAppear {
-            // The dot alone still marks the target without the halo's repeating pulse.
+            // The pointer alone still marks the target without the halo's repeating pulse.
             guard !reduceMotion else { return }
             withAnimation(.easeOut(duration: 1.1).repeatForever(autoreverses: false)) { pulse = true }
         }

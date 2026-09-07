@@ -42,8 +42,10 @@ enum OverlayPreview {
         coordinator.annotations.setExcludedFromCapture(false)
 
         guard let path = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] else { return }
-        // After the strokes have finished drawing themselves.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+        // Long enough for the strokes to finish by default; `KESTREL_PREVIEW_DELAY` catches the
+        // cursor mid-draw, which is the only way to see whether it is riding the stroke at all.
+        let delay = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_DELAY"].flatMap(Double.init) ?? 3.0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             capture(to: URL(fileURLWithPath: path))
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { NSApp.terminate(nil) }
         }

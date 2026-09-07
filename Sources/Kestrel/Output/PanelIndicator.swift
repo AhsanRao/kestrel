@@ -5,14 +5,22 @@ import SwiftUI
 /// voice while Kestrel listens, an orbiting sweep while it thinks, a settled dot when it answers.
 struct PanelIndicator: View {
     @ObservedObject var model: PanelModel
+    /// False in the island's notch row, where the live level is metered on the other side of the
+    /// housing: two waveforms on one bar is a lot of movement saying one thing.
+    var showsWaveform = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
             switch model.state {
             case .listening, .dictating:
-                WaveformBars(accent: model.accent, level: model.level)
-                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+                if showsWaveform {
+                    WaveformBars(accent: model.accent, level: model.level)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                } else {
+                    SettledDot(accent: model.accent)
+                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                }
             case .transcribing, .thinking, .injecting, .acting:
                 ThinkingSweep(accent: model.accent, reduceMotion: reduceMotion)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
@@ -21,7 +29,7 @@ struct PanelIndicator: View {
                     .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
-        .frame(width: 20, height: 16)
+        .frame(width: showsWaveform ? 20 : 16, height: 16)
         .animation(.spring(response: 0.34, dampingFraction: 0.7), value: model.state)
         // The shape alone carries state for sighted users; VoiceOver needs it named instead.
         .accessibilityElement(children: .ignore)

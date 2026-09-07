@@ -55,3 +55,23 @@ final class PanelSizingTests: XCTestCase {
         XCTAssertGreaterThan(model.width, model.notch.notchSize.width + 100)
     }
 }
+
+/// The island shares a 32-point strip with the camera housing, so anything long enough to run
+/// across the housing belongs in the opened half instead.
+final class PanelHeadlineTests: XCTestCase {
+    func testAnErrorIsNamedShortInTheStripAndSpeltOutBelow() {
+        let model = PanelModel()
+        model.state = .error("whisper-cli not found — run: brew install whisper-cpp")
+        XCTAssertEqual(model.headline, "Kestrel")
+        XCTAssertEqual(model.detail, "whisper-cli not found — run: brew install whisper-cpp")
+        XCTAssertTrue(model.isExpanded)
+    }
+
+    func testAnOrdinaryStateUsesItsOwnLabelAndHasNoDetail() {
+        let model = PanelModel()
+        model.state = .thinking
+        XCTAssertEqual(model.headline, "Thinking")
+        XCTAssertNil(model.detail)
+    }
+}
+

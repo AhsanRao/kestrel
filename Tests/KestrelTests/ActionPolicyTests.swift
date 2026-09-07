@@ -186,4 +186,39 @@ final class ActionPolicyTests: XCTestCase {
         XCTAssertEqual(line.filter { $0 == "\n" }.count, 1)
         XCTAssertTrue(line.contains("\"describe\":\"Click Send\""))
     }
+
+    // MARK: - Why, not just what
+
+    /// Two reasons to ask look identical to `decision` and are not the same question: one can be
+    /// answered once for the app, the other has to be asked every time.
+    func testAnUnvouchedAppAndADestructiveStepAreDistinguished() {
+        let unvouched = ActionPolicy.default.ruling(for: press("Click Library"),
+                                                    bundleID: "com.spotify.client", elementLabel: nil)
+        XCTAssertEqual(unvouched.decision, .confirm)
+        XCTAssertFalse(unvouched.isDestructive)
+
+        var allowed = ActionPolicy.default
+        allowed.apps["com.apple.Mail"] = .allow
+        let sending = allowed.ruling(for: press("Click Send"),
+                                     bundleID: "com.apple.Mail", elementLabel: nil)
+        XCTAssertEqual(sending.decision, .confirm)
+        XCTAssertTrue(sending.isDestructive, "an allowed app does not make sending reversible")
+    }
+
+    func testAnAllowedAppIsNotFlaggedDestructiveForOrdinarySteps() {
+        var policy = ActionPolicy.default
+        policy.apps["com.spotify.client"] = .allow
+        let ruling = policy.ruling(for: press("Click Play"), bundleID: "com.spotify.client",
+                                   elementLabel: nil)
+        XCTAssertEqual(ruling.decision, .allow)
+        XCTAssertFalse(ruling.isDestructive)
+    }
+
+    func testADeniedAppStaysDeniedWhateverElseIsTrue() {
+        let ruling = ActionPolicy.default.ruling(for: press("Click Run"),
+                                                 bundleID: TextInjector.terminalBundleIDs.first,
+                                                 elementLabel: nil)
+        XCTAssertEqual(ruling.decision, .deny)
+    }
+
 }

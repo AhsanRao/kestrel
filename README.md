@@ -69,10 +69,11 @@ Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The answer drops out of the notch
-  and is spoken. When it names something you can click, that control is circled on the real screen
-  while the sentence is being said — Kestrel points instead of saying "in the top right". Press the
-  hotkey again to interrupt, Esc to take the marks off.
+- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The island opens out of the notch
+  and the answer is spoken. When it names something you can click, Kestrel's own cursor travels to
+  that control and circles it while the sentence is being said — it points, instead of saying "in
+  the top right". Your real pointer is never touched. Press the hotkey again to interrupt, Esc to
+  take the marks off.
 - **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
 - **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
   drawn on screen, one step at a time: the ring is stroked on around the control the way you would
@@ -173,6 +174,9 @@ make deps      # scripts/check-deps.sh
         KESTREL_PREVIEW_OUT=/tmp/overlay.png Kestrel.app/Contents/MacOS/Kestrel
 
   `walkthrough` draws a two-step route, `annotation` draws the marks that accompany an answer.
+  `KESTREL_PREVIEW_DELAY=0.5` catches the cursor mid-stroke; `KESTREL_PREVIEW_BACKDROP=light` puts
+  a plain backdrop behind the panel, because a black island on a black desktop tells you nothing
+  about its edges.
 - `Tests/MANUAL.md` is the checklist for everything unit tests cannot reach.
 - Icons are generated from the original logo by `scripts/icon-tool.swift`; nothing is redrawn.
 - **CLI flags drift between releases.** Every invocation is confined to
@@ -208,6 +212,18 @@ run.
 - `apps` — per bundle id. Terminals ship denied: typing into one is arbitrary command execution.
 - `confirmDestructive` — anything that sends, deletes, buys, posts or overwrites is confirmed even
   in an app you have allowed.
+
+**You are asked once per app, not once per step.** The confirmation offers *Do it*, *Always allow
+&lt;App&gt;* and *Stop*. "Do it" covers the rest of that run in that app; "Always allow" writes
+`"apps": { "<bundle id>": "allow" }` into the policy so it is not asked again. Neither of them
+covers a step that sends, deletes, buys or posts — those are confirmed every single time, in every
+app, because that is the only kind of confirmation worth reading.
+
+**Opening an app is half a task.** "Open Spotify and play something" cannot be planned in one go:
+the controls that play something do not exist until Spotify is open, and an element number only
+means anything in the scan it came from. So a launch ends the plan, Kestrel waits for the app to
+actually be ready, scans it, and asks for the rest of the task with what has already been done
+spelled out — up to three rounds.
 
 Every action is appended to `~/.kestrel/logs/actions.jsonl`, one JSON object per line.
 
