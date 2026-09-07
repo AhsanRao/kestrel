@@ -21,6 +21,12 @@ enum MemoryStore {
         (try? String(contentsOf: Paths.memory, encoding: .utf8)) ?? ""
     }
 
+    /// Overwrites the memory file. The only writer is `MemoryWriter`, which builds the new text
+    /// from the old rather than appending blindly.
+    static func write(_ text: String) {
+        try? text.write(to: Paths.memory, atomically: true, encoding: .utf8)
+    }
+
     static func openInEditor() {
         NSWorkspace.shared.open(Paths.memory)
     }

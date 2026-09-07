@@ -59,7 +59,7 @@ Settings ticks the row without coming back to press anything. Reopen it any time
 |---|---|---|
 | Microphone | hearing the question | required |
 | Screen Recording | seeing the screen you ask about | required, **applies after a relaunch** — the window offers one |
-| Accessibility | pasting dictation, following clicks in a walkthrough | optional; ask works without it |
+| Accessibility | reading the screen's contents, drawing on them, pasting dictation | strongly recommended; without it Kestrel can only see the screenshot |
 | whisper-cli + model | local speech to text | required |
 | Claude Code CLI | answering | required |
 | Codex CLI | second backend | optional |
@@ -69,11 +69,12 @@ Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌃⌘A`, say *"what is this window for?"*, release. The island opens out of the notch
-  and the answer is spoken. When it names something you can click, Kestrel's own cursor travels to
-  that control and circles it while the sentence is being said — it points, instead of saying "in
-  the top right". Your real pointer is never touched. Press the hotkey again to interrupt, Esc to
-  take the marks off.
+- **Ask:** hold `⌃⌘A`, say *"what is this window for?"* or *"how could this page look better?"*,
+  release. The island opens out of the notch and the answer is spoken — and a pencil draws on the
+  thing the answer is about while it says it. Not just buttons: the section, the card, the heading,
+  whatever it is talking about. It points instead of saying "in the top right", and if it names
+  something without marking it, Kestrel works out what it meant and marks it anyway. Your real
+  pointer is never touched. Press the hotkey again to interrupt, Esc to take the marks off.
 - **Dictate:** tap `⌃⌘K`, speak, tap again. Text lands in the focused app.
 - **Be shown:** ask a *"how do I…"*, *"where is…"* or *"show me how…"* question and the answer is
   drawn on screen, one step at a time: the ring is stroked on around the control the way you would
@@ -123,11 +124,9 @@ you save. The Settings window writes the same file.
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
 | `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `walkthroughs` | `true` | draw steps for "how do I…" questions |
-| `answerAnnotations` | `true` | circle what a spoken answer is pointing at |
-| `agentActions` | `true` | carry out instructions, gated by `policy.json` |
+| `answerAnnotations` | `true` | draw on what a spoken answer is pointing at |
 | `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
 | `sounds` | `true` | short cues for each state change |
-| `mcpForTasks` | `false` | MCP connectors for agent tasks only |
 | `spatialContext` | `true` | circle a region while holding the ask key |
 | `captureMode` | `"window"` | `"display"` to send the whole screen instead |
 | `acknowledgeWhileThinking` | `true` | say "one sec" while the model reads the screen |
@@ -157,7 +156,6 @@ make deps      # scripts/check-deps.sh
 ```
 
 - [`docs/`](docs/) holds everything: [`SPEC.md`](docs/SPEC.md) is the design of record,
-  [`INTERACTIONS.md`](docs/INTERACTIONS.md) documents what Kestrel can do to your Mac,
   [`VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) is the feature comparison. `CLAUDE.md` holds the
   working rules.
 - **Seeing the real panel.** Offscreen SwiftUI renders cannot show window chrome, materials or
@@ -183,52 +181,17 @@ make deps      # scripts/check-deps.sh
   `Sources/Kestrel/Backends/ClaudeBackend.swift` and `CodexBackend.swift`, with the verified flags
   in a comment above it. `scripts/check-deps.sh` re-checks them against `--help` and warns on drift.
 
-## Letting Kestrel act
+## What Kestrel does *not* do
 
-Say what you want done — "archive this", "set the title to Quarterly", "open Slack" — and Kestrel
-plans it against the app's real controls and carries it out. Asking *how* to do something still
-gets an explanation; when the phrasing is ambiguous it answers rather than acts.
+It does not drive your apps. Pressing buttons, filling fields and planning multi-step tasks were
+removed: every plan went stale the moment anything moved, every step needed a confirmation, and the
+confirmations became something to click through rather than read. What made Kestrel worth having was
+never that it could press Send — it was that it could look at the screen with you and point.
 
-It can click, right-click, type into a field or alongside what is already there, press a key or a
-chord (`⌘S`, `⏎`, `⌘⇧P`), scroll, focus a control, and open an app.
+The one exception is **opening an app**: say "open Spotify" and it opens. One verb, nothing to undo,
+no permission theatre. Anything after that — "and play something" — is not done, and Kestrel says so
+rather than half-doing it.
 
-Actions go through Accessibility, so the real cursor never moves and focus is not stolen: you can
-keep typing while it works. Keystrokes are delivered to the app the plan was made against, not to
-whatever is frontmost when the step runs. An overlay names each step, counts them, and Esc stops the
-run.
-
-**Nothing happens without permission.** `~/.kestrel/policy.json` decides:
-
-```json
-{
-  "fallback": "confirm",
-  "apps": { "com.apple.Terminal": "deny", "com.apple.Safari": "allow" },
-  "confirmDestructive": true,
-  "blockedKinds": []
-}
-```
-
-- `fallback` — what to do when no rule matches: `allow`, `confirm` or `deny`. Ships as `confirm`.
-- `apps` — per bundle id. Terminals ship denied: typing into one is arbitrary command execution.
-- `confirmDestructive` — anything that sends, deletes, buys, posts or overwrites is confirmed even
-  in an app you have allowed.
-
-**You are asked once per app, not once per step.** The confirmation offers *Do it*, *Always allow
-&lt;App&gt;* and *Stop*. "Do it" covers the rest of that run in that app; "Always allow" writes
-`"apps": { "<bundle id>": "allow" }` into the policy so it is not asked again. Neither of them
-covers a step that sends, deletes, buys or posts — those are confirmed every single time, in every
-app, because that is the only kind of confirmation worth reading.
-
-**Opening an app is half a task.** "Open Spotify and play something" cannot be planned in one go:
-the controls that play something do not exist until Spotify is open, and an element number only
-means anything in the scan it came from. So a launch ends the plan, Kestrel waits for the app to
-actually be ready, scans it, and asks for the rest of the task with what has already been done
-spelled out — up to three rounds.
-
-Every action is appended to `~/.kestrel/logs/actions.jsonl`, one JSON object per line.
-
-The complete reference — every action kind, how controls are found, the decision order, the actuator's
-fallbacks, and what it deliberately cannot do — is [`docs/INTERACTIONS.md`](docs/INTERACTIONS.md).
 
 ## Teaching it your own vocabulary
 

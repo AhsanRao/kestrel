@@ -14,9 +14,14 @@ extension SessionCoordinator {
     ///
     /// The marks are dismissed on the same clock as the panel, and by Esc, so nothing Kestrel drew
     /// is ever left on the screen after the user has stopped listening.
-    func showAnnotations(_ pointed: AnnotationParser.Result, elements: [AXElementScanner.Element]) {
-        guard config.answerAnnotations, !pointed.isEmpty else { return annotations.hide() }
-        let marks = AnnotationParser.annotations(for: pointed, elements: elements)
+    func showAnnotations(_ pointed: AnnotationParser.Result, targets: [ScreenTarget]) {
+        guard config.answerAnnotations else { return annotations.hide() }
+        // An answer that named nothing still gets a mark if Kestrel can work out what it meant:
+        // saying "tighten the card spacing" and highlighting nothing leaves the user hunting.
+        var marks = AnnotationParser.annotations(for: pointed, targets: targets)
+        if marks.isEmpty, !pointed.declaredNothing {
+            marks = AnnotationParser.inferred(from: pointed.spoken, targets: targets)
+        }
         guard !marks.isEmpty else { return annotations.hide() }
         log.debug("annotating \(marks.count) control(s) alongside the answer")
         annotations.show(marks)
@@ -52,6 +57,22 @@ extension SessionCoordinator {
         if !alreadySpoken, config.speakAnswers, speech.speak(answer.text, config: config) { return }
         if alreadySpoken, speech.isSpeaking { return }
         scheduleAutoHide()
+    }
+
+    /// The one thing Kestrel still does to the Mac rather than describing.
+    ///
+    /// Deliberately not a plan and not a confirmation: opening an app is a single, obvious,
+    /// harmless act, and asking permission for it would be theatre. Once it is open, the answer is
+    /// spoken like any other — and the next question will be about the app that is now in front.
+    func openApp(_ app: (bundleID: String, name: String), asked: String) {
+        discardCapture()
+        let opened = AppLauncher.launch(bundleID: app.bundleID)
+        DispatchQueue.main.async {
+            let line = opened ? "Opening \(app.name)." : "I couldn't open \(app.name)."
+            self.conversation.record(question: asked, answer: line, at: Date(),
+                                     appBundleID: app.bundleID)
+            self.present(Answer(text: line, raw: line, durationMs: 0))
+        }
     }
 
     func runDictation(_ text: String) {

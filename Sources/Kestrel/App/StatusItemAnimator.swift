@@ -14,7 +14,7 @@ final class StatusItemAnimator {
         static func forState(_ state: SessionState) -> Pace {
             switch state {
             case .listening, .dictating: return .breathing(period: 0.75, floor: 0.4)
-            case .transcribing, .thinking, .injecting, .acting: return .breathing(period: 1.4, floor: 0.55)
+            case .transcribing, .thinking, .injecting: return .breathing(period: 1.4, floor: 0.55)
             default: return .still
             }
         }

@@ -9,7 +9,6 @@ enum Paths {
     static let root = home.appendingPathComponent(".kestrel", isDirectory: true)
 
     static let config = root.appendingPathComponent("config.json")
-    static let policy = root.appendingPathComponent("policy.json")
     static let memory = root.appendingPathComponent("KESTREL.md")
     static let claudeMemoryLink = root.appendingPathComponent("CLAUDE.md")
     static let codexMemoryLink = root.appendingPathComponent("AGENTS.md")
@@ -17,7 +16,6 @@ enum Paths {
     static let models = root.appendingPathComponent("models", isDirectory: true)
     static let skills = root.appendingPathComponent("skills", isDirectory: true)
     static let logs = root.appendingPathComponent("logs", isDirectory: true)
-    static let projects = root.appendingPathComponent("projects", isDirectory: true)
     static let tmp = root.appendingPathComponent("tmp", isDirectory: true)
 
     static let defaultWhisperModel = models.appendingPathComponent("ggml-base.en.bin")
@@ -39,7 +37,7 @@ enum Paths {
     /// Creates the user data tree. Safe to call on every launch.
     static func bootstrap() throws {
         let fm = FileManager.default
-        for dir in [root, models, skills, logs, projects, tmp] {
+        for dir in [root, models, skills, logs, tmp] {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         // Old temp captures are worthless after a crash; do not let them accumulate.

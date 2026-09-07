@@ -65,6 +65,12 @@ enum OverlayPreview {
                                          width: box.width, height: box.height),
                            caption: "centre", shape: .rect),
             ])
+        case "region":
+            // The case the content reader exists for: an answer about a section of a page.
+            let card = CGRect(x: screen.midX - 260, y: screen.midY - 60, width: 520, height: 300)
+            coordinator.annotations.show([
+                Annotation(frame: card, caption: "Pricing cards", shape: .rect, isRegion: true),
+            ])
         case "annotation":
             coordinator.annotations.show([
                 Annotation(frame: button, caption: "Export as PDF", shape: .rect),

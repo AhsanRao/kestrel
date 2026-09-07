@@ -14,8 +14,6 @@ enum SessionState: Equatable {
     case injecting
     /// A walkthrough is drawn on screen and waiting for the user to click the current target.
     case guiding
-    /// Kestrel is performing actions on the user's behalf.
-    case acting
     case error(String)
 
     var isBusy: Bool {
@@ -39,8 +37,6 @@ enum SessionEvent: Equatable {
     /// The route ran out on this screen and Kestrel is asking for the rest of it.
     case walkthroughContinuing
     case walkthroughFinished
-    case actionsReady
-    case actionsFinished
     case failed(String)
     case autoHideElapsed
     case cancelled
@@ -95,28 +91,10 @@ struct SessionMachine {
             state = .guiding
             return []
 
-        case (.thinking, .actionsReady):
-            state = .acting
-            return []
 
-        case (.acting, .actionsFinished), (.acting, .cancelled):
-            state = .idle
-            return [.clearOverlay, .reset]
 
-        // A run that ends up with nothing to do says so out loud instead of standing there. This
-        // is reachable now that a run can be re-planned: the second round may come back with an
-        // explanation rather than a plan, and the first round already put the machine in `.acting`.
-        case (.acting, .answered):
-            state = .answering
-            return [.clearOverlay]
 
-        case (.acting, .failed(let message)):
-            state = .error(message)
-            return [.clearOverlay]
 
-        // A run is stopped with Esc, not by asking something else half way through it.
-        case (.acting, .askPressed), (.acting, .dictateToggled):
-            return [.pulse]
 
         case (_, .failed(let message)):
             state = .error(message)

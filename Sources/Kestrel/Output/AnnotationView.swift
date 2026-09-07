@@ -30,6 +30,15 @@ struct AnnotationView: View {
         let isLast = index == model.annotations.count - 1
 
         return ZStack(alignment: .topLeading) {
+            if annotation.isRegion {
+                // A section is shaded rather than ringed: the mark has to say "this area", and a
+                // thin line around a quarter of the screen says "something is wrong with my maths".
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(KestrelPalette.cyan.opacity(0.12))
+                    .frame(width: max(rect.width, 14), height: max(rect.height, 14))
+                    .offset(x: rect.minX, y: rect.minY)
+                    .modifier(FadesIn(delay: arrival + travel.duration))
+            }
             travel.view
             Group {
                 if annotation.shape == .circle {
@@ -45,7 +54,9 @@ struct AnnotationView: View {
             .frame(width: max(rect.width, 14), height: max(rect.height, 14))
             .offset(x: rect.minX, y: rect.minY)
 
-            if model.annotations.count > 1, !annotation.caption.isEmpty {
+            // A region is always named. Its outline says where, but only the label says which of
+            // the several things inside it the answer meant.
+            if !annotation.caption.isEmpty, annotation.isRegion || model.annotations.count > 1 {
                 badge(index: index, caption: annotation.caption, rect: rect,
                       delay: arrival + travel.duration + ringDuration)
             }
@@ -69,7 +80,9 @@ struct AnnotationView: View {
         let fromLeft = comesFromLeft(rect)
         let from = CGPoint(x: fromLeft ? max(rect.minX - 120, 20) : min(rect.maxX + 120, bounds.width - 20),
                            y: rect.midY + (rect.minY > 120 ? -70 : 70))
-        let tip = CGPoint(x: fromLeft ? rect.minX - 9 : rect.maxX + 9, y: rect.midY)
+        // `rect` is already the ring, so the standoff is measured from the drawn edge.
+        let tip = CGPoint(x: fromLeft ? rect.minX - Sketch.arrowStandoff : rect.maxX + Sketch.arrowStandoff,
+                          y: rect.midY)
         let shape = SketchArrow(from: from, to: tip, bow: fromLeft ? 20 : -20)
         let duration = Sketch.duration(forSpan: shape.span)
         return (AnyView(DrawsOn(shape: shape, lineWidth: 3, duration: duration, delay: delay,

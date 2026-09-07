@@ -5,11 +5,29 @@ import Foundation
 struct Annotation: Equatable {
     /// Global AppKit points.
     var frame: CGRect
-    /// The control's own label, shown next to the mark when there is more than one.
+    /// The thing's own label, shown beside the mark.
     var caption: String
     var shape: Shape
+    /// A block of content rather than a control. Drawn as a tinted area with its name attached,
+    /// because a hairline circle round half a page reads as a mistake.
+    var isRegion: Bool
 
     enum Shape: Equatable { case circle, rect }
+
+    init(frame: CGRect, caption: String, shape: Shape, isRegion: Bool = false) {
+        self.frame = frame
+        self.caption = caption
+        self.shape = shape
+        self.isRegion = isRegion
+    }
+
+    /// Long paragraph text makes a useless badge; the first few words do not.
+    static func shorten(_ label: String) -> String {
+        let clean = label.replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard clean.count > 38 else { return clean }
+        return String(clean.prefix(36)) + "…"
+    }
 }
 
 /// Pulls the "point at these" markers out of a spoken answer.
@@ -20,7 +38,10 @@ struct Annotation: Equatable {
 /// means the answer still reads and sounds like a sentence, and an older model that ignores the
 /// convention simply gets no drawing rather than a broken one.
 enum AnnotationParser {
-    static let marker = "POINT:"
+    static let marker = "MARK:"
+    /// What the marker used to be called. Still accepted, because a model that has seen the older
+    /// wording should not silently stop pointing at anything.
+    static let legacyMarker = "POINT:"
 
     struct Result: Equatable {
         /// The answer with the marker line removed — what is spoken and shown.
@@ -29,26 +50,32 @@ enum AnnotationParser {
         var elements: [Int]
         /// Labels, for when the model named a control rather than numbering it.
         var labels: [String]
+        /// The model wrote a marker line, even if it named nothing in it. "MARK: none" is a
+        /// decision — that the answer is about nothing on screen — and guessing over the top of it
+        /// would be Kestrel overruling the only thing that actually read the question.
+        var declaredNothing = false
 
         var isEmpty: Bool { elements.isEmpty && labels.isEmpty }
     }
 
     /// True for a streamed sentence that is really the marker line, so it is never read out loud.
     static func isMarker(_ sentence: String) -> Bool {
-        sentence.trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-            .hasPrefix(marker)
+        let head = sentence.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        return head.hasPrefix(marker) || head.hasPrefix(legacyMarker)
     }
 
     static func parse(_ raw: String) -> Result {
         var kept: [String] = []
         var elements: [Int] = []
         var labels: [String] = []
+        var sawMarker = false
 
         for line in raw.components(separatedBy: .newlines) {
             guard isMarker(line) else { kept.append(line); continue }
-            let body = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                .dropFirst(marker.count)
+            sawMarker = true
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            let head = trimmed.uppercased().hasPrefix(marker) ? marker.count : legacyMarker.count
+            let body = trimmed.dropFirst(head)
             for token in body.components(separatedBy: ",") {
                 let cleaned = token.trimmingCharacters(in: CharacterSet(charactersIn: " \t\"'“”.·—-[]()"))
                 guard !cleaned.isEmpty, cleaned.lowercased() != "none" else { continue }
@@ -58,45 +85,96 @@ enum AnnotationParser {
 
         let spoken = kept.joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return Result(spoken: spoken, elements: Array(elements.prefix(maximumMarks)),
-                      labels: Array(labels.prefix(maximumMarks)))
+        var result = Result(spoken: spoken, elements: Array(elements.prefix(maximumMarks)),
+                            labels: Array(labels.prefix(maximumMarks)))
+        result.declaredNothing = sawMarker && result.isEmpty
+        return result
     }
 
     /// More than a few marks is a diagram, not a gesture; the screen stops being readable.
     static let maximumMarks = 4
 
-    /// Turns the marker into things to draw, using the same control list the model chose from and,
-    /// failing that, a match on the control's visible name.
-    static func annotations(for result: Result,
-                            elements: [AXElementScanner.Element]) -> [Annotation] {
-        let byID = Dictionary(elements.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    /// Turns the marker into things to draw, against the numbered list the model chose from.
+    ///
+    /// When the model named nothing, the answer is searched for the labels of things on screen and
+    /// the best match is marked anyway. That fallback is the point: an assistant that says "tighten
+    /// the card spacing" and highlights nothing has handed the user a puzzle, and the whole promise
+    /// here is that it points at what it is talking about.
+    static func annotations(for result: Result, targets: [ScreenTarget]) -> [Annotation] {
+        let byID = Dictionary(targets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var found: [Annotation] = []
         var seen = Set<String>()
 
-        func append(_ element: AXElementScanner.Element) {
-            // Where it is now, not where it was when the app was scanned — that was before the
-            // model was even asked, and anything that scrolled since has moved the control out
-            // from under the mark. A control that can no longer be found is not drawn at all,
-            // because a mark in the wrong place is worse than no mark.
-            guard let frame = AXElementScanner.currentFrame(of: element)
-                    ?? (AXElementScanner.isOnScreen(element.frame) ? element.frame : nil) else { return }
+        func append(_ target: ScreenTarget) {
+            // Where it is now, not where it was when the screen was read — that was before the
+            // model was even asked, and anything that scrolled since has moved it out from under
+            // the mark. Something that can no longer be found is not drawn at all: a mark in the
+            // wrong place is worse than no mark.
+            guard let frame = target.currentFrame
+                    ?? (AXElementScanner.isOnScreen(target.frame) ? target.frame : nil) else { return }
             let key = "\(Int(frame.minX)),\(Int(frame.minY))"
             guard seen.insert(key).inserted else { return }
-            // A wide control reads better with a box round it; a small square one with a circle.
-            let ratio = frame.width / max(frame.height, 1)
-            found.append(Annotation(frame: frame, caption: element.label,
-                                    shape: ratio > 2.2 ? .rect : .circle))
+            found.append(Annotation(frame: frame, caption: Annotation.shorten(target.label),
+                                    shape: target.preferredShape, isRegion: target.kind == .region))
         }
 
         for id in result.elements {
-            if let element = byID[id] { append(element) }
+            if let target = byID[id] { append(target) }
         }
         for label in result.labels {
-            let step = WalkthroughStep(n: 0, instruction: label, label: label)
-            guard let frame = WalkthroughResolver.relocate(step, in: elements),
-                  let element = elements.first(where: { $0.frame == frame }) else { continue }
-            append(element)
+            if let target = match(label, in: targets) { append(target) }
         }
         return Array(found.prefix(maximumMarks))
+    }
+
+    /// The thing on screen an answer is most likely talking about, when the model named nothing.
+    ///
+    /// Quoted phrases first, because a model that writes "click **Share**" has already told you
+    /// what it means. Then the longest label that appears in the answer verbatim — longest because
+    /// "Save" matches half a screen and "Save as PDF" matches one thing.
+    static func inferred(from answer: String, targets: [ScreenTarget]) -> [Annotation] {
+        let lowered = answer.lowercased()
+        var candidates: [ScreenTarget] = []
+
+        for phrase in quotedPhrases(in: answer) {
+            if let target = match(phrase, in: targets) { candidates.append(target) }
+        }
+        if candidates.isEmpty {
+            let mentioned = targets
+                .filter { $0.label.count >= 4 && lowered.contains($0.label.lowercased()) }
+                .sorted { $0.label.count > $1.label.count }
+            if let best = mentioned.first { candidates.append(best) }
+        }
+        guard !candidates.isEmpty else { return [] }
+        var result = Result(spoken: answer, elements: candidates.map(\.id), labels: [])
+        result.elements = Array(result.elements.prefix(2))
+        return annotations(for: result, targets: targets)
+    }
+
+    /// "…" and "…" — what the answer put in quotes or emphasis.
+    static func quotedPhrases(in text: String) -> [String] {
+        var phrases: [String] = []
+        for pattern in ["\"([^\"]{2,40})\"", "\u{201C}([^\u{201D}]{2,40})\u{201D}",
+                        "\\*\\*([^*]{2,40})\\*\\*"] {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(text.startIndex..., in: text)
+            for match in regex.matches(in: text, range: range) {
+                guard match.numberOfRanges > 1, let found = Range(match.range(at: 1), in: text)
+                else { continue }
+                phrases.append(String(text[found]))
+            }
+        }
+        return phrases
+    }
+
+    /// A target whose visible name is the one written here.
+    static func match(_ label: String, in targets: [ScreenTarget]) -> ScreenTarget? {
+        let wanted = label.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard wanted.count >= 2 else { return nil }
+        if let exact = targets.first(where: { $0.label.lowercased() == wanted }) { return exact }
+        return targets.first {
+            let candidate = $0.label.lowercased()
+            return candidate.count >= 3 && (candidate.contains(wanted) || wanted.contains(candidate))
+        }
     }
 }

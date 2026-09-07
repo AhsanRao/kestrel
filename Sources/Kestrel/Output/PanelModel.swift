@@ -60,7 +60,6 @@ final class PanelModel: ObservableObject {
         case .answering: return "Answer"
         case .injecting: return "Pasting"
         case .guiding: return "Follow along"
-        case .acting: return "Working"
         case .error(let message): return message
         }
     }
@@ -69,7 +68,7 @@ final class PanelModel: ObservableObject {
         switch state {
         case .idle: return KestrelPalette.idle
         case .listening, .dictating: return KestrelPalette.cyan
-        case .transcribing, .thinking, .injecting, .acting: return KestrelPalette.sky
+        case .transcribing, .thinking, .injecting: return KestrelPalette.sky
         // The island is black, so the logo's navy-leaning blue disappears into it; the same hue
         // lifted to where it reads against black.
         case .answering, .guiding: return KestrelPalette.sky

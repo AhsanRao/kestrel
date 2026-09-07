@@ -21,11 +21,8 @@ final class SessionCoordinator {
     let selection = SelectionOverlay()
     let dragTracker = DragTracker()
     lazy var walkthrough = WalkthroughSession(overlay: overlay)
-    let agentOverlay = AgentOverlay()
     let annotations = AnnotationOverlay()
-    let actuator = Actuator()
     let escapeWatcher = EscapeWatcher()
-    var activeRun: ActionRunner?
     /// Told whenever the session moves, so the menu bar can reflect it.
     var onStateChange: ((SessionState) -> Void)?
 
@@ -44,11 +41,6 @@ final class SessionCoordinator {
     /// How much of the control list a plain answer is offered. A walkthrough gets all of it; an
     /// answer only needs enough to point at what it is talking about.
     static let maximumPointableControls = 120
-    /// Apps the user has said yes to during the run in flight. Cleared when the run ends.
-    var grantedApps: Set<String> = []
-    /// How many times one request may be re-planned after opening an app. Enough for launch ▸ act,
-    /// and for one correction after it; short of a loop.
-    static let maximumActionRounds = 3
     /// The last few exchanges, so "the other one" has something to refer to.
     var conversation = Conversation()
     /// The region the user circled while holding the hotkey, in global AppKit points.
@@ -90,7 +82,6 @@ final class SessionCoordinator {
         sounds.stop()
         annotations.hide()
         escapeWatcher.stop()
-        activeRun?.cancel()
         dragTracker.end()
         selection.hide()
         accessibilityRetry?.invalidate()
@@ -165,7 +156,6 @@ final class SessionCoordinator {
             walkthroughContinuations = 0
             walkthrough.stop(completed: false, notify: false)
             escapeWatcher.stop()
-            agentOverlay.hide()
             annotations.hide()
         case .reset: reset()
         }

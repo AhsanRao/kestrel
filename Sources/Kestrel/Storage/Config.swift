@@ -8,7 +8,6 @@ struct Config: Codable, Equatable {
     var codexModel: String?
     var autoRoute: Bool
     var allowMCPServers: Bool
-    var mcpForTasks: Bool
 
     var whisperBinary: String
     var whisperModel: String
@@ -31,7 +30,6 @@ struct Config: Codable, Equatable {
     var walkthroughs: Bool
     /// Circle and point at what a spoken answer refers to, instead of describing where it is.
     var answerAnnotations: Bool
-    var agentActions: Bool
     var spatialContext: Bool
     var onboardingCompleted: Bool
 
@@ -43,7 +41,6 @@ struct Config: Codable, Equatable {
         codexModel: nil,
         autoRoute: false,
         allowMCPServers: false,
-        mcpForTasks: false,
         whisperBinary: Paths.defaultWhisperBinary,
         whisperModel: Paths.defaultWhisperModel.path,
         language: "auto",
@@ -61,7 +58,6 @@ struct Config: Codable, Equatable {
         launchAtLogin: false,
         walkthroughs: true,
         answerAnnotations: true,
-        agentActions: true,
         spatialContext: true,
         onboardingCompleted: false,
         apiKeys: APIKeys(anthropic: nil, openai: nil)
@@ -122,7 +118,6 @@ struct Config: Codable, Equatable {
         codexModel = opt(.codexModel)
         autoRoute = v(.autoRoute, d.autoRoute)
         allowMCPServers = v(.allowMCPServers, d.allowMCPServers)
-        mcpForTasks = v(.mcpForTasks, d.mcpForTasks)
         whisperBinary = v(.whisperBinary, d.whisperBinary)
         whisperModel = v(.whisperModel, d.whisperModel)
         language = v(.language, d.language)
@@ -140,7 +135,6 @@ struct Config: Codable, Equatable {
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
         walkthroughs = v(.walkthroughs, d.walkthroughs)
         answerAnnotations = v(.answerAnnotations, d.answerAnnotations)
-        agentActions = v(.agentActions, d.agentActions)
         spatialContext = v(.spatialContext, d.spatialContext)
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
         apiKeys = v(.apiKeys, d.apiKeys)
@@ -148,7 +142,7 @@ struct Config: Codable, Equatable {
     }
 
     init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
-         allowMCPServers: Bool, mcpForTasks: Bool,
+         allowMCPServers: Bool,
          whisperBinary: String, whisperModel: String, language: String, transcriptionHint: String?,
          speakAnswers: Bool, sounds: Bool,
          voiceIdentifier: String?,
@@ -156,9 +150,9 @@ struct Config: Codable, Equatable {
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
          screenshotMaxEdge: Int, captureMode: CaptureMode,
          launchAtLogin: Bool,
-         walkthroughs: Bool, answerAnnotations: Bool, agentActions: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
+         walkthroughs: Bool, answerAnnotations: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
-        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.mcpForTasks = mcpForTasks; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
+        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.transcriptionHint = transcriptionHint
         self.speakAnswers = speakAnswers; self.sounds = sounds
         self.voiceIdentifier = voiceIdentifier
@@ -168,7 +162,6 @@ struct Config: Codable, Equatable {
         self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
         self.launchAtLogin = launchAtLogin
         self.walkthroughs = walkthroughs; self.answerAnnotations = answerAnnotations
-        self.agentActions = agentActions
         self.spatialContext = spatialContext
         self.onboardingCompleted = onboardingCompleted
         self.apiKeys = apiKeys

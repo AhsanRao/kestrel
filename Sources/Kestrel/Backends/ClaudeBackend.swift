@@ -29,12 +29,12 @@ final class ClaudeBackend: Backend {
     /// Built as a pure function so the flag combinations can be tested without spawning anything.
     ///
     /// MCP discovery is the expensive one: with the user's connectors configured it added about
-    /// eleven seconds to every question. Plain questions never want it. An agent task might, which
-    /// is why it is opt-in per task rather than switched on globally.
+    /// eleven seconds to every question, and Kestrel only asks questions now, so it stays off
+    /// unless the user has deliberately turned connectors on.
     static func arguments(for query: Query, config: Config, streaming: Bool) -> [String] {
         var arguments = ["-p", PromptBuilder.build(query), "--no-session-persistence"]
 
-        let wantsConnectors = config.allowMCPServers || (query.mode == .agent && config.mcpForTasks)
+        let wantsConnectors = config.allowMCPServers
         if !wantsConnectors { arguments.append("--strict-mcp-config") }
 
         arguments += streaming

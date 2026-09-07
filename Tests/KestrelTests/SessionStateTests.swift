@@ -120,19 +120,6 @@ final class SessionStateTests: XCTestCase {
         XCTAssertEqual(machine.state, .answering)
     }
 
-    /// A re-planned run can come back with an explanation instead of a plan; the session has to
-    /// land on that answer rather than staying in `acting` for ever.
-    func testARunThatEndsInAnAnswerLeavesTheActingState() {
-        var machine = SessionMachine()
-        machine.apply(.askPressed)
-        machine.apply(.askReleased)
-        machine.apply(.transcribed(.ask))
-        machine.apply(.actionsReady)
-        XCTAssertEqual(machine.state, .acting)
-        XCTAssertEqual(machine.apply(.answered), [.clearOverlay])
-        XCTAssertEqual(machine.state, .answering)
-    }
-
     func testFinishingAWalkthroughTakesTheDrawingOffTheScreen() {
         var machine = machineInGuidingState()
         XCTAssertEqual(machine.apply(.walkthroughFinished), [.clearOverlay, .reset])

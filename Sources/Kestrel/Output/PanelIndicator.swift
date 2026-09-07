@@ -21,7 +21,7 @@ struct PanelIndicator: View {
                     SettledDot(accent: model.accent)
                         .transition(.scale(scale: 0.3).combined(with: .opacity))
                 }
-            case .transcribing, .thinking, .injecting, .acting:
+            case .transcribing, .thinking, .injecting:
                 ThinkingSweep(accent: model.accent, reduceMotion: reduceMotion)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             default:
@@ -42,7 +42,6 @@ struct PanelIndicator: View {
         case .transcribing: return "Transcribing"
         case .thinking: return "Thinking"
         case .injecting: return "Pasting"
-        case .acting: return "Working"
         case .answering, .guiding: return "Answer ready"
         case .error: return "Error"
         case .idle: return "Idle"

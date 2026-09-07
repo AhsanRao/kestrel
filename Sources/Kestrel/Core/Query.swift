@@ -1,6 +1,6 @@
 import Foundation
 
-enum QueryMode: String { case ask, dictationCleanup, walkthrough, agent }
+enum QueryMode: String { case ask, dictationCleanup, walkthrough }
 
 /// What a backend is asked to do. Screenshots are passed as file paths: both CLIs read images off
 /// disk, and this keeps large base64 payloads out of argv.
@@ -12,6 +12,13 @@ struct Query {
     var maxTokensHint: Int?
     /// Clickable controls read from the Accessibility tree, offered to the model to choose from.
     var elements: [AXElementScanner.Element]
+    /// Everything on screen the answer may point at — controls and content regions in one numbered
+    /// list, so the model can name a card as easily as a button.
+    var targets: [ScreenTarget]
+    /// What the screen actually says, in reading order, and where it came from.
+    var screenText: String?
+    var pageURL: String?
+    var document: String?
     /// Earlier turns, when this question continues a warm conversation.
     var history: [Conversation.Exchange]
     /// Per-app notes from `~/.kestrel/skills`, when the frontmost app has any.
@@ -25,6 +32,8 @@ struct Query {
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
          elements: [AXElementScanner.Element] = [],
+         targets: [ScreenTarget] = [],
+         screenText: String? = nil, pageURL: String? = nil, document: String? = nil,
          history: [Conversation.Exchange] = [], skills: String? = nil,
          desktop: String? = nil, workingDirectory: URL? = nil) {
         self.text = text
@@ -33,10 +42,25 @@ struct Query {
         self.mode = mode
         self.maxTokensHint = maxTokensHint
         self.elements = elements
+        self.targets = targets
+        self.screenText = screenText
+        self.pageURL = pageURL
+        self.document = document
         self.history = history
         self.skills = skills
         self.desktop = desktop
         self.workingDirectory = workingDirectory
+    }
+
+    /// The page or document in front of the user, named for the model.
+    var location: String? {
+        var lines: [String] = []
+        if let pageURL, !pageURL.isEmpty { lines.append("The page on screen is \(pageURL)") }
+        if let document, !document.isEmpty {
+            let name = URL(string: document)?.lastPathComponent ?? document
+            lines.append("The open document is \(name.removingPercentEncoding ?? name)")
+        }
+        return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 
     /// Timeouts per spec §8.5. Walkthroughs get longer: the model has to locate several controls
@@ -45,7 +69,6 @@ struct Query {
         switch mode {
         case .ask: return 120
         case .walkthrough: return 180
-        case .agent: return 150
         case .dictationCleanup: return 30
         }
     }

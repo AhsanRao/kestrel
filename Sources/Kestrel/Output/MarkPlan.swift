@@ -29,7 +29,10 @@ struct MarkPlan {
     var arrow: SketchArrow {
         let origin = captionOrigin
         let from = CGPoint(x: origin.x + 26, y: isBelow ? origin.y - 8 : origin.y + 44)
-        let to = CGPoint(x: target.midX, y: isBelow ? target.maxY + 13 : target.minY - 13)
+        // Measured from the *ring*, not the control, and standing off by more than the head is
+        // long: an arrowhead drawn on top of the box it is pointing at reads as a scribble.
+        let to = CGPoint(x: ring.midX,
+                         y: isBelow ? ring.maxY + Sketch.arrowStandoff : ring.minY - Sketch.arrowStandoff)
         return SketchArrow(from: from, to: to, bow: isBelow ? -20 : 20)
     }
 

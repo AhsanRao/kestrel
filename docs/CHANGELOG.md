@@ -4,8 +4,42 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ## [Unreleased]
 
+### Removed
+
+- **Driving apps.** Pressing buttons, filling fields, keystrokes, scrolling, the twelve-step plans
+  and the permission policy behind them are gone — `Action`, `ActionRunner`, `ActionPolicy`,
+  `ActionLog`, `AgentDetector`, `Actuator`, the agent overlay, `ProjectStore`, `agent.txt`,
+  `INTERACTIONS.md` and about 900 lines of tests with them. Every plan went stale the moment
+  anything moved, every step needed a confirmation, and the confirmations became something to click
+  through rather than read. What made Kestrel worth having was never that it could press Send.
+- **Kept**: opening an app. "Open Spotify" opens Spotify — one verb, nothing to undo, no
+  confirmation theatre. Anything after that is not done, and Kestrel says so rather than half-doing
+  it.
+
 ### Added
 
+- **Kestrel reads the screen, not just its buttons.** A new `AXContentReader` walks the front
+  window's Accessibility tree for *content* — headings, cards, images, table rows, paragraphs — and
+  hands the model a numbered list of them alongside the clickable controls, plus the text of what is
+  on screen in reading order and the page or document it belongs to. This is what "how could this
+  page look better?" needed: the answer used to have nothing to point at, because a card is not a
+  button. Only what is visible is read; anything below the fold is described rather than drawn on.
+- **It always points at something.** The marker line is now `MARK:` and covers content as well as
+  controls, and when the model names nothing, Kestrel searches the answer for the visible names of
+  things on screen and marks the best match itself. An answer that says "tighten the card spacing"
+  and highlights nothing has handed the user a puzzle.
+- **A section is shaded, not ringed**, with its name attached — a hairline circle around a quarter
+  of the screen reads as a bug.
+- **Kestrel draws with a pencil.** The pointer glyph is gone. A pencil says plainly that what is
+  happening is drawing rather than clicking, which is the whole distinction now.
+- **Memory that fills itself in.** Onboarding ends with four questions — name, what you do, what you
+  are working on, how you want to be answered — which become `KESTREL.md`. After that, a first-person
+  statement in a question ("I'm working on the billing rewrite", "I prefer short answers") is filed
+  under its own heading, deduplicated, newest first, capped at fourteen lines. Nothing read off the
+  screen is ever stored: what you are looking at is not a fact about you.
+- **A new voice.** `ask.txt` is now a person rather than a rule sheet: someone sitting next to you
+  who points while they talk, will have an opinion, and is forbidden from describing where anything
+  is.
 - **Kestrel has a cursor, and it draws with it.** Marks are no longer stroked on by an invisible
   hand: Kestrel's own pointer — cyan, glowing, unmistakably not the system one — travels to the
   control, draws the arrow, then loops the control, and rests there. The user's real pointer is
@@ -60,6 +94,9 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
 
 ### Fixed
 
+- **The arrowhead was drawn inside the box it pointed at.** The ring is inset ten points beyond the
+  control, but the arrow stopped three points short of the *control*, which put its head well inside
+  the ring. Arrows now stand off the drawn edge by more than the head is long.
 - **"It opens Spotify but never plays anything."** Three faults, one after another:
   - `launchApp` returned the instant the request was filed — several seconds before a cold-starting
     app has a window, a menu bar or anything in its Accessibility tree. It now waits for the app to

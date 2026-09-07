@@ -60,7 +60,6 @@ This is the single largest capability gap, and it is architectural rather than a
 | Audit | Telemetry to PostHog | `~/.kestrel/logs/actions.jsonl`, local, one JSON object per line |
 | Stopping a run | Close the HUD | Esc, seen through a listen-only tap wherever you are |
 
-Full detail: [INTERACTIONS.md](INTERACTIONS.md).
 
 ---
 

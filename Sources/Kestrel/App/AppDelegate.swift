@@ -17,7 +17,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ConfigStore.shared.start()
         MemoryStore.bootstrap()
         SkillLibrary.bootstrap()
-        ActionPolicy.bootstrap()
         LaunchAtLogin.sync(with: ConfigStore.shared.current.launchAtLogin)
 
         let menu = StatusMenu()
@@ -31,10 +30,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.start()
         log.info("Kestrel ready")
 
-        if ActionProbe.isRequested {
-            ActionProbe.run()
-            return
-        }
 
         if OverlayPreview.isRequested {
             OverlayPreview.run(on: coordinator)

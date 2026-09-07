@@ -9,8 +9,12 @@ import SwiftUI
 enum Sketch {
     /// How long a mark of a given path length should take, so a small circle is not sluggish and a
     /// long arrow is not a flicker.
-    /// A beat before the first stroke, so the cursor is seen arriving rather than already there.
+    /// A beat before the first stroke, so the pencil is seen arriving rather than already there.
     static let leadIn: Double = 0.12
+
+    /// How far an arrow stops short of the mark it points at. Longer than the arrowhead, or the
+    /// head is drawn over the box.
+    static let arrowStandoff: CGFloat = 22
 
     static func duration(forSpan span: CGFloat) -> Double {
         min(0.75, max(0.32, Double(span) / 1400))

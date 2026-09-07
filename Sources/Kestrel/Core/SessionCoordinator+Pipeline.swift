@@ -48,20 +48,23 @@ extension SessionCoordinator {
                                            window: TimeInterval(config.followUpSeconds),
                                            frontmostBundleID: bundleID)
         DispatchQueue.main.async { self.panel.model.isFollowUp = !history.isEmpty }
-        // "How do I …?" is a request to be shown, not told (spec §8.15).
-        // Three branches: do it, show it, or say it.
-        if !forceAnswer, AgentDetector.wantsAction(text, config: config) {
-            return runAgent(text, bundleID: bundleID)
+        // "Open Spotify" is the one thing Kestrel still does rather than describes.
+        if !forceAnswer, let app = AppLauncher.requestedApp(in: text) {
+            return openApp(app, asked: text)
         }
         let wantsSteps = asWalkthrough
             || (!forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config))
         DispatchQueue.main.async { self.resetStreaming() }
-        // The control list is read for a plain answer too, not only for a walkthrough: it is what
-        // lets the answer point at something. "Click Share in the toolbar" spoken while the Share
-        // button is circled is an assistant; the same sentence alone is a chatbot describing a
-        // photograph.
+        // The screen is read for a plain answer too, not only for a walkthrough: it is what lets
+        // the answer point at something. "Click Share in the toolbar" spoken while the Share button
+        // is circled is an assistant; the same sentence alone is a chatbot describing a photograph.
+        // Controls *and* content, because half of what anyone asks about is not clickable.
         let elements = AXElementScanner.scanFrontmostApp()
         DispatchQueue.main.sync { self.scannedElements = elements }
+        var targets = Array(elements.prefix(SessionCoordinator.maximumPointableControls))
+            .map(\.asTarget)
+        let screen = wantsSteps ? nil : AXContentReader.read(startingAt: targets.count + 1)
+        targets += screen?.regions ?? []
         // Walkthroughs get a gridded copy of the screenshot: the model reads coordinates off the
         // printed lines instead of guessing them. The user's own view is never touched.
         // The Accessibility tree is the accurate way to point at a control; the gridded screenshot
@@ -87,8 +90,10 @@ extension SessionCoordinator {
         let query = Query(text: text, screenshot: gridded ?? pendingCapture?.url,
                           focusCrop: pendingCrop,
                           mode: wantsSteps ? .walkthrough : .ask,
-                          elements: wantsSteps ? elements
-                              : Array(elements.prefix(SessionCoordinator.maximumPointableControls)),
+                          elements: wantsSteps ? elements : [],
+                          targets: wantsSteps ? [] : targets,
+                          screenText: screen?.text, pageURL: screen?.url,
+                          document: screen?.document,
                           history: history,
                           skills: SkillLibrary.notes(forBundleID: bundleID),
                           desktop: DesktopContextDetector.needsDesktopContext(text)
@@ -111,7 +116,10 @@ extension SessionCoordinator {
                     spoken.text = pointed.spoken
                     self.conversation.record(question: text, answer: pointed.spoken,
                                              at: Date(), appBundleID: bundleID)
-                    self.showAnnotations(pointed, elements: elements)
+                    // "I'm working on the billing rewrite" is worth keeping; the rest of what was
+                    // on screen is not. Written off the main thread — it touches disk.
+                    self.work.async { MemoryWriter.note(question: text) }
+                    self.showAnnotations(pointed, targets: targets)
                     self.present(spoken, alreadySpoken: self.streamedSpeech)
                 }
             }

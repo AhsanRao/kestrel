@@ -21,7 +21,7 @@ final class StatusItemAnimatorTests: XCTestCase {
     }
 
     func testActingAndInjectingCountAsWorking() {
-        for state in [SessionState.acting, .injecting, .transcribing(.ask)] {
+        for state in [SessionState.injecting, .transcribing(.ask), .thinking] {
             guard case .breathing = StatusItemAnimator.Pace.forState(state) else {
                 return XCTFail("\(state) should breathe")
             }
