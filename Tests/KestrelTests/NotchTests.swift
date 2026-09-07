@@ -6,14 +6,17 @@ final class NotchMetricsTests: XCTestCase {
     func testADisplayWithoutANotchStillReservesABar() {
         let metrics = NotchMetrics(notchSize: .zero, screenFrame: CGRect(x: 0, y: 0, width: 1920, height: 1080))
         XCTAssertFalse(metrics.hasNotch)
-        XCTAssertEqual(metrics.barHeight, 26)
+        XCTAssertEqual(metrics.barHeight, 30)
     }
 
-    func testTheBarMatchesTheHousingWhenThereIsOne() {
+    /// Taller than the housing, never shorter: a bar that stops short of the housing leaves its
+    /// bottom edge showing, which is the one thing the shape exists to hide.
+    func testTheBarCoversTheHousingWhenThereIsOne() {
         let metrics = NotchMetrics(notchSize: CGSize(width: 179, height: 32),
                                    screenFrame: CGRect(x: 0, y: 0, width: 1470, height: 956))
         XCTAssertTrue(metrics.hasNotch)
-        XCTAssertEqual(metrics.barHeight, 32)
+        XCTAssertGreaterThan(metrics.barHeight, metrics.notchSize.height)
+        XCTAssertEqual(metrics.barHeight, 36)
     }
 }
 
@@ -56,7 +59,7 @@ final class PanelSizingTests: XCTestCase {
     }
 }
 
-/// The island shares a 32-point strip with the camera housing, so anything long enough to run
+/// The island shares a notch-tall strip with the camera housing, so anything long enough to run
 /// across the housing belongs in the opened half instead.
 final class PanelHeadlineTests: XCTestCase {
     func testAnErrorIsNamedShortInTheStripAndSpeltOutBelow() {

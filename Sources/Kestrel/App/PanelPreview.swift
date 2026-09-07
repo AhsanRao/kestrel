@@ -51,6 +51,15 @@ enum PanelPreview {
             panel.model.level = 0.78
         case "error":
             panel.model.state = .error("whisper-cli not found — run: brew install whisper-cpp")
+        case "draft":
+            panel.model.state = .answering
+            panel.model.transcript = "Write a reply saying I can't make Thursday."
+            panel.model.answer = "Here's a reply you can send."
+            panel.model.draft = Draft(
+                subject: "Re: Thursday's review",
+                body: "Hi Sam,\n\nThursday won't work on my end — I'm out with the team until "
+                    + "late afternoon. Friday morning is clear if that suits, otherwise any time "
+                    + "Monday.\n\nSorry for the shuffle.\n\nAsh")
         case "thinking":
             panel.model.state = .thinking
             panel.model.transcript = "How do I export this as a PDF?"

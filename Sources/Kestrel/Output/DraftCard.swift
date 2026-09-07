@@ -27,19 +27,20 @@ struct DraftCard: View {
                 Spacer(minLength: 8)
                 copyButton
             }
-            // Long drafts scroll rather than growing the island past the screen. Short ones sit at
-            // their own height, so a two-line reply does not get a scroller it has no use for.
-            ScrollView(.vertical) {
-                Text(draft.body)
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineSpacing(3)
-                    .foregroundStyle(.white.opacity(0.92))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 220)
-            .scrollBounceBehavior(.basedOnSize)
+            // Laid out at its full height, never in a ScrollView. A scroller takes whatever height
+            // it is offered, and the height on offer here is the window's — which is being decided
+            // by measuring this very view. Inside that measurement it collapses to nothing and the
+            // draft disappears, leaving a card with a copy button and no text under it. The island
+            // grows to fit instead, and a long draft is clipped at a line count rather than
+            // running off the bottom of the display.
+            Text(draft.body)
+                .font(.system(size: 12, design: .monospaced))
+                .lineSpacing(3)
+                .foregroundStyle(.white.opacity(0.92))
+                .textSelection(.enabled)
+                .lineLimit(16)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
         .background(

@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// Two rules make it read as part of the machine rather than a window near it. It is pure black,
 /// because the camera housing is pure black and any other value draws a seam right across the
-/// middle of it. And its top row is exactly as tall as the housing, so the housing has nothing to
+/// middle of it. And its top row is a shade taller than the housing, so the housing has nothing to
 /// stick out of — the island is the notch, wider.
 struct PanelView: View {
     @ObservedObject var model: PanelModel
@@ -31,7 +31,7 @@ struct PanelView: View {
             if model.isExpanded { content }
         }
         .frame(width: model.width)
-        .background(shape.fill(Color.black))
+        .background(shape.fill(KestrelPalette.housing))
         .clipShape(shape)
         .overlay(rim)
         .compositingGroup()
@@ -59,11 +59,18 @@ struct PanelView: View {
 
     /// A hairline that fades out before it reaches the top edge: a border across the very top would
     /// be the one line that gives away where the housing ends and Kestrel begins.
-    private var rim: some View {
-        shape.stroke(
-            LinearGradient(colors: [.clear, .white.opacity(model.isRecording ? 0.18 : 0.10)],
-                           startPoint: .top, endPoint: .bottom),
-            lineWidth: 1)
+    ///
+    /// Gone entirely while the island is collapsed. Closed, the whole island *is* the notch strip,
+    /// so a rim that brightens towards the bottom draws a lit outline a few points below the
+    /// housing — the exact seam it exists to avoid. Black on black is what makes the housing
+    /// disappear; nothing else may be drawn over it.
+    @ViewBuilder private var rim: some View {
+        if model.isExpanded {
+            shape.stroke(
+                LinearGradient(colors: [.clear, .white.opacity(model.isRecording ? 0.18 : 0.10)],
+                               startPoint: .top, endPoint: .bottom),
+                lineWidth: 1)
+        }
     }
 
     // MARK: - The notch row

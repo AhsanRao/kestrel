@@ -40,7 +40,7 @@ final class PanelModel: ObservableObject {
         return isExpanded ? max(clearance, 470) : max(clearance, 330)
     }
 
-    /// What the notch row says. Short by construction: it shares a 32-point strip with the camera
+    /// What the notch row says. Short by construction: it shares a notch-tall strip with the camera
     /// housing, and an error message that runs across the housing is worse than no message.
     var headline: String {
         isError ? "Kestrel" : label
@@ -91,6 +91,10 @@ final class PanelModel: ObservableObject {
 /// Taken from the shipped logo (`assets/kestrel-logo.svg`): deep navy body, cyan waveform.
 /// The spec's §15 table described a cream/amber concept that the final artwork replaced.
 enum KestrelPalette {
+    /// The island's fill. Pure black with no opacity of its own and no material behind it, because
+    /// it has to be the same colour as the camera housing it grows out of — anything lighter, or
+    /// anything that lets the wallpaper through, puts a visible edge around the notch.
+    static let housing = Color(.sRGB, red: 0, green: 0, blue: 0, opacity: 1)
     static let navy = Color(red: 0.059, green: 0.125, blue: 0.220)
     static let cyan = Color(red: 0.165, green: 0.941, blue: 0.855)
     static let blue = Color(red: 0.180, green: 0.361, blue: 0.541)

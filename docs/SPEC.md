@@ -302,8 +302,13 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 - Requires Accessibility permission; prompt once and explain why.
 
 ### 8.11 PanelWindow / PanelView
-- Non-activating floating `NSPanel`, top-center of the active display, width 420, material background, draggable.
-- Shows: state dot + label, backend badge, transcript (secondary), answer (selectable, scrollable, markdown-lite), hotkey hint.
+- Non-activating borderless `NSPanel`, hung from the top edge of the display the mouse is on, not
+  floating below it: pure black, notch-shaped, so it reads as the camera housing grown wider.
+- The collapsed bar is a few points taller than the housing (`NotchMetrics.housingOvershoot`), and
+  nothing is drawn over it — no rim, no material — because any edge or lighter value puts a visible
+  seam around the notch. It opens downward only when there is something to read.
+- Shows: state dot + label, backend badge, transcript (secondary), answer, draft card, hotkey hint.
+  Everything is laid out at its full height; nothing scrolls, per §8.17.
 - Auto-hide timers: 20 s after answer, 3 s after dictation, 8 s after error. Hover pauses the timer.
 - Must be excluded from screenshots (see 8.3).
 
@@ -366,9 +371,12 @@ answer, marks that stay put.
 - "Write me a reply to this" is a different kind of question: the answer is not something to hear and
   not something to point at, it is something to take away. The model answers with one spoken line,
   then `DRAFT:` carrying an optional subject, then the body between `---` fences.
-- The body is shown in its own card — selectable, monospaced, scrolling past a few hundred points —
-  with a **Copy** button that puts subject and body on the clipboard. It is never spoken: the split
-  is made as the answer streams, so speech stops at the marker rather than reading an email aloud.
+- The body is shown in its own card — selectable, monospaced, laid out at its full height and cut
+  off at sixteen lines — with a **Copy** button that puts subject and body on the clipboard. Never
+  a scroller: the island's height is decided by measuring its own content, and a scroll view inside
+  that measurement collapses to nothing, leaving a card with a copy button and no draft under it.
+  It is never spoken: the split is made as the answer streams, so speech stops at the marker rather
+  than reading an email aloud.
 
 ---
 

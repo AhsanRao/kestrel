@@ -35,9 +35,9 @@ new screen.
 
 "Write me a reply to this" is a different kind of question — the answer is not something to hear
 and not something to point at, it is something to take away. The model replies with one spoken
-line and the draft beneath it. The draft lands in its own card: selectable, monospaced, scrolling
-when long, with a **Copy** button that puts subject and body on the clipboard. It is never read
-aloud. The split is made as the answer streams, because speech starts before the whole answer
+line and the draft beneath it. The draft lands in its own card: selectable, monospaced, laid out
+at its full height, with a **Copy** button that puts subject and body on the clipboard. It is never
+read aloud. The split is made as the answer streams, because speech starts before the whole answer
 exists.
 
 ### Hold ⌃⌥ to ask
@@ -135,7 +135,8 @@ because a card is not a button. Only what is visible is read.
 
 ### Interface
 
-- The panel is an island docked to the notch, opening only when there is something to read.
+- The panel is an island docked to the notch, opening only when there is something to read. Black,
+  and a shade taller than the camera housing, so the housing has no edge left showing.
 - Sound cues on hotkey down, release, answer and error, following system mute.
 - A setup window listing every permission and tool, what each is for, and a button that asks for
   it. It re-checks itself while open, so a switch flipped in System Settings ticks the row without

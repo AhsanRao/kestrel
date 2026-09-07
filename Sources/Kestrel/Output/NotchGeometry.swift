@@ -14,7 +14,16 @@ struct NotchMetrics: Equatable {
 
     var hasNotch: Bool { notchSize.width > 1 }
     /// The strip along the top the content must stay clear of.
-    var barHeight: CGFloat { hasNotch ? notchSize.height : 26 }
+    ///
+    /// A couple of points taller than the housing on purpose. `safeAreaInsets.top` is the menu bar
+    /// inset, which the housing fills to within a point or two, and the window frame is rounded to
+    /// whole points on top of that — so a bar sized to the inset exactly leaves the bottom edge of
+    /// the housing showing beneath it as a faint step. Overshooting hides it; the island reads as
+    /// the notch either way, because both are black.
+    var barHeight: CGFloat { hasNotch ? notchSize.height + NotchMetrics.housingOvershoot : 30 }
+
+    /// How far the bar hangs below the camera housing, so no edge of the housing is left visible.
+    static let housingOvershoot: CGFloat = 4
 
     static let none = NotchMetrics(notchSize: .zero, screenFrame: .zero)
 
