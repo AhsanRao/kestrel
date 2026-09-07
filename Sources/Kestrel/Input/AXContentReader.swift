@@ -25,7 +25,9 @@ enum AXContentReader {
     /// Regions smaller than this are punctuation, not sections.
     static let minimumSize = CGSize(width: 44, height: 18)
     static let maximumRegions = 90
-    static let maximumDepth = 18
+    /// Deep for the same reason the control walk is (see `AXElementScanner.maximumDepth`): the
+    /// panes of an Electron window sit far below where a shallow walk gives up.
+    static let maximumDepth = 30
     /// Text handed to the model, in characters. Enough for a page of prose, short of a novel.
     static let maximumText = 3500
 

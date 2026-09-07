@@ -21,17 +21,24 @@ enum AXElementScanner {
     ]
 
     /// Bounds on the walk: some apps have enormous trees and Kestrel is on the user's clock.
-    static let maximumDepth = 14
+    ///
+    /// Deep, because the depth of a control says nothing about how important it is. An Electron
+    /// app nests a dozen groups for every visible pane — measured in VS Code: 3208 elements, 207
+    /// buttons, deepest node at 37 — so a walk that stopped at 14 came back with the menu bar and
+    /// nothing else, and every answer about that window had nothing on screen it could point at.
+    /// The element cap below is the real bound on the work; this only has to be past where the
+    /// content of a modern app starts.
+    static let maximumDepth = 30
     static let maximumElements = 220
     /// Acting needs more of the app than describing it does: driving Spotify means reaching
     /// Playback ▸ Next, which is a menu item, not a button on the window.
     static let maximumElementsWhenActing = 420
     /// How far into the menu bar the planning scan walks: menus and their titles, not their items.
     /// Every item of every menu would crowd out the window's own controls at `maximumElements`.
-    static let menuDepth = maximumDepth - 11
+    static let menuDepth = 3
     /// Two levels further: the items inside each menu, not just the menu titles. Used by the live
     /// re-targeting scan and by anything that has to actually drive the app.
-    static let deepMenuDepth = maximumDepth - 9
+    static let deepMenuDepth = 5
 
     struct Element: Equatable {
         var id: Int
@@ -78,6 +85,7 @@ enum AXElementScanner {
 
     static func scan(pid: pid_t, menuDepth: Int = menuDepth, limit: Int = maximumElements) -> [Element] {
         guard isAvailable else { return [] }
+        let started = Date()
         let application = AXUIElementCreateApplication(pid)
         enableWebContent(for: application)
         var found: [Element] = []
@@ -103,7 +111,7 @@ enum AXElementScanner {
         }
 
         for index in found.indices { found[index].id = index + 1 }
-        log.debug("scanned \(found.count) clickable elements")
+        log.debug("scanned \(found.count) clickable elements in \(Int(Date().timeIntervalSince(started) * 1000))ms")
         return found
     }
 

@@ -370,11 +370,17 @@ answer, marks that stay put.
 
 ### 8.16 Spatial context (v2)
 - While holding the ask hotkey, the user may drag with the mouse; the overlay shows a paint trail. On release, the bounding box becomes `focusCrop` and is sent alongside the full screenshot with the instruction "the user circled this region."
-- The drag is **swallowed** by a `CGEventTap`, not merely observed. A passive monitor cannot consume
-  events, so the gesture also reached the app underneath — selecting text, following links, and,
-  because every ask hotkey contains Control and Control-click is the secondary click on macOS,
-  opening the context menu over the thing being asked about. Left *and* right buttons are watched,
-  since with Control held macOS reports the press as a secondary click.
+- The press and release are **swallowed** by a `CGEventTap`, not merely observed. A passive monitor
+  cannot consume events, so the gesture also reached the app underneath — selecting text, following
+  links, and, because every ask hotkey contains Control and Control-click is the secondary click on
+  macOS, opening the context menu over the thing being asked about. Left *and* right buttons are
+  watched, since with Control held macOS reports the press as a secondary click.
+- The movement between them passes through, and each point is read from the event's own
+  coordinates rather than `NSEvent.mouseLocation`. Consuming a drag stops the window server moving
+  the pointer: the cursor froze under the hand and every sample came back as the point where the
+  press landed, so the trail was a dot, the bounding box fell under `minimumSpan`, and no crop was
+  ever sent. An app that sees drags without the press that would have begun them has nothing to
+  act on.
 
 ### 8.17 Drafts
 - "Write me a reply to this" is a different kind of question: the answer is not something to hear and

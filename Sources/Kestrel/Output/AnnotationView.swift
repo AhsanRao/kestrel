@@ -43,11 +43,11 @@ struct AnnotationView: View {
             Group {
                 if annotation.shape == .circle {
                     DrawsOn(shape: SketchEllipse(start: fromLeft ? .leading : .trailing),
-                            lineWidth: 3.5, duration: ringDuration,
+                            lineWidth: AnnotationView.stroke, duration: ringDuration,
                             delay: arrival + travel.duration, restsAfterDrawing: isLast)
                 } else {
                     DrawsOn(shape: SketchRect(cornerRadius: 8, start: fromLeft ? .leading : .trailing),
-                            lineWidth: 3.5, duration: ringDuration,
+                            lineWidth: AnnotationView.stroke, duration: ringDuration,
                             delay: arrival + travel.duration, restsAfterDrawing: isLast)
                 }
             }
@@ -76,6 +76,10 @@ struct AnnotationView: View {
     /// has been made.
     static let perMark: Double = 0.95
 
+    /// Pencil width. Thin enough that a ring around a pane does not read as a border the app
+    /// itself drew, heavy enough to stay visible over a busy screen.
+    static let stroke: CGFloat = 2.25
+
     private func comesFromLeft(_ rect: CGRect) -> Bool { rect.minX > 190 }
 
     /// The arrow comes in from whichever side has room, so it never crosses the control it points at.
@@ -89,7 +93,7 @@ struct AnnotationView: View {
                           y: rect.midY)
         let shape = SketchArrow(from: from, to: tip, bow: fromLeft ? 20 : -20)
         let duration = Sketch.duration(forSpan: shape.span)
-        return (AnyView(DrawsOn(shape: shape, lineWidth: 3, duration: duration, delay: delay,
+        return (AnyView(DrawsOn(shape: shape, lineWidth: AnnotationView.stroke - 0.5, duration: duration, delay: delay,
                                 restsAfterDrawing: false)),
                 duration)
     }
