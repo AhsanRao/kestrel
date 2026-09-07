@@ -46,7 +46,7 @@ enum OverlayPreview {
             var report = ["accessibility trusted: \(AXElementScanner.isAvailable)",
                           "frontmost: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")",
                           "screens: " + NSScreen.screens.map { "\($0.frame)" }.joined(separator: " "),
-                          "desktop: \(OverlayModel.desktopBounds)",
+                          "desktop: \(AnnotationOverlayModel.desktopBounds)",
                           "page: \(screen.url ?? "—")  document: \(screen.document ?? "—")",
                           "controls: \(elements.count)  regions: \(screen.regions.count)"
                             + "  text: \(screen.text.count) chars",
@@ -108,19 +108,15 @@ enum OverlayPreview {
                 Annotation(frame: menu, caption: "File", shape: .circle),
             ])
         default:
-            let walkthrough = Walkthrough(goal: "Export as PDF", steps: [
-                WalkthroughStep(n: 1, instruction: "Click the File menu", label: "File"),
-                WalkthroughStep(n: 2, instruction: "Choose Export as PDF", label: "Export as PDF…"),
-            ], needs_more: false)
-            coordinator.overlay.model.frames = [menu, button]
-            coordinator.overlay.model.steps = walkthrough.steps
-            coordinator.overlay.model.goal = walkthrough.goal
-            coordinator.overlay.model.index = 0
-            coordinator.overlay.show()
+            // Two marks, drawn one after the other, which is what an ordinary answer looks like:
+            // the pencil rings the first, travels, and rings the second.
+            coordinator.annotations.show([
+                Annotation(frame: menu, caption: "File", shape: .circle),
+                Annotation(frame: button, caption: "Export as PDF", shape: .rect),
+            ])
         }
 
         // Lifted before the windows are composited, exactly as the panel preview must do it.
-        coordinator.overlay.setExcludedFromCapture(false)
         coordinator.annotations.setExcludedFromCapture(false)
 
         guard let path = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] else { return }

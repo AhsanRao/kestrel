@@ -6,9 +6,13 @@ final class PanelModel: ObservableObject {
     @Published var transcript: String = ""
     @Published var answer: String = ""
     @Published var backend: BackendKind = .claude
-    @Published var askHint: String = "⌃⌘A"
+    @Published var askHint: String = "⌃⌥"
     @Published var dictateHint: String = "⌃⌘K"
     @Published var permissionURL: URL?
+    /// A piece of writing the user asked for — an email, a reply, a paragraph. Shown with a copy
+    /// button instead of being read out, because the only thing anyone does with a draft is take it
+    /// somewhere else.
+    @Published var draft: Draft?
     @Published var pulse: Int = 0
     @Published var isHovering: Bool = false
     /// This question continues the previous one rather than starting fresh.
@@ -26,7 +30,7 @@ final class PanelModel: ObservableObject {
     /// Collapsed, the island is a bar around the notch; it opens only once there is something to
     /// read. A transcript alone counts: that is the question being heard back.
     var isExpanded: Bool {
-        !answer.isEmpty || !transcript.isEmpty || isError
+        !answer.isEmpty || !transcript.isEmpty || isError || draft != nil
     }
 
     /// The island's width in each of its two sizes. Always wider than the housing, so the housing
@@ -59,7 +63,6 @@ final class PanelModel: ObservableObject {
         case .thinking: return "Thinking"
         case .answering: return "Answer"
         case .injecting: return "Pasting"
-        case .guiding: return "Follow along"
         case .error(let message): return message
         }
     }
@@ -71,7 +74,7 @@ final class PanelModel: ObservableObject {
         case .transcribing, .thinking, .injecting: return KestrelPalette.sky
         // The island is black, so the logo's navy-leaning blue disappears into it; the same hue
         // lifted to where it reads against black.
-        case .answering, .guiding: return KestrelPalette.sky
+        case .answering: return KestrelPalette.sky
         case .error: return KestrelPalette.coral
         }
     }

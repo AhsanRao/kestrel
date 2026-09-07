@@ -89,13 +89,21 @@ final class ModifierChordTests: XCTestCase {
         XCTAssertEqual(HotkeyBinding(keyCode: nil, modifiers: ["cmd", "ctrl"]).display, "⌃⌘")
     }
 
-    /// The shipped defaults are plain keyed hotkeys, so they need no Accessibility grant and can
-    /// never be mistaken for the prefix of a system shortcut. Bare chords remain opt-in.
-    func testTheShippedDefaultsAreOrdinaryKeyedHotkeys() {
-        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌘A")
+    /// Asking is held down for the length of a sentence, so it is a bare chord — one shape the hand
+    /// already makes, with no letter to collide with an app's shortcut. Dictation is a tap, so it
+    /// stays an ordinary keyed hotkey and needs no permission of its own.
+    func testAskIsABareChordAndDictateIsKeyed() {
+        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌥")
+        XCTAssertTrue(Config.Hotkeys.defaults.ask.isModifierOnly)
+        XCTAssertTrue(Config.Hotkeys.defaults.ask.isValid, "a chord needs two modifiers to be valid")
+
         XCTAssertEqual(Config.Hotkeys.defaults.dictate.display, "⌃⌘K")
-        XCTAssertFalse(Config.Hotkeys.defaults.ask.isModifierOnly)
         XCTAssertFalse(Config.Hotkeys.defaults.dictate.isModifierOnly)
+    }
+
+    /// The two must never be the same gesture, or one of them can never be reached.
+    func testTheTwoDefaultsAreDifferentGestures() {
+        XCTAssertNotEqual(Config.Hotkeys.defaults.ask, Config.Hotkeys.defaults.dictate)
     }
 
     /// The four ⌃⌘ combinations macOS reserves. Neither default may sit on one.

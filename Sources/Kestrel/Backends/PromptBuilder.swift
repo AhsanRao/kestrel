@@ -3,16 +3,11 @@ import Foundation
 /// Assembles the single prompt string handed to a CLI. Framing text lives in `Resources/Prompts`
 /// so it can be edited without a rebuild (spec §9).
 enum PromptBuilder {
-    /// A walkthrough asks two different questions depending on what Kestrel could learn about the
-    /// app: pick a real control by number, or — when Accessibility gave nothing — read a position
-    /// off a grid drawn on the screenshot.
+    /// One question, one framing. There used to be two more — a walkthrough asking for a numbered
+    /// route as JSON, in either the Accessibility list or a grid drawn on the screenshot — and the
+    /// route is gone, so they are too.
     static func framing(for query: Query) -> String {
-        switch query.mode {
-        case .walkthrough:
-            return BundleResources.prompt(query.elements.isEmpty ? .walkthrough : .walkthroughElements)
-        default:
-            return BundleResources.prompt(.ask)
-        }
+        BundleResources.prompt(.ask)
     }
 
     /// - Parameter mentionScreenshotPath: Claude reads the PNG itself via its Read tool, so it
@@ -22,7 +17,7 @@ enum PromptBuilder {
         case .dictationCleanup:
             return BundleResources.prompt(.dictationCleanup) + "\n" + query.text
 
-        case .ask, .walkthrough:
+        case .ask:
             var parts: [String] = []
             parts.append(framing(for: query))
             if mentionScreenshotPath {
@@ -36,10 +31,6 @@ enum PromptBuilder {
                 }
             } else if query.focusCrop != nil {
                 parts.append("The first attached image is the region the user circled; the second is the full screen.")
-            }
-            if !query.elements.isEmpty {
-                parts.append("Controls on screen:\n"
-                             + query.elements.map(\.listing).joined(separator: "\n"))
             }
             // Controls and content in one numbered list: an answer about a page's layout has to be
             // able to name the card it means, and a card is not a button.

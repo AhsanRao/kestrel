@@ -45,7 +45,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 9) {
             Text("Set up Kestrel")
                 .font(.system(size: 19, weight: .semibold))
-            Text("Hold ⌃⌘A and ask about your screen. Kestrel needs a few things first — nothing "
+            Text("Hold ⌃⌥ and ask about your screen. Kestrel needs a few things first — nothing "
                  + "leaves this Mac except the question you ask and one screenshot.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)

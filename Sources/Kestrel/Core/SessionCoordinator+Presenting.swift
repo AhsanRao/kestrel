@@ -8,6 +8,8 @@ extension SessionCoordinator {
     /// sentence that streams back is recognised as the first.
     func resetStreaming() {
         streamedSpeech = false
+        streamingDraft = false
+        panel.model.draft = nil
     }
 
     /// Circles what the answer is pointing at, while it is being said.
@@ -45,6 +47,11 @@ extension SessionCoordinator {
         guard case .thinking = machine.state else { return }
         // The trailing marker line is an instruction to Kestrel, not part of the answer.
         guard !AnnotationParser.isMarker(sentence) else { return }
+        // Everything from the DRAFT: line onward is the thing the user asked to be written, and
+        // reading an email out loud is nobody's idea of help. The decision has to be made here,
+        // sentence by sentence, because speech starts before the whole answer exists.
+        if DraftParser.isDraftBoundary(sentence) { streamingDraft = true }
+        guard !streamingDraft else { return }
         panel.model.answer = panel.model.answer.isEmpty ? sentence : panel.model.answer + " " + sentence
         guard config.speakAnswers else { return }
         let isFirstSentence = !streamedSpeech
@@ -135,6 +142,7 @@ extension SessionCoordinator {
     func reset() {
         panel.model.transcript = ""
         panel.model.answer = ""
+        panel.model.draft = nil
         panel.model.permissionURL = nil
         discardCapture()
     }
@@ -152,8 +160,7 @@ extension SessionCoordinator {
 
     func render() {
         panel.model.state = machine.state
-        // While guiding, the overlay is the interface; re-showing the panel would double up on it.
-        guard machine.state != .idle, machine.state != .guiding else { return }
+        guard machine.state != .idle else { return }
         panel.show()
     }
 }

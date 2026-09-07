@@ -1,13 +1,15 @@
 import CoreGraphics
 import Foundation
 
-/// A screenshot plus everything needed to map a model's coordinates back onto the real screen.
+/// A screenshot, and where a rectangle on the screen falls inside it.
 ///
-/// Targets arrive in whatever grid the model measured in, which it declares alongside them: the
-/// vendors resize images before the model sees them, so a model looking at a 1440x900 screenshot
-/// reports coordinates from its own ~320x200 view of it and cannot be talked out of that. Asking
-/// it to name its frame and rescaling from there is what actually works. AppKit then wants
-/// bottom-left points, so every target makes that round trip here, testable without a display.
+/// Kestrel does not ask a model for coordinates at all: it offers a numbered list of real controls
+/// read from macOS and the model picks one, because locating a small control in a resized
+/// screenshot is genuinely hard for a vision model while reading an exact frame out of the
+/// Accessibility tree is free and correct. All the arithmetic for translating a model's own grid
+/// back onto the display went with the walkthroughs that needed it. What remains is the one
+/// conversion the circled-region crop still makes — AppKit measures up from the bottom, a PNG
+/// counts down from the top.
 struct ScreenCapture: Equatable {
     var url: URL
     /// Frame of whatever was captured — the front window, or the whole display — in global
@@ -15,38 +17,6 @@ struct ScreenCapture: Equatable {
     var captureFrame: CGRect
     /// Pixel size of the PNG actually handed to the model. Not used for mapping — kept for logs.
     var pixelSize: CGSize
-
-    func pointsPerUnitX(in space: Walkthrough.ImageSize) -> CGFloat {
-        captureFrame.width / CGFloat(space.w)
-    }
-
-    func pointsPerUnitY(in space: Walkthrough.ImageSize) -> CGFloat {
-        captureFrame.height / CGFloat(space.h)
-    }
-
-    /// Target in the model's own grid (origin top-left) → global screen rect (origin bottom-left).
-    func screenRect(for target: WalkthroughStep.Target, in space: Walkthrough.ImageSize) -> CGRect {
-        let scaleX = pointsPerUnitX(in: space), scaleY = pointsPerUnitY(in: space)
-        let x = captureFrame.minX + CGFloat(target.x) * scaleX
-        // y counts down from the top of the display, AppKit counts up from the bottom.
-        let y = captureFrame.maxY - (CGFloat(target.y) + CGFloat(target.h)) * scaleY
-        return CGRect(x: x, y: y, width: CGFloat(target.w) * scaleX, height: CGFloat(target.h) * scaleY)
-    }
-
-    /// The same rect in the top-left drawing space SwiftUI uses inside the overlay window.
-    func viewRect(for target: WalkthroughStep.Target, in space: Walkthrough.ImageSize) -> CGRect {
-        let scaleX = pointsPerUnitX(in: space), scaleY = pointsPerUnitY(in: space)
-        return CGRect(x: CGFloat(target.x) * scaleX, y: CGFloat(target.y) * scaleY,
-                      width: CGFloat(target.w) * scaleX, height: CGFloat(target.h) * scaleY)
-    }
-
-    /// A rect already in global AppKit points, expressed inside an overlay window covering the
-    /// capture — SwiftUI draws from the top-left, AppKit measures from the bottom.
-    func viewRect(forScreenRect rect: CGRect) -> CGRect {
-        CGRect(x: rect.minX - captureFrame.minX,
-               y: captureFrame.maxY - rect.maxY,
-               width: rect.width, height: rect.height)
-    }
 
     /// Where a global screen rect falls inside the captured PNG, in its pixels.
     func pixelRect(forScreenRect rect: CGRect) -> CGRect? {
@@ -61,14 +31,4 @@ struct ScreenCapture: Equatable {
                       height: clipped.height * scaleY)
     }
 
-    /// True when the target could plausibly be a control on this screen. Models sometimes invent
-    /// coordinates or contradict the frame they declared; those steps are described, not drawn.
-    static func isPlausible(_ target: WalkthroughStep.Target, in space: Walkthrough.ImageSize) -> Bool {
-        guard target.w > 0, target.h > 0 else { return false }
-        let canvas = CGRect(x: 0, y: 0, width: space.w, height: space.h)
-        let rect = CGRect(x: target.x, y: target.y, width: target.w, height: target.h)
-        guard canvas.contains(CGPoint(x: rect.midX, y: rect.midY)) else { return false }
-        // A "target" covering nearly the whole screen is not a target.
-        return rect.width <= space.w * 0.9 || rect.height <= space.h * 0.9
-    }
 }

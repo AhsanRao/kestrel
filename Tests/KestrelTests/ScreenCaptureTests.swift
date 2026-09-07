@@ -1,105 +1,65 @@
+import CoreGraphics
 import XCTest
 @testable import Kestrel
 
-/// The walkthrough overlay is only as good as this arithmetic: the model answers in a grid it
-/// declares for itself, top-left origin, and the window server wants points from the bottom-left.
+/// The circled-region crop is only as good as this arithmetic: the user draws a loop in global
+/// AppKit points, measured up from the bottom of the desktop, and the crop has to come out of a PNG
+/// that counts down from its own top-left and is very often a different size than the screen.
 final class ScreenCaptureTests: XCTestCase {
-    /// A 1512x982-point Retina display, captured and downscaled to 2048 px on the long edge.
-    private let laptop = ScreenCapture(
-        url: URL(fileURLWithPath: "/tmp/shot.png"),
-        captureFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
-        pixelSize: CGSize(width: 2048, height: 1330))
+    /// A Retina laptop: 1440×982 points captured into a 2880×1964 pixel PNG.
+    private let laptop = ScreenCapture(url: URL(fileURLWithPath: "/tmp/x.png"),
+                                       captureFrame: CGRect(x: 0, y: 0, width: 1440, height: 982),
+                                       pixelSize: CGSize(width: 2880, height: 1964))
 
-    /// What a model actually reports for that screenshot: its own, much smaller view of it.
-    private let modelGrid = Walkthrough.ImageSize(w: 320, h: 208)
-
-    func testScaleComesFromTheDeclaredGridNotThePng() {
-        XCTAssertEqual(laptop.pointsPerUnitX(in: modelGrid), 1512.0 / 320.0, accuracy: 0.0001)
-        XCTAssertEqual(laptop.pointsPerUnitY(in: modelGrid), 982.0 / 208.0, accuracy: 0.0001)
+    func testTheTopLeftOfTheScreenIsTheTopLeftOfThePng() {
+        let rect = CGRect(x: 0, y: 882, width: 100, height: 100)   // 100pt tall, at the very top
+        let pixels = laptop.pixelRect(forScreenRect: rect)
+        XCTAssertEqual(pixels?.minX ?? .nan, 0, accuracy: 0.01)
+        XCTAssertEqual(pixels?.minY ?? .nan, 0, accuracy: 0.01)
     }
 
-    func testTopLeftMapsToTheTopLeftOfTheDisplay() {
-        let rect = laptop.screenRect(for: .init(x: 0, y: 0, w: 32, h: 20), in: modelGrid)
-        XCTAssertEqual(rect.minX, 0, accuracy: 0.001)
-        XCTAssertEqual(rect.maxY, 982, accuracy: 0.001)   // AppKit y grows upwards
+    /// Two pixels to the point on this display, so every measurement doubles.
+    func testPointsAreScaledToPixels() {
+        let pixels = laptop.pixelRect(forScreenRect: CGRect(x: 100, y: 100, width: 200, height: 50))
+        XCTAssertEqual(pixels?.width ?? .nan, 400, accuracy: 0.01)
+        XCTAssertEqual(pixels?.height ?? .nan, 100, accuracy: 0.01)
+        XCTAssertEqual(pixels?.minX ?? .nan, 200, accuracy: 0.01)
     }
 
-    func testBottomOfTheGridMapsToTheBottomOfTheDisplay() {
-        let rect = laptop.screenRect(for: .init(x: 0, y: 198, w: 10, h: 10), in: modelGrid)
-        XCTAssertEqual(rect.minY, 0, accuracy: 0.01)
+    /// AppKit counts up from the bottom and the PNG counts down from the top, so a rect near the
+    /// bottom of the screen must land near the bottom of the image — not the top.
+    func testTheVerticalAxisIsFlipped() {
+        let low = laptop.pixelRect(forScreenRect: CGRect(x: 0, y: 0, width: 100, height: 100))
+        XCTAssertEqual(low?.maxY ?? .nan, 1964, accuracy: 0.01)
     }
 
-    func testAFullSpanTargetCoversTheDisplay() {
-        let rect = laptop.screenRect(for: .init(x: 0, y: 0, w: 320, h: 208), in: modelGrid)
-        XCTAssertEqual(rect.width, 1512, accuracy: 0.01)
-        XCTAssertEqual(rect.height, 982, accuracy: 0.01)
+    /// A loop drawn partly off the edge of the capture is clipped to what was actually captured,
+    /// rather than producing a crop rectangle outside the image.
+    func testARegionOverhangingTheEdgeIsClipped() {
+        let pixels = laptop.pixelRect(forScreenRect: CGRect(x: -200, y: 100, width: 400, height: 100))
+        XCTAssertEqual(pixels?.minX ?? .nan, 0, accuracy: 0.01)
+        XCTAssertEqual(pixels?.width ?? .nan, 400, accuracy: 0.01)
     }
 
-    /// The real failure this design exists to fix: a toolbar button reported as {104,22,30,14} in
-    /// a 320x208 view has to land a third of the way across the real screen, not near its edge.
-    func testAButtonReportedInTheModelsGridLandsWhereItReallyIs() {
-        let rect = laptop.screenRect(for: .init(x: 104, y: 22, w: 30, h: 14), in: modelGrid)
-        XCTAssertEqual(rect.midX / 1512, (104 + 15) / 320.0, accuracy: 0.005)
-        XCTAssertEqual((982 - rect.midY) / 982, (22 + 7) / 208.0, accuracy: 0.005)
+    /// Too small to be a deliberate gesture, or entirely off the capture: no crop at all, so the
+    /// full screenshot is used instead of a sliver of nothing.
+    func testATinyOrAbsentRegionProducesNoCrop() {
+        XCTAssertNil(laptop.pixelRect(forScreenRect: CGRect(x: 10, y: 10, width: 4, height: 4)))
+        XCTAssertNil(laptop.pixelRect(forScreenRect: CGRect(x: 5000, y: 5000, width: 100, height: 100)))
     }
 
-    func testAMissingGridIsTreatedAsPerMille() {
-        let walkthrough = Walkthrough(goal: "x", steps: [])
-        XCTAssertEqual(walkthrough.space, .perMille)
-        let rect = laptop.screenRect(for: .init(x: 500, y: 0, w: 100, h: 100), in: walkthrough.space)
-        XCTAssertEqual(rect.minX, 1512 * 0.5, accuracy: 0.01)
+    func testACaptureWithNoSizeCannotBeCroppedInto() {
+        let empty = ScreenCapture(url: URL(fileURLWithPath: "/tmp/x.png"),
+                                  captureFrame: .zero, pixelSize: .zero)
+        XCTAssertNil(empty.pixelRect(forScreenRect: CGRect(x: 0, y: 0, width: 100, height: 100)))
     }
 
-    func testANonsenseGridIsTreatedAsPerMille() {
-        let walkthrough = Walkthrough(goal: "x", steps: [], image: .init(w: 0, h: 0))
-        XCTAssertEqual(walkthrough.space, .perMille)
-    }
-
-    func testSecondaryDisplayOffsetIsApplied() {
-        let external = ScreenCapture(
-            url: URL(fileURLWithPath: "/tmp/shot.png"),
-            captureFrame: CGRect(x: 1512, y: 200, width: 2560, height: 1440),
-            pixelSize: CGSize(width: 2048, height: 1152))
-        let rect = external.screenRect(for: .init(x: 0, y: 0, w: 32, h: 20), in: modelGrid)
-        XCTAssertEqual(rect.minX, 1512, accuracy: 0.001)
-        XCTAssertEqual(rect.maxY, 200 + 1440, accuracy: 0.001)
-        XCTAssertEqual(rect.width, 2560 * (32.0 / 320.0), accuracy: 0.01)
-    }
-
-    func testTheSameTargetLandsProportionallyOnAnyDisplaySize() {
-        let small = ScreenCapture(url: URL(fileURLWithPath: "/tmp/a.png"),
-                                  captureFrame: CGRect(x: 0, y: 0, width: 1280, height: 800),
-                                  pixelSize: CGSize(width: 1280, height: 800))
-        let target = WalkthroughStep.Target(x: 160, y: 104, w: 32, h: 20)
-        XCTAssertEqual(laptop.screenRect(for: target, in: modelGrid).midX / 1512,
-                       small.screenRect(for: target, in: modelGrid).midX / 1280, accuracy: 0.0001)
-    }
-
-    func testViewRectStaysInTopLeftSpaceForSwiftUI() {
-        let rect = laptop.viewRect(for: .init(x: 0, y: 0, w: 32, h: 20), in: modelGrid)
-        XCTAssertEqual(rect.minX, 0, accuracy: 0.001)
-        XCTAssertEqual(rect.minY, 0, accuracy: 0.001)
-
-        let lower = laptop.viewRect(for: .init(x: 0, y: 208, w: 4, h: 4), in: modelGrid)
-        XCTAssertEqual(lower.minY, 982, accuracy: 0.01)
-    }
-
-    // MARK: - Plausibility
-
-    func testTargetsOffTheDeclaredGridAreRejected() {
-        XCTAssertFalse(ScreenCapture.isPlausible(.init(x: 900, y: 20, w: 40, h: 20), in: modelGrid))
-        XCTAssertFalse(ScreenCapture.isPlausible(.init(x: 10, y: -400, w: 40, h: 20), in: modelGrid))
-        XCTAssertTrue(ScreenCapture.isPlausible(.init(x: 104, y: 22, w: 30, h: 14), in: modelGrid))
-    }
-
-    func testDegenerateTargetsAreRejected() {
-        XCTAssertFalse(ScreenCapture.isPlausible(.init(x: 10, y: 10, w: 0, h: 20), in: modelGrid))
-        XCTAssertFalse(ScreenCapture.isPlausible(.init(x: 10, y: 10, w: 20, h: 0), in: modelGrid))
-    }
-
-    func testAWholeScreenTargetIsNotATarget() {
-        XCTAssertFalse(ScreenCapture.isPlausible(.init(x: 0, y: 0, w: 320, h: 208), in: modelGrid))
-        // A full-width toolbar is still a legitimate target.
-        XCTAssertTrue(ScreenCapture.isPlausible(.init(x: 0, y: 0, w: 320, h: 14), in: modelGrid))
+    /// A window capture is offset from the desktop origin, and the crop is relative to the window.
+    func testASecondaryDisplayOffsetIsSubtracted() {
+        let secondary = ScreenCapture(url: URL(fileURLWithPath: "/tmp/x.png"),
+                                      captureFrame: CGRect(x: 1440, y: 0, width: 1440, height: 982),
+                                      pixelSize: CGSize(width: 1440, height: 982))
+        let pixels = secondary.pixelRect(forScreenRect: CGRect(x: 1540, y: 100, width: 200, height: 50))
+        XCTAssertEqual(pixels?.minX ?? .nan, 100, accuracy: 0.01)
     }
 }

@@ -12,8 +12,6 @@ enum SessionState: Equatable {
     case thinking
     case answering
     case injecting
-    /// A walkthrough is drawn on screen and waiting for the user to click the current target.
-    case guiding
     case error(String)
 
     var isBusy: Bool {
@@ -32,11 +30,6 @@ enum SessionEvent: Equatable {
     case transcriptionEmpty
     case answered
     case injected
-    case walkthroughReady
-    case walkthroughAdvanced
-    /// The route ran out on this screen and Kestrel is asking for the rest of it.
-    case walkthroughContinuing
-    case walkthroughFinished
     case failed(String)
     case autoHideElapsed
     case cancelled
@@ -61,56 +54,25 @@ struct SessionMachine {
     @discardableResult
     mutating func apply(_ event: SessionEvent) -> [SessionEffect] {
         switch (state, event) {
-        // Guiding is handled first: leaving it must always take the drawing off the screen.
-        case (.guiding, .walkthroughAdvanced):
-            return []
-
-        // Back to thinking, not to idle: the overlay has gone but the goal has not been reached,
-        // and the answer that comes back must be able to land as a walkthrough or as speech.
-        case (.guiding, .walkthroughContinuing):
-            state = .thinking
-            return []
-
-        case (.guiding, .walkthroughFinished), (.guiding, .cancelled):
-            state = .idle
-            return [.clearOverlay, .reset]
-
-        case (.guiding, .failed(let message)):
-            state = .error(message)
-            return [.clearOverlay]
-
-        case (.guiding, .askPressed):
-            state = .listening
-            return [.clearOverlay, .interruptSpeech, .startListening]
-
-        case (.guiding, .dictateToggled):
-            state = .dictating
-            return [.clearOverlay, .interruptSpeech, .startDictating]
-
-        case (.thinking, .walkthroughReady):
-            state = .guiding
-            return []
-
-
-
-
-
-
         case (_, .failed(let message)):
             state = .error(message)
             return [.interruptSpeech]
 
+        // Esc takes the marks off with everything else: they are the only thing Kestrel leaves on
+        // the screen, so cancelling has to be able to reach them.
         case (_, .cancelled):
             state = .idle
-            return [.reset]
+            return [.clearOverlay, .reset]
 
         case (.idle, .askPressed), (.error, .askPressed):
             state = .listening
             return [.startListening]
 
+        // A new question while the last answer's marks are still drawn: clear them first, or the
+        // old marks sit over the screen the new question is about.
         case (.answering, .askPressed):
             state = .listening
-            return [.interruptSpeech, .startListening]
+            return [.clearOverlay, .interruptSpeech, .startListening]
 
         case (.listening, .askReleased):
             state = .transcribing(.ask)
@@ -122,7 +84,7 @@ struct SessionMachine {
 
         case (.answering, .dictateToggled):
             state = .dictating
-            return [.interruptSpeech, .startDictating]
+            return [.clearOverlay, .interruptSpeech, .startDictating]
 
         case (.dictating, .dictateToggled):
             state = .transcribing(.dictation)

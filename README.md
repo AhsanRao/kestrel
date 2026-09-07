@@ -10,11 +10,12 @@ only while you are holding the key.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌃⌘A`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
+| **Ask** | Hold `⌃⌥`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
 | **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
-| **Show** | Ask *"how do I export as PDF?"* and Kestrel draws numbered steps over the real UI, advancing each time you click the highlighted control. Esc stops it. |
+| **Show** | Kestrel draws on the real screen while it talks — a pencil rings the thing the answer is about, one mark after another. Ask *"how do I upload a file?"* and the button gets circled while the sentence is spoken. Esc clears it. |
+| **Write** | Ask for a reply, an email or a paragraph and you get it as text with a **Copy** button, not read aloud. |
 | **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
-| **Do** | Say "archive this" or "open Slack" and Kestrel does it — under a policy that asks first. |
+| **Open** | Say "open Spotify" and it opens. That is the only thing Kestrel does *to* your Mac. |
 | **Follow up** | Ask again within 90 seconds and it continues the same thread. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
@@ -69,7 +70,7 @@ Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌃⌘A`, say *"what is this window for?"* or *"how could this page look better?"*,
+- **Ask:** hold `⌃⌥`, say *"what is this window for?"* or *"how could this page look better?"*,
   release. The island opens out of the notch and the answer is spoken — and a pencil draws on the
   thing the answer is about while it says it. Not just buttons: the section, the card, the heading,
   whatever it is talking about. It points instead of saying "in the top right", and if it names
@@ -122,8 +123,7 @@ you save. The Settings window writes the same file.
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | premium voices are preferred when installed |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌘A` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
-| `walkthroughs` | `true` | draw steps for "how do I…" questions |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `answerAnnotations` | `true` | draw on what a spoken answer is pointing at |
 | `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
 | `sounds` | `true` | short cues for each state change |
@@ -168,10 +168,13 @@ make deps      # scripts/check-deps.sh
 - **Seeing the drawing.** Same reason, same shape — strokes that animate onto a live screen cannot
   be judged from a static render:
 
-      KESTREL_PREVIEW_OVERLAY=walkthrough \
+      KESTREL_PREVIEW_OVERLAY=annotation \
         KESTREL_PREVIEW_OUT=/tmp/overlay.png Kestrel.app/Contents/MacOS/Kestrel
 
-  `walkthrough` draws a two-step route, `annotation` draws the marks that accompany an answer.
+  `annotation` draws the marks that accompany an answer, `region` shades a block of content,
+  `calibrate` puts a box in three known corners so the screen-to-overlay mapping can be checked by
+  eye, and `live` reads the app in front and prints everything it found — which is how you tell a
+  thin Accessibility tree from a bad guess.
   `KESTREL_PREVIEW_DELAY=0.5` catches the cursor mid-stroke; `KESTREL_PREVIEW_BACKDROP=light` puts
   a plain backdrop behind the panel, because a black island on a black desktop tells you nothing
   about its edges.
@@ -208,7 +211,7 @@ Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every qu
 
 ## Status
 
-**M0**–**M6** complete: skeleton, ask, dictate + Codex, polish, walkthroughs, spatial context, and
+**M0**–**M6** complete: skeleton, ask, dictate + Codex, polish, pointing, spatial context, and
 agent tasks. [`docs/ROADMAP.md`](docs/ROADMAP.md) records what was closed against HeyClicky, and
 [`docs/VS-HEYCLICKY.md`](docs/VS-HEYCLICKY.md) compares the two apps feature by feature.
 See [`docs/CHANGELOG.md`](docs/CHANGELOG.md).

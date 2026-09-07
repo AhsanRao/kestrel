@@ -92,6 +92,42 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
   the text landed and whether the frontmost app changed — the background-delivery property, checked
   rather than asserted.
 
+### Removed
+
+- **Walkthroughs, and the machinery under them.** `WalkthroughSession`, `WalkthroughTap`,
+  `WalkthroughResolver`, `WalkthroughParser`, `WalkthroughDetector`, `GridAnnotator`, the
+  `OverlayWindow`/`View`/`Model` trio, both walkthrough prompts, the `.guiding` state and its five
+  events, the `walkthroughs` setting and its menu toggle, the `Walkthrough`/`WalkthroughStep`
+  payloads, and the screenshot-grid arithmetic in `ScreenCapture` that existed only to turn a
+  model's guessed coordinates back into screen points — about 900 lines, with their tests.
+- Three faults, and they were the same fault: asking a vision model for coordinates was the wrong
+  instrument, every plan went stale the moment anything moved, and taking the drawing away the
+  instant the user clicked meant the answer vanished exactly when they went to act on it. What
+  replaces it is what was already there and better — the answer names what it means and the pencil
+  marks it.
+
+### Changed
+
+- **Nothing waits for a click any more.** "How do I…" used to open a *route*: a numbered plan drawn
+  one step at a time, which waited for you to click the current target, then photographed the screen
+  again and asked for the next stretch. It was the wrong shape for the thing. Kestrel is not driving
+  — you are — and taking the drawing away the moment you clicked, to go and think about a screen you
+  had already moved past, meant the answer vanished exactly when you went to act on it. Now every
+  question takes one path: the answer says what to do in a sentence, the pencil marks the one or two
+  things it names, one after another, and it stops. You act, and if you want the next part you ask
+  again — and that question gets a fresh look at the new screen.
+- **A new voice.** `ask.txt` asks for two sentences, not five, and forbids the tutorial register —
+  no numbered plans, no "then I'll show you the next step", no telling you to click something so it
+  can carry on afterwards.
+
+### Added
+
+- **Drafts come with a copy button.** "Write me a reply to this" is a different kind of question:
+  the answer is not something to hear and not something to point at, it is something to take away.
+  A draft now arrives on its own surface — selectable, scrollable, monospaced, with **Copy** — and
+  one spoken line above it saying what it is. The draft itself is never read out loud, which it
+  previously was, in full, including the subject line.
+
 ### Fixed
 
 - **Every build silently revoked Accessibility and Screen Recording.** An ad-hoc signature is a
@@ -114,6 +150,16 @@ All notable changes to Kestrel. Milestones follow `docs/SPEC.md` §11.
   address on `AXDocument`, so the model was told "the open document is dashboard" — the last path
   component of a URL — rather than where the user actually was.
 
+- **Chrome now hands over the page.** With a stable signature the Accessibility grant finally held
+  across rebuilds, and the same window that had offered 72 controls and no page text at all came
+  back with 86 controls, 62 content regions and the page's own words — sidebar links, stat tiles,
+  the cards under Quick Actions. Everything the content reader was written for had simply never had
+  a chance to run.
+- **The whole page was offered as a section of itself.** On a real dashboard the window's group and
+  the web area inside it are the same 2560×1318 rectangle and *both* carry the page title, so the
+  earlier "drop unnamed containers" rule kept them — and marking either one shaded the entire
+  screen. A name does not make something a section; its size does, so anything filling the window is
+  dropped whether it is named or not.
 - **Marks landed on the wrong thing.** Three faults, all in *choosing* the target rather than in
   drawing it — the screen-to-overlay mapping was correct all along:
   - A name was matched against the *first* target in list order whose label contained it. The list

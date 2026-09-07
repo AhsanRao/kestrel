@@ -20,12 +20,23 @@ final class ContentReaderRankingTests: XCTestCase {
         XCTAssertEqual(ranked.map(\.frame), [card.frame])
     }
 
-    /// A named section is kept however big it is — a name is the model's evidence that it is a
-    /// thing rather than scaffolding.
-    func testANamedSectionSurvivesEvenWhenItIsHuge() {
-        let page = candidate("", CGRect(x: 0, y: 0, width: 1400, height: 900), role: "AXWebArea")
-        let named = candidate("Pricing", CGRect(x: 0, y: 0, width: 1390, height: 890))
-        XCTAssertTrue(AXContentReader.rank([page, named]).contains { $0.label == "Pricing" })
+    /// A name does not make something a section. Measured on a real dashboard, the window group and
+    /// the web area inside it were the same rectangle, both carrying the page title, and marking
+    /// either one shaded the whole screen.
+    func testAnythingFillingTheWindowIsNotASection() {
+        let window = CGRect(x: 0, y: 0, width: 1400, height: 900)
+        let windowGroup = candidate("Dashboard — Chrome", window)
+        let webArea = candidate("Dashboard", window.insetBy(dx: 0, dy: 40), role: "AXWebArea")
+        let card = candidate("Quick Actions", CGRect(x: 100, y: 500, width: 400, height: 260))
+        XCTAssertEqual(AXContentReader.rank([windowGroup, webArea, card], within: window)
+                        .map(\.label), ["Quick Actions"])
+    }
+
+    /// A named section well inside the window is exactly what the list is for.
+    func testANamedSectionInsideTheWindowIsKept() {
+        let window = CGRect(x: 0, y: 0, width: 1400, height: 900)
+        let sidebar = candidate("Navigation", CGRect(x: 0, y: 100, width: 240, height: 700))
+        XCTAssertEqual(AXContentReader.rank([sidebar], within: window).map(\.label), ["Navigation"])
     }
 
     /// The web area, the body, the main and the section are one block seen four times.

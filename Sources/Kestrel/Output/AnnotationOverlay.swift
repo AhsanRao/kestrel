@@ -19,9 +19,9 @@ final class AnnotationOverlay {
     func show(_ annotations: [Annotation]) {
         guard !annotations.isEmpty else { return hide() }
         hideWork?.cancel()
-        // Geometry before the view, as in `OverlayWindow`: a mark laid out against a zero frame
-        // starts off screen.
-        let bounds = OverlayModel.desktopBounds
+        // Geometry before the view: a mark laid out against a zero frame starts off screen, and
+        // the correction then arrives on the same render pass as the drawing animation.
+        let bounds = AnnotationOverlayModel.desktopBounds
         model.windowFrame = bounds
         let window = ensureWindow()
         model.annotations = annotations
@@ -85,5 +85,10 @@ final class AnnotationOverlayModel: ObservableObject {
         CGRect(x: frame.minX - windowFrame.minX,
                y: windowFrame.maxY - frame.maxY,
                width: frame.width, height: frame.height)
+    }
+
+    /// The union of every display, which is what the overlay window covers.
+    static var desktopBounds: CGRect {
+        NSScreen.screens.reduce(CGRect.null) { $0.union($1.frame) }
     }
 }

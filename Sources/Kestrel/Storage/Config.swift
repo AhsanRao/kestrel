@@ -27,7 +27,6 @@ struct Config: Codable, Equatable {
     var screenshotMaxEdge: Int
     var captureMode: CaptureMode
     var launchAtLogin: Bool
-    var walkthroughs: Bool
     /// Circle and point at what a spoken answer refers to, instead of describing where it is.
     var answerAnnotations: Bool
     var spatialContext: Bool
@@ -56,7 +55,6 @@ struct Config: Codable, Equatable {
         screenshotMaxEdge: 2048,
         captureMode: .window,
         launchAtLogin: false,
-        walkthroughs: true,
         answerAnnotations: true,
         spatialContext: true,
         onboardingCompleted: false,
@@ -76,12 +74,20 @@ struct Config: Codable, Equatable {
         var ask: HotkeyBinding
         var dictate: HotkeyBinding
 
-        /// ⌃⌘ is the quietest modifier pair on macOS: the system claims only ⌃⌘Space (Emoji &
-        /// Symbols), ⌃⌘D (Look Up), ⌃⌘F (Full Screen) and ⌃⌘Q (Lock Screen), and few apps use it
-        /// at all. A and K are free in it. Both are ordinary keyed hotkeys, registered through
-        /// Carbon, so they need no permission and cannot be confused with a shortcut prefix.
+        /// Asking is held down for as long as you are talking, so it wants to be a chord rather
+        /// than a chord *plus* a letter — ⌃⌥ is one shape the hand already makes, and holding it is
+        /// the whole gesture. macOS claims nothing on ⌃⌥ alone, and because there is no letter it
+        /// cannot collide with an app's shortcut either.
+        ///
+        /// The cost is that Carbon cannot register a bare chord, so it is watched through an event
+        /// tap and therefore needs Accessibility — which dictation already required. It also waits
+        /// out a short dwell before firing, so that ⌃⌥ on its way to some other shortcut is not
+        /// mistaken for a question (see `ModifierChordDetector`).
+        ///
+        /// Dictation stays a keyed hotkey: it is a tap, not a hold, and ⌃⌘ is the quietest pair on
+        /// macOS — the system claims only ⌃⌘Space, ⌃⌘D, ⌃⌘F and ⌃⌘Q, and K is free in it.
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: 0, modifiers: ["control", "command"]),        // ⌃⌘A
+            ask: HotkeyBinding(keyCode: nil, modifiers: ["control", "option"]),       // ⌃⌥ held
             dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])    // ⌃⌘K
         )
     }
@@ -133,7 +139,6 @@ struct Config: Codable, Equatable {
         screenshotMaxEdge = v(.screenshotMaxEdge, d.screenshotMaxEdge)
         captureMode = v(.captureMode, d.captureMode)
         launchAtLogin = v(.launchAtLogin, d.launchAtLogin)
-        walkthroughs = v(.walkthroughs, d.walkthroughs)
         answerAnnotations = v(.answerAnnotations, d.answerAnnotations)
         spatialContext = v(.spatialContext, d.spatialContext)
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
@@ -150,7 +155,7 @@ struct Config: Codable, Equatable {
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
          screenshotMaxEdge: Int, captureMode: CaptureMode,
          launchAtLogin: Bool,
-         walkthroughs: Bool, answerAnnotations: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
+         answerAnnotations: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
         self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.language = language; self.transcriptionHint = transcriptionHint
@@ -161,7 +166,7 @@ struct Config: Codable, Equatable {
         self.followUpSeconds = followUpSeconds
         self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
         self.launchAtLogin = launchAtLogin
-        self.walkthroughs = walkthroughs; self.answerAnnotations = answerAnnotations
+        self.answerAnnotations = answerAnnotations
         self.spatialContext = spatialContext
         self.onboardingCompleted = onboardingCompleted
         self.apiKeys = apiKeys

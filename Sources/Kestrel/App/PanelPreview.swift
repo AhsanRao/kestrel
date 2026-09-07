@@ -60,7 +60,7 @@ enum PanelPreview {
             panel.model.answer = "That's Xcode's build settings. The tabs across the top switch "
                 + "between targets, and the search box filters every setting by name."
         }
-        panel.model.askHint = "⌃⌘A"
+        panel.model.askHint = "⌃⌥"
         panel.model.dictateHint = "⌃⌘K"
         // Lifted before the window is composited: flipping it moments before the shot is too late,
         // the exclusion is baked into how the window server has already drawn it.

@@ -157,6 +157,9 @@ struct PanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentTransition(.opacity)
             }
+            if let draft = model.draft {
+                DraftCard(draft: draft)
+            }
             if model.isError, let url = model.permissionURL {
                 Button("Open Privacy settings") { onOpenPermission(url) }
                     .buttonStyle(.link)

@@ -24,7 +24,6 @@ final class BackendRouter {
     static func route(_ query: Query, configured: BackendKind) -> BackendKind {
         // Screen-heavy or long questions stay with Claude; short factual ones go to Codex.
         if query.screenshot != nil || query.focusCrop != nil { return .claude }
-        if query.mode == .walkthrough { return .claude }
         return query.text.split(separator: " ").count <= 12 ? .codex : configured
     }
 

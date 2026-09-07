@@ -26,7 +26,7 @@ enum DependencyCheck {
             switch self {
             case .microphone: return "To hear the question you hold the hotkey to ask."
             case .screenRecording: return "To see the screen you are asking about."
-            case .accessibility: return "To paste dictated text, and to follow your clicks during a walkthrough."
+            case .accessibility: return "To hold ⌃⌥ as a hotkey, to paste dictated text, and to circle part of the screen."
             case .whisperBinary: return "Turns your voice into text on this Mac. Nothing is uploaded."
             case .whisperModel: return "The speech model whisper reads. About 148 MB."
             case .claude: return "Answers your questions using your Claude subscription."
@@ -87,7 +87,7 @@ enum DependencyCheck {
         case .accessibility:
             let granted = AXIsProcessTrusted()
             return Item(requirement: requirement, ok: granted,
-                        detail: granted ? "Allowed" : "Needed for dictation and walkthroughs")
+                        detail: granted ? "Allowed" : "Needed for the ask hotkey and dictation")
 
         case .whisperBinary:
             let url = config.whisperBinaryURL

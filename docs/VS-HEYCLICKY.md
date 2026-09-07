@@ -84,9 +84,9 @@ for us is better local voices and faster whisper — not their architecture. �
 
 | Mode | HeyClicky | Kestrel |
 |---|---|---|
-| Voice | ✅ | ✅ hold `⌃⌘A` |
+| Voice | ✅ | ✅ hold `⌃⌥` |
 | Dictation into any app | ✅ | ✅ tap `⌃⌘K`, model-cleaned, terminals newline-collapsed |
-| Drawing on screen | ✅ | ✅ walkthroughs, click-to-advance, Esc |
+| Drawing on screen | ✅ | ✅ the answer marks what it names, Esc clears |
 | Agents | ✅ | ✅ |
 | **Text mode** (type instead of speak) | ✅ | ❌ every request must be spoken |
 | Spatial / circle a region | ✅ | ✅ |
@@ -158,7 +158,7 @@ listening (spec §2), telemetry, a hosted backend, a paywall, Sparkle without as
 ## 7. Summary
 
 Kestrel matches HeyClicky on **seeing** (AX snapshot, window survey, screenshots, spatial context),
-on **showing** (drawn walkthroughs), on **dictation**, on **memory and per-app skills as a
+on **showing** (marks drawn while it talks), on **dictation**, on **memory and per-app skills as a
 mechanism**, on **project folders**, and on **sound and overlay feedback** — at 0.2% of the download
 size and with no backend.
 

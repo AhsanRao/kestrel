@@ -62,19 +62,25 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] Rename `whisper-cli` → error names `brew install whisper-cpp`
 - [ ] Exhausted plan quota → "usage limit reached" with the switch-backend hint
 
-## 5b. Walkthroughs (M4)
+## 5b. Marks
 
-- [ ] "How do I export as PDF in this app?" draws ≥2 steps on the right controls
-- [ ] Clicking the highlighted control advances to the next step; the click still reaches the app
-- [ ] Clicking somewhere else does not advance
-- [ ] Esc clears the overlay immediately
-- [ ] The last click ends the walkthrough and removes the overlay
-- [ ] Pressing the ask hotkey mid-walkthrough clears the overlay and starts listening
-- [ ] The overlay never appears in a screenshot taken by the next question
-- [ ] On the second display, the rings land on the right controls
-- [ ] Revoke Accessibility → the steps are spoken and nothing is drawn
-- [ ] A question the model cannot answer from this screen returns one step and says there are more
-- [ ] "What app is this?" still answers normally, with no overlay
+- [ ] "How do I upload a file here?" answers in a sentence or two and rings the control it names
+- [ ] Two marks are drawn one after the other — the pencil rings the first, travels, rings the second
+- [ ] Nothing waits for a click: the marks finish on their own and the answer stays put
+- [ ] Clicking the marked control does nothing to Kestrel; no second screenshot is taken
+- [ ] Esc clears the marks immediately
+- [ ] Asking again while marks are showing clears the old ones before listening
+- [ ] The marks never appear in a screenshot taken by the next question
+- [ ] On the second display, the marks land on the right controls
+- [ ] "What app is this?" answers with no marks, or one, and never a route
+
+## 5b-ii. Drafts
+
+- [ ] "Write a reply to this email" shows the draft in a card with a **Copy** button
+- [ ] The draft is *not* read aloud — only the one-line summary above it is
+- [ ] **Copy** puts subject and body on the clipboard; the button says "Copied" and reverts
+- [ ] A long draft scrolls inside its card rather than growing the island off the screen
+- [ ] Asking an ordinary question afterwards clears the draft
 
 ## 5c. Spatial context (M5)
 

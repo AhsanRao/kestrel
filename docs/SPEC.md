@@ -50,7 +50,7 @@ Kestrel is inspired by HeyClicky but is a single-user tool: everything that exis
 - Menu bar presence, floating status panel, settings window
 
 ### v2 (M4–M5) — "Show me"
-- Draw-on-screen walkthroughs: model returns step coordinates, overlay renders them, advances on click
+- Drawing on screen: the answer names what it is talking about and a pencil marks it, one mark after another
 - Spatial context: user draws a circle on screen before asking; region is cropped and sent as focus
 
 ### v3 (M6) — "Do it"
@@ -179,7 +179,6 @@ kestrel/
 │   └── Prompts/
 │       ├── ask.txt               # system framing for screen questions
 │       ├── dictation-cleanup.txt
-│       └── walkthrough.txt       # v2: JSON step schema instructions
 ├── Sources/
 │   └── Kestrel/
 │       ├── App/
@@ -264,7 +263,7 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 - Edge cases: binary or model missing → actionable error with the exact install commands; hallucinated filler on silence (whisper emits "Thank you." on empty audio) → drop results under 3 characters or matching a small blocklist; Urdu/mixed-language dictation → recommend `small` model in README.
 
 ### 8.5 Backend protocol
-- Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup` | `walkthrough`), `maxTokens` hint.
+- Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup`), `maxTokens` hint.
 - Output `Answer`: `text`, `raw` (full CLI output for debugging), `durationMs`, optional `steps` (v2).
 - Requirements: cancellable (kill the subprocess), timeouts (ask 120 s, cleanup 30 s), never throws on non-zero exit without including stderr in the error.
 
@@ -334,14 +333,38 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 - Seeds `KESTREL.md` from `Resources/DefaultMemory.md` on first launch; creates the two symlinks.
 - Provides "Open memory" action. v2: an "update memory" command where the assistant proposes a one-line addition and the user approves it in the panel (never silent writes).
 
-### 8.15 OverlayWindow (v2)
-- Full-screen transparent, click-through `NSWindow` at `.screenSaver` level per display.
-- Renders steps from the walkthrough JSON: hand-drawn-style rounded rect or circle at `{x,y,w,h}`, numbered label, short instruction. Coordinates are in screenshot pixel space; convert using the capture scale factor.
-- Advances when a global click lands inside the current target (CGEventTap listen-only for mouse clicks, which needs Accessibility, already granted for dictation). Clears on Esc or when the walkthrough completes.
-- Walkthrough prompt (`Resources/Prompts/walkthrough.txt`) instructs the model to return strict JSON: `{ "goal": "...", "steps": [ { "n": 1, "instruction": "...", "target": {"x":..,"y":..,"w":..,"h":..}, "shape": "rect|circle" } ] }`, max 15 steps. Parse defensively; if invalid, fall back to spoken/text steps with no drawing.
+### 8.15 AnnotationOverlay
+- Full-screen transparent, click-through `NSWindow` at `.screenSaver` level, spanning every display.
+- The answer ends with a `MARK:` line naming targets by number from the list Kestrel offered it, or by
+  visible label in quotes. Each becomes one mark, drawn in sequence with a pencil while the sentence
+  is spoken: a control is ringed, a block of content is shaded and named. Frames come from the
+  Accessibility tree and are re-read at the moment of drawing, so nothing is estimated.
+- Cleared by Esc, by the auto-hide timer, or by the next question.
+
+**Superseded design.** This began as *walkthroughs*: the model returned a numbered route as JSON with
+its own coordinates, an overlay drew one step at a time, and a listen-only `CGEventTap` advanced it
+each time the user clicked the current target — re-photographing the screen for the next stretch.
+Three things were wrong with it. Asking a vision model for coordinates was the wrong instrument (it
+landed a button or two off, which is why the Accessibility list replaced it); every plan went stale
+the moment anything moved; and taking the drawing away the instant the user clicked meant the answer
+vanished exactly when they went to act on it. Kestrel is not driving — the user is. One question, one
+answer, marks that stay put.
 
 ### 8.16 Spatial context (v2)
 - While holding the ask hotkey, the user may drag with the mouse; the overlay shows a paint trail. On release, the bounding box becomes `focusCrop` and is sent alongside the full screenshot with the instruction "the user circled this region."
+- The drag is **swallowed** by a `CGEventTap`, not merely observed. A passive monitor cannot consume
+  events, so the gesture also reached the app underneath — selecting text, following links, and,
+  because every ask hotkey contains Control and Control-click is the secondary click on macOS,
+  opening the context menu over the thing being asked about. Left *and* right buttons are watched,
+  since with Control held macOS reports the press as a secondary click.
+
+### 8.17 Drafts
+- "Write me a reply to this" is a different kind of question: the answer is not something to hear and
+  not something to point at, it is something to take away. The model answers with one spoken line,
+  then `DRAFT:` carrying an optional subject, then the body between `---` fences.
+- The body is shown in its own card — selectable, monospaced, scrolling past a few hundred points —
+  with a **Copy** button that puts subject and body on the clipboard. It is never spoken: the split
+  is made as the answer streams, so speech stops at the marker rather than reading an email aloud.
 
 ### 8.17 Agents (v3)
 - Reuse the CLIs' MCP support. Kestrel's job: connector setup UI (which writes `claude mcp add` / Codex config), an agent HUD with live status from the CLI's streaming JSON output, cancel/retry, and a confirmation prompt before any tool call that sends, deletes, or pays.
@@ -351,11 +374,11 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 
 ## 9. Prompts (content, not code)
 
-**ask.txt** — "You are Kestrel, a concise assistant on the user's Mac. A screenshot path is provided; read it first. Answer in 2–4 spoken-friendly sentences unless asked for detail. Refer to on-screen elements by their visible labels. If the question needs steps, give numbered steps. Never describe the screenshot unless asked."
+**ask.txt** — Kestrel's voice: someone sitting next to the user who points while they talk. Two
+sentences is the normal length. No preamble, no markdown, no describing where things are — name the
+thing and mark it. Ends with the `MARK:` contract of §8.15, and the `DRAFT:` contract of §8.17.
 
 **dictation-cleanup.txt** — "Return only the cleaned version of the dictated text: fix punctuation, capitalization, and obvious speech-to-text errors; keep the speaker's words, tone, and language; no em dashes; no additions; no quotes around the output."
-
-**walkthrough.txt** — the JSON schema in §8.15 plus: "Coordinates are pixels in the provided screenshot. Prefer fewer, larger targets. If the goal cannot be completed on the current screen, return the first step only and set `needs_more: true`."
 
 ---
 
@@ -382,7 +405,7 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 | **M1** | Ask | Hotkey → record → whisper → screenshot → Claude → panel + speech | Ask "what app is this?" about any window and get a correct spoken answer in < 6 s; errors are readable in the panel |
 | **M2** | Dictate + Codex | Dictation into TextEdit, Slack, VS Code, Terminal (newline-safe); Codex backend selectable; clipboard restored | Dictate a 30-second paragraph into three apps with no lost text; switch backend and repeat M1 |
 | **M3** | Polish | Settings window, hotkey rebinding, voice picker, launch at login, config hot-reload, app icon, README | A fresh Mac can follow README and reach M1 without reading code |
-| **M4** | Walkthroughs | Overlay draws steps, advances on click, Esc clears | "How do I export as PDF in this app?" produces ≥2 drawn steps that land on the right controls |
+| **M4** | Marks | The answer marks what it names, drawn in sequence, Esc clears | "How do I upload a file here?" answers in a sentence and rings the right control |
 | **M5** | Spatial context | Drag-to-circle while holding the hotkey; crop sent with the query | Circling one of several buttons and asking "what does this do?" answers about the circled one |
 | **M6** | Agents | MCP connector setup, agent HUD, confirmations | "Add a Linear ticket for the bug on screen" creates the ticket after one confirmation |
 

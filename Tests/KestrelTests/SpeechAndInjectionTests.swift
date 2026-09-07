@@ -83,18 +83,5 @@ final class SpeechAndInjectionTests: XCTestCase {
     func testTimeoutsMatchTheSpec() {
         XCTAssertEqual(Query(text: "x", mode: .ask).timeout, 120)
         XCTAssertEqual(Query(text: "x", mode: .dictationCleanup).timeout, 30)
-        XCTAssertEqual(Query(text: "x", mode: .walkthrough).timeout, 180)
-    }
-
-    // MARK: - Walkthrough JSON (v2 schema, parsed defensively)
-
-    func testWalkthroughJSONDecodes() throws {
-        let json = #"""
-        {"goal":"Export as PDF","needs_more":false,
-         "steps":[{"n":1,"instruction":"Open the File menu","target":{"x":10,"y":8,"w":60,"h":24},"shape":"rect"}]}
-        """#
-        let walkthrough = try JSONDecoder().decode(Walkthrough.self, from: Data(json.utf8))
-        XCTAssertEqual(walkthrough.steps.count, 1)
-        XCTAssertEqual(walkthrough.steps[0].target?.w, 60)
     }
 }

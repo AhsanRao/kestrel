@@ -29,7 +29,7 @@ final class StatusItemAnimatorTests: XCTestCase {
     }
 
     func testIdleAnsweringAndErrorsAreStill() {
-        for state in [SessionState.idle, .answering, .guiding, .error("x")] {
+        for state in [SessionState.idle, .answering, .error("x")] {
             XCTAssertEqual(StatusItemAnimator.Pace.forState(state), .still, "\(state)")
         }
     }

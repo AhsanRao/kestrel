@@ -17,29 +17,24 @@ final class SessionCoordinator {
     let router = BackendRouter()
     let speech = SpeechOutput()
     let sounds = SoundBoard()
-    let overlay = OverlayWindow()
     let selection = SelectionOverlay()
     let dragTracker = DragTracker()
-    lazy var walkthrough = WalkthroughSession(overlay: overlay)
     let annotations = AnnotationOverlay()
     let escapeWatcher = EscapeWatcher()
     /// Told whenever the session moves, so the menu bar can reflect it.
     var onStateChange: ((SessionState) -> Void)?
 
     var machine = SessionMachine()
-    /// Kept alive for the whole walkthrough: the overlay needs its geometry to place the drawing.
+    /// Kept alive until the answer lands: the crop is cut from it, and it is deleted either way.
     var pendingCapture: ScreenCapture?
     /// True once part of the answer has been read out while it streamed.
     var streamedSpeech = false
+    /// True once a streamed answer has reached its `DRAFT:` line: nothing after it is spoken.
+    var streamingDraft = false
     /// Controls read out of the frontmost app for the answer currently being planned.
     var scannedElements: [AXElementScanner.Element] = []
-    /// How many times the current walkthrough has been extended onto a new screen.
-    var walkthroughContinuations = 0
-    /// A walkthrough that runs past one screen is picked up again this many times before Kestrel
-    /// stops on its own. Enough for a menu ▸ dialog ▸ confirm route; short of a loop.
-    static let maximumContinuations = 3
-    /// How much of the control list a plain answer is offered. A walkthrough gets all of it; an
-    /// answer only needs enough to point at what it is talking about.
+    /// How much of the control list an answer is offered — enough to point at what it is talking
+    /// about, short of a list so long the model loses its place in it.
     static let maximumPointableControls = 120
     /// The last few exchanges, so "the other one" has something to refer to.
     var conversation = Conversation()
@@ -58,9 +53,6 @@ final class SessionCoordinator {
         speech.onFinish = { [weak self] in self?.scheduleAutoHide() }
         audio.onAutoStop = { [weak self] url in self?.audioStoppedOnItsOwn(url) }
         audio.onLevel = { [weak self] level in self?.panel.model.level = Double(level) }
-        walkthrough.onFinish = { [weak self] _ in self?.walkthroughEnded() }
-        walkthrough.onAdvance = { [weak self] step in self?.walkthroughAdvanced(to: step) }
-        walkthrough.onNeedsMore = { [weak self] done in self?.continueWalkthrough(after: done) }
         dragTracker.onChange = { [weak self] points in self?.selection.update(points: points) }
 
         hotkeys.handler = { [weak self] action, phase in self?.handle(action, phase) }
@@ -153,8 +145,6 @@ final class SessionCoordinator {
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
         case .clearOverlay:
-            walkthroughContinuations = 0
-            walkthrough.stop(completed: false, notify: false)
             escapeWatcher.stop()
             annotations.hide()
         case .reset: reset()

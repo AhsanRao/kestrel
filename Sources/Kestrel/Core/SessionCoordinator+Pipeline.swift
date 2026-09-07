@@ -39,9 +39,16 @@ extension SessionCoordinator {
         }
     }
 
-    /// - Parameter asWalkthrough: forces the drawn branch, for a route being continued onto a new
-    ///   screen where the phrasing of the follow-up question is Kestrel's own, not the user's.
-    func runAsk(_ text: String, forceAnswer: Bool = false, asWalkthrough: Bool = false) {
+    /// Every question takes the same path now.
+    ///
+    /// "How do I…" used to open a *route*: a numbered plan drawn one step at a time, which waited
+    /// for the user to click the current target, then photographed the screen again and asked for
+    /// the next stretch. It was the wrong shape for the thing. Kestrel is not driving — the user
+    /// is — and taking the drawing away the moment they clicked, to think about a screen they had
+    /// already moved past, meant the answer vanished exactly when they went to act on it. Now the
+    /// answer says what to do in a sentence, marks the one or two things it names, and stops. The
+    /// user acts, and asks again if they want the next part; that question gets a fresh screen.
+    func runAsk(_ text: String, forceAnswer: Bool = false) {
         // A question asked soon after the last one, in the same app, continues it.
         let bundleID = TextInjector.frontmostBundleID()
         let history = conversation.context(now: Date(),
@@ -52,8 +59,6 @@ extension SessionCoordinator {
         if !forceAnswer, let app = AppLauncher.requestedApp(in: text) {
             return openApp(app, asked: text)
         }
-        let wantsSteps = asWalkthrough
-            || (!forceAnswer && WalkthroughDetector.wantsWalkthrough(text, config: config))
         DispatchQueue.main.async { self.resetStreaming() }
         // The screen is read for a plain answer too, not only for a walkthrough: it is what lets
         // the answer point at something. "Click Share in the toolbar" spoken while the Share button
@@ -63,66 +68,43 @@ extension SessionCoordinator {
         DispatchQueue.main.sync { self.scannedElements = elements }
         var targets = Array(elements.prefix(SessionCoordinator.maximumPointableControls))
             .map(\.asTarget)
-        let screen = wantsSteps ? nil : AXContentReader.read(startingAt: targets.count + 1)
-        targets += screen?.regions ?? []
-        // Walkthroughs get a gridded copy of the screenshot: the model reads coordinates off the
-        // printed lines instead of guessing them. The user's own view is never touched.
-        // The Accessibility tree is the accurate way to point at a control; the gridded screenshot
-        // is only the fallback for apps that expose nothing useful.
-        var gridded: URL?
-        if wantsSteps, elements.isEmpty {
-            // No Accessibility tree to point with, so the model has to read positions off the grid
-            // — and the grid can only be trusted if it covers everything a step might point at.
-            // The default screenshot is the front window alone, which does not include the menu
-            // bar; a step aiming at File then got coordinates mapped inside the window, and the
-            // mark landed in the middle of the document. The whole display is captured instead.
-            if config.captureMode == .window,
-               let display = try? ScreenGrabber.capture(maxEdge: config.screenshotMaxEdge,
-                                                        mode: .display) {
-                let previous = pendingCapture
-                DispatchQueue.main.sync { self.pendingCapture = display }
-                if let previous { try? FileManager.default.removeItem(at: previous.url) }
-            }
-            if let original = pendingCapture?.url { gridded = GridAnnotator.annotate(original) }
-        }
-        defer { if let gridded { try? FileManager.default.removeItem(at: gridded) } }
-
-        let query = Query(text: text, screenshot: gridded ?? pendingCapture?.url,
+        let screen = AXContentReader.read(startingAt: targets.count + 1)
+        targets += screen.regions
+        let query = Query(text: text, screenshot: pendingCapture?.url,
                           focusCrop: pendingCrop,
-                          mode: wantsSteps ? .walkthrough : .ask,
-                          elements: wantsSteps ? elements : [],
-                          targets: wantsSteps ? [] : targets,
-                          screenText: screen?.text, pageURL: screen?.url,
-                          document: screen?.document,
+                          mode: .ask,
+                          targets: targets,
+                          screenText: screen.text, pageURL: screen.url,
+                          document: screen.document,
                           history: history,
                           skills: SkillLibrary.notes(forBundleID: bundleID),
                           desktop: DesktopContextDetector.needsDesktopContext(text)
                               ? DesktopSurvey.summary() : nil)
         do {
-            // A walkthrough answer is JSON, which must never be read out; a spoken answer streams.
-            let onDelta: ((String) -> Void)? = wantsSteps ? nil : { [weak self] sentence in
+            let onDelta: ((String) -> Void)? = { [weak self] sentence in
                 DispatchQueue.main.async { self?.speakStreamed(sentence) }
             }
             let answer = try router.ask(query, config: config, onDelta: onDelta)
             DispatchQueue.main.async {
-                if wantsSteps, let walkthrough = WalkthroughParser.parse(answer.text) {
-                    self.present(walkthrough)
-                } else {
-                    self.discardCapture()
-                    // The marker line is machine-readable and belongs on the screen, not in the
-                    // sentence: it is stripped before the answer is recorded, shown or spoken.
-                    let pointed = AnnotationParser.parse(answer.text)
-                    var spoken = answer
-                    spoken.text = pointed.spoken
-                    self.conversation.record(question: text, answer: pointed.spoken,
-                                             at: Date(), appBundleID: bundleID)
-                    // "I'm working on the billing rewrite" is worth keeping; the rest of what was
-                    // on screen is not. Written off the main thread — it touches disk.
-                    self.work.async { MemoryWriter.note(question: text) }
-                    self.showAnnotations(pointed, targets: targets,
-                                         readContent: !(screen?.text.isEmpty ?? true))
-                    self.present(spoken, alreadySpoken: self.streamedSpeech)
-                }
+                self.discardCapture()
+                // The marker line is machine-readable and belongs on the screen, not in the
+                // sentence: it is stripped before the answer is recorded, shown or spoken.
+                let pointed = AnnotationParser.parse(answer.text)
+                // A draft is shown, not said. Splitting it out here keeps the email out of the
+                // spoken answer, out of the conversation history, and out of the panel's own
+                // prose — it belongs on its own surface with a button that copies it.
+                let written = DraftParser.parse(pointed.spoken)
+                self.panel.model.draft = written.draft
+                var spoken = answer
+                spoken.text = written.spoken
+                self.conversation.record(question: text, answer: written.spoken,
+                                         at: Date(), appBundleID: bundleID)
+                // "I'm working on the billing rewrite" is worth keeping; the rest of what was on
+                // screen is not. Written off the main thread — it touches disk.
+                self.work.async { MemoryWriter.note(question: text) }
+                self.showAnnotations(pointed, targets: targets,
+                                     readContent: !screen.text.isEmpty)
+                self.present(spoken, alreadySpoken: self.streamedSpeech)
             }
         } catch is CancellationError {
             discardCapture()

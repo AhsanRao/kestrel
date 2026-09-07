@@ -6,8 +6,6 @@ enum BundleResources {
     enum Prompt: String {
         case ask = "ask"
         case dictationCleanup = "dictation-cleanup"
-        case walkthrough = "walkthrough"
-        case walkthroughElements = "walkthrough-elements"
     }
 
     static func prompt(_ prompt: Prompt) -> String {

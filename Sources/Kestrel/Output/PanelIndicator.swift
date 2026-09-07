@@ -42,7 +42,7 @@ struct PanelIndicator: View {
         case .transcribing: return "Transcribing"
         case .thinking: return "Thinking"
         case .injecting: return "Pasting"
-        case .answering, .guiding: return "Answer ready"
+        case .answering: return "Answer ready"
         case .error: return "Error"
         case .idle: return "Idle"
         }

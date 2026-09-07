@@ -59,7 +59,7 @@ enum AXContentReader {
         var seen = Set<String>()
         walk(window, depth: maximumDepth, into: &found, seen: &seen)
 
-        let ordered = rank(found)
+        let ordered = rank(found, within: AXElementScanner.frame(of: window))
         var regions: [ScreenTarget] = []
         for (offset, candidate) in ordered.enumerated() {
             regions.append(ScreenTarget(id: firstID + offset, label: candidate.label,
@@ -131,16 +131,20 @@ enum AXContentReader {
     /// Reading order, not tree order: the model is looking at a picture of this, and a list that
     /// jumps around the screen is a list it will mis-read. Unlabelled containers are kept — a card
     /// with no accessible name is still a card, and "tighten this" has to be able to point at it.
-    static func rank(_ candidates: [Candidate]) -> [Candidate] {
-        // The page itself is not a section of the page. A browser nests the web area, the body, the
-        // main and the section as four unnamed rectangles of almost exactly the same size, and
-        // offering four numbers for one block is how a mark ends up on the wrong one — or shaded
-        // over most of the screen, which reads as a bug rather than as pointing.
+    static func rank(_ candidates: [Candidate], within window: CGRect? = nil) -> [Candidate] {
+        // The page itself is not a section of the page. Measured on a real dashboard: the window's
+        // own group and the web area inside it are the same 2560×1318 rectangle, both carry the
+        // page title as a label, and either one shades the entire screen when it is marked. A name
+        // does not make something a section — its size does, so anything filling the window goes,
+        // labelled or not.
+        let windowArea = window.map { $0.width * $0.height } ?? 0
         let largest = candidates.map { $0.frame.width * $0.frame.height }.max() ?? 0
         let ordered = candidates
             .filter { candidate in
                 let area = candidate.frame.width * candidate.frame.height
+                if windowArea > 0, area >= windowArea * 0.85 { return false }
                 guard candidate.label.isEmpty else { return true }
+                // With no window to measure against, the biggest thing found stands in for it.
                 return area > 12000 && area < largest * 0.8
             }
             .sorted { first, second in
