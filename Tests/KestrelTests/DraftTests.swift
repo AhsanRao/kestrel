@@ -64,3 +64,29 @@ final class DraftParserTests: XCTestCase {
         XCTAssertFalse(DraftParser.isDraftBoundary("I drafted a reply for you."))
     }
 }
+
+/// A reply the model wrote into its own sentence rather than into a draft block.
+final class QuotedSuggestionTests: XCTestCase {
+    func testAQuotedReplyBecomesACopyableDraft() {
+        let answer = "Say \"chal phir so ja, baat kal krty\" — matches his sleepy vibe and wraps it."
+        let draft = DraftParser.suggestion(forQuestion: "what should I reply to this", in: answer)
+        XCTAssertEqual(draft?.body, "chal phir so ja, baat kal krty")
+        XCTAssertNil(draft?.subject)
+    }
+
+    func testAQuestionThatIsNotAskingForWordsGetsNoDraft() {
+        let answer = "That's the \"Toggle Panel\" button, which opens the terminal."
+        XCTAssertNil(DraftParser.suggestion(forQuestion: "what is this button", in: answer))
+    }
+
+    func testASingleQuotedWordIsATermNotAMessage() {
+        let answer = "Reply with \"acha\"."
+        XCTAssertNil(DraftParser.suggestion(forQuestion: "what should I say back", in: answer))
+    }
+
+    func testTheLongestQuotedRunWins() {
+        let answer = "Instead of \"ok fine\", send \"chal phir so ja, baat kal karte hain\" — warmer."
+        let draft = DraftParser.suggestion(forQuestion: "how should I respond", in: answer)
+        XCTAssertEqual(draft?.body, "chal phir so ja, baat kal karte hain")
+    }
+}

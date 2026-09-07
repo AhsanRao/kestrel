@@ -98,7 +98,10 @@ extension SessionCoordinator {
                 // spoken answer, out of the conversation history, and out of the panel's own
                 // prose — it belongs on its own surface with a button that copies it.
                 let written = DraftParser.parse(pointed.spoken)
+                // …or a reply the model left in quotes inside its own sentence, which is the same
+                // thing to the user and needs the same button.
                 self.panel.model.draft = written.draft
+                    ?? DraftParser.suggestion(forQuestion: text, in: written.spoken)
                 var spoken = answer
                 spoken.text = written.spoken
                 self.conversation.record(question: text, answer: written.spoken,

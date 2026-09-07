@@ -66,6 +66,59 @@ enum DraftParser {
         return rest[..<closing].joined(separator: "\n")
     }
 
+    /// A reply the model wrote into its own sentence instead of into a draft block.
+    ///
+    /// Asked "what should I reply to this", a model that has not taken the `DRAFT:` convention to
+    /// heart answers: `Say "chal phir so ja, baat kal krty" — matches his sleepy vibe.` The words
+    /// in quotes *are* the message; everything around them is commentary about it. Spoken, that is
+    /// a fine answer. On screen it is the one thing this feature exists to prevent — a reply the
+    /// user can read and cannot copy, which leaves them retyping it into the app it came from.
+    ///
+    /// So when the question asked for something to send and the answer put something in quotes,
+    /// the quoted part is lifted out and given the copy button it should have had. The spoken line
+    /// is left as it was: it has already been said by the time this runs, and rewriting what the
+    /// user just heard would be worse than repeating it.
+    static func suggestion(forQuestion question: String, in answer: String) -> Draft? {
+        guard asksForSomethingToSend(question), let phrase = quoted(in: answer) else { return nil }
+        return Draft(subject: nil, body: phrase)
+    }
+
+    /// Questions whose answer is words the user is going to send somewhere.
+    static func asksForSomethingToSend(_ question: String) -> Bool {
+        let text = question.lowercased()
+        let patterns = [
+            "what (should|do|can|would) i (reply|say|send|write|respond|answer)",
+            "how (should|do|would) i (reply|respond|answer|word)",
+            "(reply|respond|answer) to (this|that|him|her|them|it)",
+            "(write|draft|give) (me )?(a |an |some )?(reply|response|message|answer|text)",
+            "help me (reply|respond|answer|word)",
+            "(a|any) good (reply|response|answer)",
+        ]
+        return patterns.contains { text.range(of: $0, options: [.regularExpression]) != nil }
+    }
+
+    /// The longest quoted run in an answer, when it is long enough to be a message rather than the
+    /// name of something. Straight and curly quotes both: a model uses whichever it feels like.
+    static func quoted(in answer: String) -> String? {
+        var best: String?
+        let straight = "\"([^\"]{4,400})\""
+        let curly = "\u{201C}([^\u{201D}]{4,400})\u{201D}"
+        for pattern in [straight, curly] {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(answer.startIndex..., in: answer)
+            for match in regex.matches(in: answer, range: range) {
+                guard match.numberOfRanges > 1, let found = Range(match.range(at: 1), in: answer)
+                else { continue }
+                let phrase = String(answer[found]).trimmingCharacters(in: .whitespacesAndNewlines)
+                // Two words at least: one quoted word is a term being named, not a message being
+                // suggested.
+                guard phrase.split(separator: " ").count >= 2 else { continue }
+                if phrase.count > (best?.count ?? 0) { best = phrase }
+            }
+        }
+        return best
+    }
+
     /// True for a streamed line that belongs to a draft, so it is never read out loud.
     ///
     /// Speech streams sentence by sentence as the answer arrives, which means the decision about
