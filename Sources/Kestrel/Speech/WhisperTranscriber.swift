@@ -7,7 +7,7 @@ import os
 ///   -m <model> -f <wav>   model and input
 ///   -nt                   no timestamps in the output
 ///   -np                   no prints other than the result
-///   -l <lang>             language, or "auto"
+///   -l en                 Kestrel is English-only; Roman Urdu is dictated into English too
 ///   -t N                  decode threads; the default of 4 leaves an M-series chip idle
 ///   -mc 0                 no text context carried between segments, which is where whisper's
 ///                         invented sentences usually come from on short clips
@@ -50,7 +50,7 @@ final class WhisperTranscriber: Transcriber {
         }
 
         var arguments = ["-m", model.path, "-f", wav.path, "-nt", "-np",
-                         "-l", WhisperTranscriber.language(forModel: model, config: config),
+                         "-l", "en",
                          "-t", String(WhisperTranscriber.threadCount),
                          "-mc", "0", "-sns"]
         if let hint = config.transcriptionHint, !hint.isEmpty {
@@ -66,13 +66,6 @@ final class WhisperTranscriber: Transcriber {
         let text = WhisperTranscriber.parse(result.stdout)
         log.debug("transcribed \(text.count) chars in \(result.durationMs)ms")
         return text
-    }
-
-    /// An English-only model rejects `auto`; force `en` so the default setup just works.
-    /// Keyed off the model actually being run, which may not be the one named in the config.
-    static func language(forModel model: URL, config: Config) -> String {
-        if model.lastPathComponent.contains(".en") { return "en" }
-        return config.language.isEmpty ? "auto" : config.language
     }
 
     /// Strips timestamps, whisper's own bracket markers, and the filler it hallucinates on silence.

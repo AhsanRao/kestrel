@@ -2,7 +2,7 @@
 # Downloads a whisper.cpp GGML model into ~/.kestrel/models.
 #   ./scripts/download-whisper-model.sh [base.en|small|medium|large-v3-turbo]
 # base.en  ~148 MB, fastest, English only        (default)
-# small    ~488 MB, multilingual — use for Urdu or mixed speech
+# small    ~488 MB, multilingual — larger and slower; base.en is what Kestrel expects
 set -euo pipefail
 
 MODEL="${1:-base.en}"

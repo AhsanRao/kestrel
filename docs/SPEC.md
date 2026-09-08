@@ -85,7 +85,7 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
 │  ├───────────────┤      │                  │         ├──────────────────┤    │
 │  │ AudioCapture  │─────▶│  ┌────────────┐  │────────▶│ SpeechOutput     │    │
 │  │ (AVAudioEngine)│     │  │ Transcriber │  │         │ (AVSpeechSynth)  │    │
-│  ├───────────────┤      │  │ (whisper)   │  │         ├──────────────────┤    │
+│  ├───────────────┤      │  │ (Apple/wsp) │  │         ├──────────────────┤    │
 │  │ ScreenGrabber │─────▶│  └────────────┘  │────────▶│ TextInjector     │    │
 │  │ (screencapture)│     │  ┌────────────┐  │         │ (paste + restore)│    │
 │  └───────────────┘      │  │ Backend    │  │         ├──────────────────┤    │
@@ -109,7 +109,7 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
 1. User presses and holds `⌃⌥Space`. `HotkeyService` emits `pressed(.ask)`.
 2. `SessionCoordinator` moves `idle → listening`, starts `AudioCapture`, shows `PanelWindow` at top-center.
 3. User releases. Coordinator immediately calls `ScreenGrabber.capture()` (before the panel can change what's on screen), stops audio, moves to `transcribing`.
-4. `Transcriber` runs whisper.cpp on the WAV. Empty result → `error("Didn't catch that")`.
+4. `Transcriber` transcribes the WAV on-device. Empty result → `error("Didn't catch that")`.
 5. Coordinator moves to `thinking`, builds a `Query { text, screenshotURL, focusRegion? }`, calls `BackendRouter.ask(query)`.
 6. Selected backend spawns its CLI with cwd `~/.kestrel` (so memory files are loaded), passes the screenshot, waits for the result.
 7. Coordinator moves to `answering`: panel shows text, `SpeechOutput` speaks it (if enabled). Temp files deleted.
@@ -144,7 +144,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 | Build system | Swift Package Manager + `build.sh` to assemble the `.app` bundle; Xcode project added only if needed for signing/notarization later | Xcode project first: slower to iterate, harder for Claude Code to edit |
 | Global hotkeys | Carbon `RegisterEventHotKey` | `CGEventTap`: needs Accessibility just to hear keys; Carbon delivers press **and** release with no permission |
 | Audio capture | `AVAudioEngine` with `AVAudioConverter` to 16 kHz mono Int16 WAV | Raw Core Audio: more code for no gain |
-| Speech-to-text | whisper.cpp CLI (`brew install whisper-cpp`), model `ggml-base.en` default, `small` for multilingual | Apple `SFSpeechRecognizer`: weaker accuracy, language-limited on-device; cloud STT: violates local-first |
+| Speech-to-text | Apple's `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26+), the system dictation engine, on-device; whisper.cpp CLI as the fallback below macOS 26 and as a config override | `SFSpeechRecognizer`: the old API, weaker and superseded; whisper as the default: ~6× slower on the same clip and a 148 MB model to install; cloud STT: violates local-first |
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
 | Text-to-speech | `AVSpeechSynthesizer`, prefer premium/enhanced voice if installed | Cloud TTS: not covered by subscriptions, adds latency |
 | LLM access | Subprocess to `claude` / `codex` CLIs | Direct API + OAuth: prohibited. Agent SDK library: fine for Claude but Codex has no equivalent; the CLI boundary keeps both symmetrical |
@@ -175,8 +175,8 @@ kestrel/
 │   └── AppIcon.iconset/          # generated PNG sizes (script in scripts/)
 ├── scripts/
 │   ├── make-icon.sh              # svg → iconset → .icns
-│   ├── download-whisper-model.sh
-│   └── check-deps.sh             # verifies claude, codex, whisper-cli, model
+│   ├── download-whisper-model.sh # only needed for the whisper fallback
+│   └── check-deps.sh             # verifies claude, codex, and the speech engine
 ├── Resources/
 │   ├── Info.plist.template
 │   ├── DefaultMemory.md          # seeded into ~/.kestrel/KESTREL.md on first run
@@ -199,7 +199,8 @@ kestrel/
 │       │   ├── AudioCapture.swift
 │       │   └── ScreenGrabber.swift
 │       ├── Speech/
-│       │   ├── Transcriber.swift          # protocol
+│       │   ├── Transcriber.swift          # protocol + RoutingTranscriber
+│       │   ├── AppleSpeechTranscriber.swift # SpeechAnalyzer, macOS 26+
 │       │   ├── WhisperTranscriber.swift
 │       │   └── SpeechOutput.swift
 │       ├── Backends/
@@ -224,6 +225,7 @@ kestrel/
     └── KestrelTests/
         ├── SessionStateTests.swift
         ├── WhisperOutputParsingTests.swift
+        ├── AppleSpeechTranscriberTests.swift
         ├── BackendOutputParsingTests.swift
         └── ConfigTests.swift
 ```
@@ -261,10 +263,29 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 - v2: accept a focus rect and produce both the full frame and a crop.
 - Edge cases: Screen Recording permission missing → error with a deep link to the Privacy pane; multiple displays; the Kestrel panel itself must be hidden or excluded from the capture (capture before showing, or order the panel out for the grab).
 
-### 8.4 Transcriber (WhisperTranscriber)
-- Runs `whisper-cli -m <model> -f <wav> -nt -np --no-prints -l <lang|auto>` and parses stdout into a single string.
-- Strips timestamps, `[BLANK_AUDIO]`, and stray brackets. Language from config; `auto` default.
-- Edge cases: binary or model missing → actionable error with the exact install commands; hallucinated filler on silence (whisper emits "Thank you." on empty audio) → drop results under 3 characters or matching a small blocklist; Urdu/mixed-language dictation → recommend `small` model in README.
+### 8.4 Transcriber
+Kestrel is English-only. Roman Urdu is spoken into an English transcript, which is how it is
+written down anyway. `RoutingTranscriber` picks the engine per call from `transcriptionEngine`, so
+a config edit applies without a relaunch, and silently uses whisper when Apple's engine cannot run.
+
+**AppleSpeechTranscriber** (default, macOS 26+)
+- `SpeechAnalyzer` driving a `SpeechTranscriber(locale: en-US, preset: .transcription)` over the
+  recorded WAV; `AnalysisContext.contextualStrings[.general]` carries `transcriptionHint`.
+- `AssetInventory.assetInstallationRequest` installs the model on first use — no download to manage,
+  nothing in `~/.kestrel/models`. Roughly 0.4 s for 11 s of audio, and silence returns an empty
+  string rather than an invented sentence.
+- The engine is async and the protocol is blocking; the call is bridged on a semaphore, which is
+  safe only because the coordinator calls it from a serial background queue.
+- Edge cases: below macOS 26, or `SpeechTranscriber.isAvailable == false` → whisper instead;
+  analysis hanging → 120 s timeout; cancellation cancels the task.
+
+**WhisperTranscriber** (fallback and override)
+- Runs `whisper-cli -m <model> -f <wav> -nt -np -l en -t N -mc 0 -sns [--prompt <hint>]` and parses
+  stdout into a single string.
+- Strips timestamps, `[BLANK_AUDIO]`, and stray brackets.
+- Edge cases: binary or model missing → actionable error with the exact install commands;
+  hallucinated filler on silence (whisper emits "Thank you." on empty audio) → drop results under
+  3 characters or matching a small blocklist.
 
 ### 8.5 Backend protocol
 - Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup`), `maxTokens` hint.
@@ -325,9 +346,9 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 | `backend` | `"claude" \| "codex"` | `"claude"` | |
 | `claudeModel` / `codexModel` | string or null | null | CLI default when null |
 | `autoRoute` | bool | false | v2 |
-| `whisperBinary` | path | `/opt/homebrew/bin/whisper-cli` | |
-| `whisperModel` | path | `~/.kestrel/models/ggml-base.en.bin` | |
-| `language` | string | `"auto"` | whisper language code |
+| `transcriptionEngine` | `"apple" \| "whisper"` | `"apple"` | `apple` falls back to whisper below macOS 26 |
+| `whisperBinary` | path | `/opt/homebrew/bin/whisper-cli` | fallback engine only |
+| `whisperModel` | path | `~/.kestrel/models/ggml-base.en.bin` | fallback engine only |
 | `speakAnswers` | bool | true | |
 | `voiceIdentifier` | string or null | null | premium voice if present |
 | `voiceRate` | float | 0.52 | |
@@ -451,7 +472,7 @@ Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG
 | CLI flags change between releases | Isolate all invocations in `ClaudeBackend`/`CodexBackend`; `check-deps.sh` runs `--help` and greps for expected flags; README documents how to adjust |
 | Subscription policy changes again | Backends accept API keys as a drop-in; README states the single-user rule plainly |
 | Agent SDK credit exhausted mid-month | Detect the CLI's quota error string and show "credit exhausted, switch to Codex or API key" |
-| Whisper accuracy for Urdu/mixed speech | Ship instructions for `small`/`medium` models; language override in settings |
+| Apple's speech engine changing behaviour between macOS releases | `RoutingTranscriber` keeps whisper one config key away, and the dependency check reports which engine is live |
 | Screen Recording permission confusion | First-run checklist in the panel with buttons that deep-link to each Privacy pane |
 | `claude -p` cold start latency | Keep `~/.kestrel` minimal (no large files); consider `--max-turns 1`; measure and document |
 | Panel captured in screenshots | Capture before showing the panel; verify in M1 |

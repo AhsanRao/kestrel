@@ -35,18 +35,26 @@ fi
 
 echo
 echo "Speech to text"
-WHISPER="$(command -v whisper-cli || true)"
-if [ -n "$WHISPER" ]; then
-  ok "whisper-cli — $WHISPER"
+# macOS 26 has Apple's on-device engine built in, so whisper is only the fallback there.
+MAJOR="$(sw_vers -productVersion | cut -d. -f1)"
+ENGINE="$(python3 -c 'import json,os;p=os.path.expanduser("~/.kestrel/config.json");print(json.load(open(p)).get("transcriptionEngine","apple") if os.path.exists(p) else "apple")' 2>/dev/null || echo apple)"
+if [ "$MAJOR" -ge 26 ] && [ "$ENGINE" = "apple" ]; then
+  ok "Apple speech engine — built into macOS $(sw_vers -productVersion), nothing to install"
+  WHISPER_REQUIRED=0
 else
-  bad "whisper-cli not found — brew install whisper-cpp"
+  [ "$MAJOR" -ge 26 ] && warn "config sets transcriptionEngine=whisper; Apple's engine is available on this Mac" \
+                      || warn "macOS $(sw_vers -productVersion) — Apple's speech engine needs macOS 26; using whisper"
+  WHISPER_REQUIRED=1
 fi
 
+WHISPER="$(command -v whisper-cli || true)"
 MODEL="$HOME/.kestrel/models/ggml-base.en.bin"
-if [ -f "$MODEL" ]; then
-  ok "model — $MODEL ($(du -h "$MODEL" | cut -f1))"
-else
-  bad "model missing — ./scripts/download-whisper-model.sh"
+if [ "$WHISPER_REQUIRED" -eq 1 ]; then
+  [ -n "$WHISPER" ] && ok "whisper-cli — $WHISPER" || bad "whisper-cli not found — brew install whisper-cpp"
+  [ -f "$MODEL" ] && ok "model — $MODEL ($(du -h "$MODEL" | cut -f1))" \
+                  || bad "model missing — ./scripts/download-whisper-model.sh"
+elif [ -n "$WHISPER" ]; then
+  ok "whisper-cli also present — $WHISPER (fallback)"
 fi
 
 echo

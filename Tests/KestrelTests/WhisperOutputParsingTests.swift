@@ -41,20 +41,6 @@ final class WhisperOutputParsingTests: XCTestCase {
         XCTAssertFalse(WhisperTranscriber.isNoise("Thank you for the summary of this page"))
     }
 
-    func testEnglishOnlyModelForcesEnglish() {
-        var config = Config.defaults
-        config.language = "auto"
-        let english = URL(fileURLWithPath: "/tmp/ggml-base.en.bin")
-        let multilingual = URL(fileURLWithPath: "/tmp/ggml-small.bin")
-
-        XCTAssertEqual(WhisperTranscriber.language(forModel: english, config: config), "en")
-        XCTAssertEqual(WhisperTranscriber.language(forModel: multilingual, config: config), "auto")
-        config.language = "ur"
-        XCTAssertEqual(WhisperTranscriber.language(forModel: multilingual, config: config), "ur")
-        // An .en model cannot do Urdu whatever the config says.
-        XCTAssertEqual(WhisperTranscriber.language(forModel: english, config: config), "en")
-    }
-
     func testAMissingConfiguredModelFallsBackToWhatIsInstalled() {
         var config = Config.defaults
         config.whisperModel = "/tmp/definitely-not-here-\(UUID()).bin"

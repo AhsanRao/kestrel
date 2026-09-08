@@ -109,6 +109,24 @@ menu over the thing being asked about.
 ("and play something") is not done, and Kestrel says so rather than half-doing it. This is the
 only thing Kestrel does *to* the Mac.
 
+### Speech to text with nothing to install
+
+macOS 26 ships the engine system dictation runs on — `SpeechAnalyzer` and `SpeechTranscriber` —
+and Kestrel now uses it by default. On the same eleven-second clip it returned a transcript in
+about 0.4 s against whisper's 4.6 s with `large-v3-turbo`, at the same accuracy, and there is no
+`brew install` and no 148 MB model to download before Kestrel works. Three seconds of silence
+gives back an empty string instead of whisper's confident "you".
+
+whisper.cpp is still there. It runs below macOS 26, and `transcriptionEngine: "whisper"` picks it
+deliberately; the engine is chosen per question, so the config edit needs no relaunch. The setup
+window shows whichever one is live and stops asking for a binary that is not going to be used.
+
+Kestrel is English-only, which is now stated rather than implied. Apple's engine has no Urdu
+locale and whisper's Urdu was never good enough to build on, so both engines run English, and
+Roman Urdu is transcribed the way it is written. Words that come out wrong — names, the Urdu you
+use most — go in `transcriptionHint`, which reaches whisper as `--prompt` and Apple's engine as
+contextual strings.
+
 ### Memory that fills itself in
 
 Onboarding ends with four questions that become `~/.kestrel/KESTREL.md`. After that, a

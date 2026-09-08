@@ -13,7 +13,7 @@ final class SessionCoordinator {
 
     private let hotkeys = HotkeyService()
     let audio = AudioCapture()
-    let transcriber: Transcriber = WhisperTranscriber()
+    let transcriber: Transcriber = RoutingTranscriber()
     let router = BackendRouter()
     let speech = SpeechOutput()
     let sounds = SoundBoard()

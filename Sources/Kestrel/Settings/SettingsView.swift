@@ -104,12 +104,17 @@ struct SettingsView: View {
             }
 
             Section("Transcription") {
-                TextField("Whisper binary", text: model.binding(\.whisperBinary))
-                TextField("Whisper model", text: model.binding(\.whisperModel))
-                TextField("Language (auto, en, ur…)", text: model.binding(\.language))
-                TextField("Words to expect (names, jargon)",
+                Picker("Engine", selection: model.binding(\.transcriptionEngine)) {
+                    ForEach(Config.TranscriptionEngine.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                TextField("Words to expect (names, Roman Urdu, jargon)",
                           text: model.optionalStringBinding(\.transcriptionHint))
-                Text("Audio never leaves this Mac. For Urdu or mixed speech use ggml-small.bin.")
+                if model.config.transcriptionEngine == .whisper {
+                    TextField("Whisper binary", text: model.binding(\.whisperBinary))
+                    TextField("Whisper model", text: model.binding(\.whisperModel))
+                }
+                Text("Audio never leaves this Mac. English only — Roman Urdu is transcribed as "
+                     + "English, which is how it is written.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

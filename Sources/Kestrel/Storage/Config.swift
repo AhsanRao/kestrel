@@ -9,9 +9,9 @@ struct Config: Codable, Equatable {
     var autoRoute: Bool
     var allowMCPServers: Bool
 
+    var transcriptionEngine: TranscriptionEngine
     var whisperBinary: String
     var whisperModel: String
-    var language: String
     var transcriptionHint: String?
 
     var speakAnswers: Bool
@@ -40,9 +40,9 @@ struct Config: Codable, Equatable {
         codexModel: nil,
         autoRoute: false,
         allowMCPServers: false,
+        transcriptionEngine: .apple,
         whisperBinary: Paths.defaultWhisperBinary,
         whisperModel: Paths.defaultWhisperModel.path,
-        language: "auto",
         transcriptionHint: nil,
         speakAnswers: true,
         sounds: true,
@@ -94,6 +94,21 @@ struct Config: Codable, Equatable {
 
     enum InjectMode: String, Codable, CaseIterable { case paste, type }
 
+    /// Which local engine turns audio into text. Kestrel is English-only either way: Apple's
+    /// engine has no Urdu locale, and Roman Urdu is spoken into an English transcript anyway.
+    enum TranscriptionEngine: String, Codable, CaseIterable {
+        /// macOS 26+ `SpeechAnalyzer`, the system dictation engine. Falls back to whisper below 26.
+        case apple
+        case whisper
+
+        var title: String {
+            switch self {
+            case .apple: return "Apple (macOS 26+)"
+            case .whisper: return "whisper.cpp"
+            }
+        }
+    }
+
     /// What a question is asked *about*. Capturing just the frontmost window spends every pixel on
     /// the thing the user means, instead of shrinking a whole 5K desktop until the labels blur.
     enum CaptureMode: String, Codable, CaseIterable {
@@ -124,9 +139,9 @@ struct Config: Codable, Equatable {
         codexModel = opt(.codexModel)
         autoRoute = v(.autoRoute, d.autoRoute)
         allowMCPServers = v(.allowMCPServers, d.allowMCPServers)
+        transcriptionEngine = v(.transcriptionEngine, d.transcriptionEngine)
         whisperBinary = v(.whisperBinary, d.whisperBinary)
         whisperModel = v(.whisperModel, d.whisperModel)
-        language = v(.language, d.language)
         transcriptionHint = opt(.transcriptionHint)
         speakAnswers = v(.speakAnswers, d.speakAnswers)
         sounds = v(.sounds, d.sounds)
@@ -148,7 +163,8 @@ struct Config: Codable, Equatable {
 
     init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
          allowMCPServers: Bool,
-         whisperBinary: String, whisperModel: String, language: String, transcriptionHint: String?,
+         transcriptionEngine: TranscriptionEngine,
+         whisperBinary: String, whisperModel: String, transcriptionHint: String?,
          speakAnswers: Bool, sounds: Bool,
          voiceIdentifier: String?,
          cleanupDictation: Bool, injectMode: InjectMode,
@@ -157,8 +173,10 @@ struct Config: Codable, Equatable {
          launchAtLogin: Bool,
          answerAnnotations: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
         self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
-        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers; self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
-        self.language = language; self.transcriptionHint = transcriptionHint
+        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers
+        self.transcriptionEngine = transcriptionEngine
+        self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
+        self.transcriptionHint = transcriptionHint
         self.speakAnswers = speakAnswers; self.sounds = sounds
         self.voiceIdentifier = voiceIdentifier
         self.cleanupDictation = cleanupDictation; self.injectMode = injectMode

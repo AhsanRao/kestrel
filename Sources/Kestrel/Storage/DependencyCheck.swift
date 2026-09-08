@@ -7,13 +7,14 @@ import Foundation
 enum DependencyCheck {
     enum Requirement: String, CaseIterable {
         case microphone, screenRecording, accessibility
-        case whisperBinary, whisperModel, claude, codex
+        case speech, whisperBinary, whisperModel, claude, codex
 
         var title: String {
             switch self {
             case .microphone: return "Microphone"
             case .screenRecording: return "Screen Recording"
             case .accessibility: return "Accessibility"
+            case .speech: return "Speech to text"
             case .whisperBinary: return "whisper-cli"
             case .whisperModel: return "Speech model"
             case .claude: return "Claude Code CLI"
@@ -27,7 +28,8 @@ enum DependencyCheck {
             case .microphone: return "To hear the question you hold the hotkey to ask."
             case .screenRecording: return "To see the screen you are asking about."
             case .accessibility: return "To hold ⌃⌥ as a hotkey, to paste dictated text, and to circle part of the screen."
-            case .whisperBinary: return "Turns your voice into text on this Mac. Nothing is uploaded."
+            case .speech: return "Turns your voice into text on this Mac. Nothing is uploaded."
+            case .whisperBinary: return "The engine Kestrel was told to use instead of Apple's."
             case .whisperModel: return "The speech model whisper reads. About 148 MB."
             case .claude: return "Answers your questions using your Claude subscription."
             case .codex: return "Optional second backend, using your ChatGPT subscription."
@@ -68,8 +70,14 @@ enum DependencyCheck {
         }
     }
 
+    /// Apple's speech engine needs no binary and no model file, so on macOS 26 the two whisper
+    /// rows are not shown at all rather than shown as something missing.
     static func run(config: Config) -> Report {
-        Report(items: Requirement.allCases.map { check($0, config: config) })
+        let usesWhisper = config.effectiveTranscriptionEngine == .whisper
+        let requirements = Requirement.allCases.filter {
+            usesWhisper || ($0 != .whisperBinary && $0 != .whisperModel)
+        }
+        return Report(items: requirements.map { check($0, config: config) })
     }
 
     static func check(_ requirement: Requirement, config: Config) -> Item {
@@ -88,6 +96,14 @@ enum DependencyCheck {
             let granted = AXIsProcessTrusted()
             return Item(requirement: requirement, ok: granted,
                         detail: granted ? "Allowed" : "Needed for the ask hotkey and dictation")
+
+        case .speech:
+            if config.effectiveTranscriptionEngine == .apple {
+                return Item(requirement: requirement, ok: true, detail: "Apple, built in — nothing to install")
+            }
+            let ready = check(.whisperBinary, config: config).ok && check(.whisperModel, config: config).ok
+            return Item(requirement: requirement, ok: ready,
+                        detail: ready ? "whisper.cpp" : "whisper.cpp — see the two rows below")
 
         case .whisperBinary:
             let url = config.whisperBinaryURL

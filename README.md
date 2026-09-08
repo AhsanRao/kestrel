@@ -10,7 +10,7 @@ only while you are holding the key.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌃⌥`, speak, release. Kestrel screenshots the display your mouse is on, transcribes locally with whisper.cpp, asks Claude or Codex, then shows and speaks the answer. |
+| **Ask** | Hold `⌃⌥`, speak, release. Kestrel screenshots the display your mouse is on, transcribes it on this Mac, asks Claude or Codex, then shows and speaks the answer. |
 | **Dictate** | Tap `⌃⌘K`, speak, tap again. The text is cleaned up by the model and pasted into whatever app is frontmost. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Kestrel draws on the real screen while it talks — a pencil rings the thing the answer is about, one mark after another. Ask *"how do I upload a file?"* and the button gets circled while the sentence is spoken. Esc clears it. |
 | **Write** | Ask for a reply, an email or a paragraph and you get it as text with a **Copy** button, not read aloud. |
@@ -37,12 +37,8 @@ only while you are holding the key.
 #    Claude Code: https://claude.ai/download   → then: claude auth
 npm i -g @openai/codex && codex login          # optional second backend
 
-# 2. Local speech to text
-brew install whisper-cpp
-
-# 3. Kestrel
+# 2. Kestrel
 git clone https://github.com/AhsanRao/kestrel.git && cd kestrel
-./scripts/download-whisper-model.sh            # ~148 MB into ~/.kestrel/models
 ./scripts/make-signing-cert.sh                 # once; see below
 ./scripts/check-deps.sh                        # everything should be ✓
 make run
@@ -62,7 +58,7 @@ Settings ticks the row without coming back to press anything. Reopen it any time
 | Microphone | hearing the question | required |
 | Screen Recording | seeing the screen you ask about | required, **applies after a relaunch** — the window offers one |
 | Accessibility | the `⌃⌥` hotkey, reading the screen's contents, circling a region, pasting dictation | required for the default hotkey |
-| whisper-cli + model | local speech to text | required |
+| Speech to text | hearing what you said | built into macOS 26; below that, `brew install whisper-cpp` and `./scripts/download-whisper-model.sh` |
 | Claude Code CLI | answering | required |
 | Codex CLI | second backend | optional |
 
@@ -112,9 +108,9 @@ you save. The Settings window writes the same file.
 | `backend` | `"claude"` | or `"codex"` |
 | `claudeModel` / `codexModel` | `null` | `null` uses the CLI's own default |
 | `autoRoute` | `false` | send short, screenshot-free questions to Codex |
-| `whisperBinary` | `/opt/homebrew/bin/whisper-cli` | |
-| `whisperModel` | `~/.kestrel/models/ggml-base.en.bin` | |
-| `language` | `"auto"` | forced to `en` for a `.en` model |
+| `transcriptionEngine` | `"apple"` | `"whisper"` to use whisper.cpp instead; `"apple"` falls back to it below macOS 26 |
+| `whisperBinary` | `/opt/homebrew/bin/whisper-cli` | only read by the whisper engine |
+| `whisperModel` | `~/.kestrel/models/ggml-base.en.bin` | only read by the whisper engine |
 | `speakAnswers` | `true` | |
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | premium voices are preferred when installed |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
@@ -128,18 +124,22 @@ you save. The Settings window writes the same file.
 | `acknowledgeWhileThinking` | `true` | say "one sec" while the model reads the screen |
 | `allowMCPServers` | `false` | leave off: MCP discovery added ~10 s to every question |
 | `voicePitch` | `0.98` | |
-| `transcriptionHint` | `null` | names and jargon to expect, passed to whisper |
+| `transcriptionHint` | `null` | names, Roman Urdu words and jargon to expect |
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |
 | `apiKeys.anthropic` / `apiKeys.openai` | `null` | pay-as-you-go override |
 
-**Other languages.** `base.en` is English only. For Urdu or mixed speech:
+**Speech to text.** On macOS 26 Kestrel uses Apple's own on-device engine — the one system
+dictation runs on. There is nothing to install and no model to download, and it is roughly six
+times faster than whisper on the same clip. Below macOS 26 it falls back to whisper.cpp:
 
 ```bash
-./scripts/download-whisper-model.sh small
+brew install whisper-cpp
+./scripts/download-whisper-model.sh            # ~148 MB into ~/.kestrel/models
 ```
 
-then point `whisperModel` at `~/.kestrel/models/ggml-small.bin` and set `language` to `auto`.
+**Language.** English only, both engines. Roman Urdu is transcribed as English, which is how it is
+written; put the words you use often into `transcriptionHint` and both engines will expect them.
 
 ## Development
 
