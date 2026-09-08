@@ -91,10 +91,14 @@ final class AppleSpeechTranscriber: Transcriber {
     }
 
     /// Segments arrive with their own leading spaces, so they concatenate rather than join.
+    ///
+    /// Splitting on whitespace and rejoining collapses a run of any length. Replacing `"  "` with
+    /// `" "` once, as this first did, only ever halves a run — the engine's own padding either side
+    /// of a segment boundary makes four spaces, and four became two rather than one.
     static func clean(_ pieces: [String]) -> String {
         pieces.joined()
-            .replacingOccurrences(of: "  ", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
     }
 
     /// The same comma-separated hint field whisper passes to `--prompt`, split into the list of

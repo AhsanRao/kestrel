@@ -142,7 +142,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 |---|---|---|
 | Language / UI | Swift 5.9, AppKit shell with SwiftUI views | Electron/Tauri: heavier, worse permission story, not "native" |
 | Build system | Swift Package Manager + `build.sh` to assemble the `.app` bundle; Xcode project added only if needed for signing/notarization later | Xcode project first: slower to iterate, harder for Claude Code to edit |
-| Global hotkeys | Carbon `RegisterEventHotKey` | `CGEventTap`: needs Accessibility just to hear keys; Carbon delivers press **and** release with no permission |
+| Global hotkeys | Carbon `RegisterEventHotKey` for a keyed shortcut; `CGEventTap` for a bare modifier chord, which Carbon cannot register | Tap for everything: needs Accessibility just to hear keys. Carbon delivers press **and** release with no permission, so dictation keeps it — but holding ⌃⌥ for the length of a sentence is a better gesture for asking than a chord plus a letter, and that costs the grant. |
 | Audio capture | `AVAudioEngine` with `AVAudioConverter` to 16 kHz mono Int16 WAV | Raw Core Audio: more code for no gain |
 | Speech-to-text | Apple's `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26+), the system dictation engine, on-device; whisper.cpp CLI as the fallback below macOS 26 and as a config override | `SFSpeechRecognizer`: the old API, weaker and superseded; whisper as the default: ~6× slower on the same clip and a 148 MB model to install; cloud STT: violates local-first |
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
@@ -432,7 +432,7 @@ thing and mark it. Ends with the `MARK:` contract of §8.15, and the `DRAFT:` co
 |---|---|---|
 | Microphone | AudioCapture | first hotkey press |
 | Screen Recording | ScreenGrabber | first ask; requires relaunch after grant |
-| Accessibility | TextInjector, v2 click detection | first dictation |
+| Accessibility | the bare-chord ask hotkey, AXElementScanner, AXContentReader, DragTracker, TextInjector | at launch, because without it the default hotkey cannot fire at all |
 
 - `Info.plist`: `LSUIElement = true` (menu bar only), usage-description strings for microphone and Apple events, bundle id `dev.0xash.kestrel`.
 - Ad-hoc codesign for personal use. TCC grants are tied to the bundle id + signature, so keep the signing identity stable across builds (ad-hoc is fine as long as the bundle id does not change).

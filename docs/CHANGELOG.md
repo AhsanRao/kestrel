@@ -9,6 +9,51 @@ code, the reason for it is given here.
 
 ---
 
+## [1.1.0] — 2026-09-08 — Speech that needs no download
+
+### Transcription uses macOS's own engine
+
+`SpeechAnalyzer` and `SpeechTranscriber` on macOS 26 are the engine system dictation uses:
+on-device, nothing uploaded, and nothing to install. Kestrel uses them by default. whisper.cpp
+remains the fallback below macOS 26 and as a config override (`transcriptionEngine`), so the
+148 MB model download is no longer part of setting Kestrel up.
+
+The setup window follows suit: when Apple's engine is the one that will run, the whisper binary
+and model rows are not shown at all. A checklist that cannot be completed is worse than a short
+one. The `transcriptionHint` field still works — it becomes the engine's vocabulary list rather
+than a whisper prompt.
+
+### The setup window comes back when a permission does not
+
+Accessibility was still marked optional, from when asking was a keyed Carbon shortcut. It has not
+been optional since the ask hotkey became a bare ⌃⌥ chord: Carbon cannot register one, so it is
+watched through an event tap, and without the grant the hotkey never fires.
+
+The effect was that revoking Accessibility — or rebuilding without a stable signing certificate,
+which does it silently — left Kestrel running, in the menu bar, with no working hotkey and no
+setup window either, because nothing "required" was missing. Whether a requirement is required now
+depends on the configuration: mandatory for the default chord, still merely recommended when the
+ask hotkey is bound to an ordinary keyed shortcut.
+
+### Marks and drafts
+
+- Every area the answer names is marked, not just the first two.
+- Marks stay up long enough to be read. They are drawn one at a time, so a fixed lifetime measured
+  from the answer gave the last mark of a long answer a fraction of the time the first one got; the
+  lifetime is now measured from the drawing itself, with a reading beat after it.
+- Marks can reach past the menu bar, and circling a region works again.
+- A reply always gets a copy button, and the spoken line above it is worth hearing on its own.
+- The draft body is shown rather than clipped, and the panel covers the notch completely.
+- "Didn't catch that" takes itself down after three seconds instead of sitting there.
+
+### Fixed
+
+- Multi-segment transcripts kept double spaces. Runs of whitespace were collapsed with a single
+  non-overlapping pass, which only ever halved them — and the engine pads both sides of a segment
+  boundary, so four spaces became two rather than one.
+
+---
+
 ## [1.0.0] — 2026-09-07 — First public release
 
 ### Answers that point at things

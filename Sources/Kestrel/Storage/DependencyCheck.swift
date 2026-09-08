@@ -37,9 +37,16 @@ enum DependencyCheck {
         }
 
         /// False for things Kestrel can run without.
-        var isRequired: Bool {
+        ///
+        /// Accessibility depends on how the ask hotkey is bound. A bare modifier chord — the
+        /// default ⌃⌥ — cannot be registered with Carbon and is watched through an event tap, so
+        /// without the grant the hotkey cannot fire at all and the app is not reduced but unusable.
+        /// Bound to an ordinary keyed shortcut it is merely recommended: dictation and circling
+        /// need it, asking does not.
+        func isRequired(for config: Config) -> Bool {
             switch self {
-            case .codex, .accessibility: return false
+            case .codex: return false
+            case .accessibility: return config.hotkeys.ask.isModifierOnly
             default: return true
             }
         }
@@ -52,6 +59,10 @@ enum DependencyCheck {
         var requirement: Requirement
         var ok: Bool
         var detail: String
+        /// Decided when the report is built, because it depends on the config — see
+        /// `Requirement.isRequired(for:)`. Carried here so the window and the launch check cannot
+        /// disagree about what is optional.
+        var isRequired: Bool = true
 
         var name: String { requirement.title }
     }
@@ -60,7 +71,7 @@ enum DependencyCheck {
         var items: [Item]
 
         var allGood: Bool { items.allSatisfy(\.ok) }
-        var readyToUse: Bool { items.filter { $0.requirement.isRequired }.allSatisfy(\.ok) }
+        var readyToUse: Bool { items.filter(\.isRequired).allSatisfy(\.ok) }
         var summary: String {
             items.map { "\($0.ok ? "✓" : "✗")  \($0.name) — \($0.detail)" }.joined(separator: "\n")
         }
@@ -77,7 +88,11 @@ enum DependencyCheck {
         let requirements = Requirement.allCases.filter {
             usesWhisper || ($0 != .whisperBinary && $0 != .whisperModel)
         }
-        return Report(items: requirements.map { check($0, config: config) })
+        return Report(items: requirements.map { requirement in
+            var item = check(requirement, config: config)
+            item.isRequired = requirement.isRequired(for: config)
+            return item
+        })
     }
 
     static func check(_ requirement: Requirement, config: Config) -> Item {
