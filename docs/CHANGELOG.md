@@ -9,6 +9,38 @@ code, the reason for it is given here.
 
 ---
 
+## [1.3.2] — 2026-09-10 — Setup you can walk back through
+
+### Two steps, and a way between them
+
+The checklist and the four questions after it were two screens swapped in place, with the window
+resizing under them and no way back. They are steps now, and they say so: each is headed "Step 1 of
+2" or "Step 2 of 2", both fill the same window, and moving between them slides one out as the other
+comes in. Each half enters and leaves by its own side, so Back retraces the way forward rather than
+pushing on in the same direction. Under Reduce Motion the two cross-fade instead.
+
+The second step has a Back button. Skipping a permission no longer means losing the chance to go
+and grant it.
+
+### The button says what it does
+
+The checklist's button was labelled "Next" or "Skip for now" depending on what was still missing,
+for one action that did the same thing either way. It says "Continue". The line beside it is what
+says whether anything is being left behind.
+
+### Closing the window finishes setup
+
+Dismissing it with the red button used to leave the flow unfinished: setup was never marked as seen,
+so it opened again on the next launch, and reopening it dropped the user back on whichever step they
+had reached rather than at the start. Closing now counts as having seen it, once, and the window
+always opens on the checklist. A required permission that is still missing brings it back regardless
+— that has not changed, and is the reason marking it seen is safe.
+
+The window is called "Set up Kestrel", which is what its first page has always called it, and is
+still true the second time it is opened from the menu.
+
+---
+
 ## [1.3.1] — 2026-09-10 — Setup that moves properly
 
 ### The checklist reads as one list

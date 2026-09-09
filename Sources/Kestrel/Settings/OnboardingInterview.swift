@@ -7,20 +7,35 @@ import SwiftUI
 /// whole thing is skippable: an empty profile is no worse than the file we shipped before.
 struct OnboardingInterview: View {
     @ObservedObject var model: InterviewModel
+    var onBack: () -> Void
     var onDone: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("Tell Kestrel who it's talking to")
-                    .font(.system(size: 19, weight: .semibold))
-                Text("This goes in a file on your Mac that Kestrel reads before it answers. "
-                     + "Skip anything you'd rather not say — you can edit it later from the menu.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        // The same header / body / footer as the checklist, so stepping between them looks like one
+        // window changing its contents rather than two windows swapping places.
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+            ScrollView { fields.padding(18) }
+            Divider()
+            footer
+        }
+    }
 
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            OnboardingHeading(step: 2, title: "Tell Kestrel who it's talking to")
+            Text("This goes in a file on your Mac that Kestrel reads before it answers. "
+                 + "Skip anything you'd rather not say — you can edit it later from the menu.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+    }
+
+    private var fields: some View {
+        VStack(alignment: .leading, spacing: 16) {
             field("What should I call you?", placeholder: "Ash", text: $model.name)
             field("What do you do?", placeholder: "iOS engineer", text: $model.role)
             field("What are you working on right now?",
@@ -35,21 +50,26 @@ struct OnboardingInterview: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
             }
-
-            HStack {
-                Button("Skip") { onDone() }
-                    .buttonStyle(.bordered)
-                Spacer()
-                Button("Save") {
-                    model.save()
-                    onDone()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.isEmpty)
-            }
         }
-        .padding(20)
-        .frame(width: 520)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            Button("Back", action: onBack)
+                .buttonStyle(.bordered)
+            Spacer()
+            Button("Skip", action: onDone)
+                .buttonStyle(.bordered)
+            Button("Save") {
+                model.save()
+                onDone()
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(model.isEmpty)
+            .keyboardShortcut(.defaultAction)
+        }
+        .padding(16)
     }
 
     private func field(_ label: String, placeholder: String, text: Binding<String>) -> some View {

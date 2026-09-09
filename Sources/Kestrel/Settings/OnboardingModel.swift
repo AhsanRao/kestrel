@@ -6,8 +6,14 @@ import SwiftUI
 /// State behind the first-run window: what is missing, and how to ask for each thing.
 @MainActor
 final class OnboardingModel: ObservableObject {
+    /// The two halves of setup, in the order they are shown.
+    enum Step { case checklist, interview }
+
     @Published private(set) var report: DependencyCheck.Report
     @Published var relaunchNeeded = false
+    /// Which half is on screen. Here rather than in the view so reopening the window starts at the
+    /// checklist again instead of resuming wherever the user happened to leave it.
+    @Published var step: Step = .checklist
 
     /// Owned here so a download survives the row being redrawn.
     let voiceDownloader = KokoroDownloader()

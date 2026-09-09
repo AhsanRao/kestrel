@@ -4,7 +4,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// Opens the setup window, and optionally photographs it. `KESTREL_PREVIEW_ONBOARDING=download`
-/// also starts the voice download — the only way to see the progress meter without pressing it.
+/// also starts the voice download — the only way to see the progress meter without pressing it —
+/// and `=interview` opens on the second step.
 enum OnboardingPreview {
     static var isRequested: Bool {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_ONBOARDING"] != nil
@@ -18,8 +19,10 @@ enum OnboardingPreview {
         onboarding.show()
         window = onboarding
 
-        if ProcessInfo.processInfo.environment["KESTREL_PREVIEW_ONBOARDING"] == "download" {
-            onboarding.model.voiceDownloader.start()
+        switch ProcessInfo.processInfo.environment["KESTREL_PREVIEW_ONBOARDING"] {
+        case "download": onboarding.model.voiceDownloader.start()
+        case "interview": onboarding.model.step = .interview
+        default: break
         }
 
         guard let path = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] else { return }

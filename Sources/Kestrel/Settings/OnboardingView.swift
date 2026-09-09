@@ -11,15 +11,30 @@ struct OnboardingView: View {
     /// because the permissions are what stop Kestrel working at all, and a profile is worth
     /// nothing if the microphone is still off.
     @StateObject private var interview = InterviewModel()
-    @State private var showsInterview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        if showsInterview {
-            OnboardingInterview(model: interview, onDone: onFinish)
-        } else {
-            checklist
+        ZStack {
+            switch model.step {
+            case .checklist:
+                checklist.transition(slide(from: .leading))
+            case .interview:
+                OnboardingInterview(model: interview,
+                                    onBack: { model.step = .checklist },
+                                    onDone: onFinish)
+                    .transition(slide(from: .trailing))
+            }
         }
+        // One size for both halves, so the step change is the window's contents moving across it
+        // rather than the window itself resizing under them.
+        .frame(width: 520, height: 600)
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle), value: model.step)
+    }
+
+    /// Each half enters and leaves by its own side, so going back retraces the way forward instead
+    /// of pushing on in the same direction. Reduce Motion gets the cross-fade without the travel.
+    private func slide(from edge: Edge) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: edge).combined(with: .opacity)
     }
 
     private var checklist: some View {
@@ -38,7 +53,6 @@ struct OnboardingView: View {
             Divider()
             footer
         }
-        .frame(width: 520, height: 600)
         .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle),
                    value: model.readyToUse)
         .onAppear { model.startPolling() }
@@ -54,8 +68,7 @@ struct OnboardingView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Set up Kestrel")
-                .font(.system(size: 19, weight: .semibold))
+            OnboardingHeading(step: 1, title: "Set up Kestrel")
             Text("Hold ⌃⌥ and ask about your screen. Kestrel needs a few things first — nothing "
                  + "leaves this Mac except the question you ask and one screenshot.")
                 .font(.system(size: 12))
@@ -126,12 +139,30 @@ struct OnboardingView: View {
                     .contentTransition(.opacity)
             }
             Spacer()
-            Button(model.readyToUse ? "Next" : "Skip for now") {
+            // One label, because it is one action: the footer text beside it is what says whether
+            // anything is being left behind.
+            Button("Continue") {
                 model.stopPolling()
-                showsInterview = true
+                model.step = .interview
             }
             .keyboardShortcut(.defaultAction)
         }
         .padding(16)
+    }
+}
+
+/// A step's number and name, shared by both halves so they read as one window moving on.
+struct OnboardingHeading: View {
+    let step: Int
+    let title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("STEP \(step) OF 2")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            Text(title)
+                .font(.system(size: 19, weight: .semibold))
+        }
     }
 }
