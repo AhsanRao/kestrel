@@ -9,6 +9,46 @@ code, the reason for it is given here.
 
 ---
 
+## [1.5.0] — 2026-09-10 — Made of the same glass
+
+### Setup is five steps, one thing at a time
+
+It was a wall of nine requirements and then a form. It is now welcome, voice, permissions, profile,
+ready — one purpose per screen, a rail across the top saying which, and one window size for all of
+them so moving between steps is one movement rather than two.
+
+The voice download comes before the permissions on purpose. It is long, it keeps running while you
+carry on, and by the time the last switch is flipped it has usually finished by itself.
+
+Only the three macOS grants appear on the permissions step. The CLIs and the speech engine are
+somebody else's installer; anything still missing is waiting on the ready step, next to the two
+hotkeys worth remembering.
+
+### The windows are made of the menu's glass
+
+Settings and setup were opaque panels that looked like they came from a different app than the menu
+bar dropdown. They are backed by the same material the dropdown itself uses — not a blur that
+imitates it — so they pick up dark mode and Reduce Transparency without being told, and the desktop
+moves behind them.
+
+The island is deliberately not part of this. It is pure black because it has to match the camera
+housing, and anything translucent there puts a seam around the notch.
+
+### Kestrel talks like Kestrel
+
+Every line in setup and settings was rewritten. "Configure your profile information" was never how
+this thing should sound. "Backend" is "Brain", "Point at what the answer is talking about" is
+"Circle what I'm talking about", and the permissions explain themselves in the first person,
+because it is Kestrel asking.
+
+### Models are chosen, not typed
+
+The Claude model was a text field you had to know the answer to fill in. It is a menu: whatever the
+CLI picks, or Opus, Sonnet or Haiku, described by what they are good at. A model id already set by
+hand stays in the list as itself rather than being quietly dropped.
+
+---
+
 ## [1.4.1] — 2026-09-10 — A way out of everything
 
 ### Esc dismisses whatever is on screen

@@ -1,168 +1,139 @@
 import SwiftUI
 
-/// First-run checklist: every permission and tool Kestrel needs, what each is for, and a button
-/// that asks for it. Re-checks itself while open, so granting something in System Settings ticks
-/// the row without the user coming back to press anything.
+/// Setup, five steps, one thing at a time.
+///
+/// The shell owns everything that does not change between steps — the glass, the rail across the
+/// top, the footer and its one primary action — so a step only has to say what it is for. That is
+/// also what makes the movement between them read as one window rather than five.
 struct OnboardingView: View {
     @ObservedObject var model: OnboardingModel
     var onFinish: () -> Void
 
-    /// The checklist first, then the four questions that seed the memory file. In that order
-    /// because the permissions are what stop Kestrel working at all, and a profile is worth
-    /// nothing if the microphone is still off.
     @StateObject private var interview = InterviewModel()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            switch model.step {
-            case .checklist:
-                checklist.transition(slide(from: .leading))
-            case .interview:
-                OnboardingInterview(model: interview,
-                                    onBack: { model.step = .checklist },
-                                    onDone: onFinish)
-                    .transition(slide(from: .trailing))
+        VStack(alignment: .leading, spacing: 0) {
+            StepRail(current: model.step)
+                .padding(.horizontal, 26)
+                .padding(.top, 40)
+                .padding(.bottom, 22)
+
+            // Scrolls only when a step runs long — the ready step with four things outstanding is
+            // the tall one — so nothing is ever cut off at a fixed window height.
+            ScrollView {
+                content.padding(.bottom, 8)
             }
+            .frame(maxHeight: .infinity)
+
+            footer
         }
-        // One size for both halves, so the step change is the window's contents moving across it
-        // rather than the window itself resizing under them.
-        .frame(width: 520, height: 600)
+        // One size for every step: a window that resizes as the content changes turns a step
+        // change into two movements, and only one of them is the one being asked for.
+        .frame(width: 540, height: 580)
+        .ignoresSafeArea(edges: .top)
+        .background(GlassBackground().ignoresSafeArea())
         .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle), value: model.step)
     }
 
-    /// Each half enters and leaves by its own side, so going back retraces the way forward instead
-    /// of pushing on in the same direction. Reduce Motion gets the cross-fade without the travel.
-    private func slide(from edge: Edge) -> AnyTransition {
-        reduceMotion ? .opacity : .move(edge: edge).combined(with: .opacity)
-    }
-
-    private var checklist: some View {
-        let permissions = rows(.microphone, .screenRecording, .accessibility)
-        let tools = rows(.speech, .whisperBinary, .whisperModel, .voice, .claude, .codex)
-        return VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider()
-            ScrollView {
-                VStack(spacing: 0) {
-                    section("Permissions", permissions, startingAt: 0)
-                    section("Tools", tools, startingAt: permissions.count)
-                }
-                .padding(.vertical, 4)
-            }
-            Divider()
-            footer
-        }
-        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle),
-                   value: model.readyToUse)
-        .onAppear { model.startPolling() }
-        .onDisappear { model.stopPolling() }
-    }
-
-    /// The rows this Mac actually has — the two whisper lines are absent on Apple's speech engine.
-    /// Resolved before the list is laid out so the arrival cascade counts real rows and has no gaps
-    /// where a missing one used to be.
-    private func rows(_ requirements: DependencyCheck.Requirement...) -> [DependencyCheck.Item] {
-        requirements.compactMap { model.report.item($0) }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            OnboardingHeading(step: 1, title: "Set up Kestrel")
-            Text("Hold ⌃⌥ and ask about your screen. Kestrel needs a few things first — nothing "
-                 + "leaves this Mac except the question you ask and one screenshot.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            progress
-        }
-        .padding(18)
-    }
-
-    /// Fills as rows tick over, so the window shows how much is left at a glance.
-    private var progress: some View {
-        let done = model.report.items.filter(\.ok).count
-        let total = model.report.items.count
-        return VStack(alignment: .leading, spacing: 5) {
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.16))
-                    Capsule()
-                        .fill(model.readyToUse ? Color.green : KestrelPalette.cyan)
-                        .frame(width: geometry.size.width * CGFloat(done) / CGFloat(max(total, 1)))
-                }
-            }
-            .frame(height: 4)
-            Text("\(done) of \(total) ready")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .contentTransition(.numericText())
-        }
-        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.progress), value: done)
-    }
-
-    /// `startingAt` continues the cascade from where the section above it left off, so the whole
-    /// checklist reads top to bottom as one list rather than two arriving side by side.
-    private func section(_ title: String, _ items: [DependencyCheck.Item],
-                         startingAt offset: Int) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 18)
-                .padding(.top, 14)
-                .padding(.bottom, 6)
-            ForEach(Array(items.enumerated()), id: \.element.requirement) { index, item in
-                OnboardingRow(item: item, model: model)
-                    .modifier(StaggeredEntrance(
-                        delay: Double(offset + index) * OnboardingMotion.stagger))
-                // Nothing after the last row: the next section's heading is the break.
-                if index < items.count - 1 {
-                    Divider().padding(.leading, 46)
-                }
+    @ViewBuilder private var content: some View {
+        ZStack(alignment: .top) {
+            switch model.step {
+            case .welcome:
+                WelcomeStep().transition(step)
+            case .voice:
+                VoiceStep(model: model).transition(step)
+            case .permissions:
+                PermissionsStep(model: model).transition(step)
+            case .profile:
+                ProfileStep(model: interview).transition(step)
+            case .ready:
+                ReadyStep(model: model).transition(step)
             }
         }
     }
+
+    /// Forward moves left, back moves right, so a step returns along the path it left by. Reduce
+    /// Motion gets the cross-fade with none of the travel.
+    private var step: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        let forward = !model.isGoingBack
+        return .asymmetric(
+            insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
+            removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity))
+    }
+
+    // MARK: - Footer
 
     private var footer: some View {
         HStack(spacing: 10) {
-            if model.relaunchNeeded {
-                Label("Screen Recording applies after a restart", systemImage: "arrow.clockwise")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Button("Relaunch") { model.relaunch() }
-            } else {
-                Text(model.readyToUse ? "Everything Kestrel needs is in place."
-                                      : "You can start now and finish the rest later.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(model.readyToUse ? Color.green : .secondary)
-                    .contentTransition(.opacity)
+            if model.step.previous != nil {
+                Button("Back") { model.goBack() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
             }
             Spacer()
-            // One label, because it is one action: the footer text beside it is what says whether
-            // anything is being left behind.
-            Button("Continue") {
-                model.stopPolling()
-                model.step = .interview
-            }
-            .keyboardShortcut(.defaultAction)
+            Text(aside)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .contentTransition(.opacity)
+            Button(primaryTitle) { primaryAction() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
         }
-        .padding(16)
+        .padding(.horizontal, 26)
+        .padding(.vertical, 18)
+    }
+
+    private var primaryTitle: String {
+        switch model.step {
+        case .welcome: return "Let's go"
+        case .ready: return "Start using Kestrel"
+        default: return "Continue"
+        }
+    }
+
+    /// The quiet line next to the button, for what the button is not saying.
+    private var aside: String {
+        switch model.step {
+        case .voice: return KokoroInstall.isReady ? "" : "You can decide this later"
+        case .permissions: return model.readyToUse ? "" : "You can sort the rest out later"
+        case .profile: return interview.isEmpty ? "Nothing here is required" : ""
+        default: return ""
+        }
+    }
+
+    private func primaryAction() {
+        if model.step == .profile { interview.save() }
+        guard model.step != .ready else { return onFinish() }
+        model.advance()
     }
 }
 
-/// A step's number and name, shared by both halves so they read as one window moving on.
-struct OnboardingHeading: View {
-    let step: Int
-    let title: String
+/// Where the user is, and how much is left. Five stops, the ones behind filled in.
+private struct StepRail: View {
+    let current: OnboardingModel.Step
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("STEP \(step) OF 2")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.system(size: 19, weight: .semibold))
+        HStack(spacing: 6) {
+            ForEach(OnboardingModel.Step.allCases, id: \.self) { step in
+                let done = step.rawValue < current.rawValue
+                VStack(spacing: 6) {
+                    Capsule()
+                        .fill(done || step == current ? KestrelPalette.cyan : Color.secondary.opacity(0.22))
+                        .frame(height: 3)
+                    Text(step.title)
+                        .font(.system(size: 10, weight: step == current ? .semibold : .regular))
+                        .foregroundStyle(step == current ? .primary : .secondary)
+                }
+                .opacity(step == current || done ? 1 : 0.6)
+            }
         }
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.progress), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(current.rawValue + 1) of 5: \(current.title)")
     }
 }

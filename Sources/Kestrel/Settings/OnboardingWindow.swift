@@ -13,7 +13,7 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
 
     func show() {
         if window == nil { window = build() }
-        model.step = .checklist
+        model.go(to: .welcome)
         didFinish = false
         model.refresh()
         NSApp.activate(ignoringOtherApps: true)
@@ -41,10 +41,12 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
             self?.close()
         })
         let window = NSWindow(contentViewController: hosting)
-        // The same name the window gives itself in its heading, and still true the second time it
-        // is opened from the menu — which "Welcome" would not be.
+        // Hidden rather than absent: the rail already says where the user is, and a title on the
+        // glass would be a second, quieter heading saying the same thing.
         window.title = "Set up Kestrel"
+        window.titleVisibility = .hidden
         window.styleMask = [.titled, .closable]
+        window.applyGlassChrome()
         window.isReleasedWhenClosed = false
         window.delegate = self
         return window

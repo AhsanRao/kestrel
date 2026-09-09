@@ -42,6 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        if SettingsPreview.isRequested {
+            SettingsPreview.run()
+            return
+        }
+
         if let tarballs = SpeechPreview.installTarballs {
             SpeechPreview.runInstall(tarballs)
             return

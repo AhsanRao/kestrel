@@ -232,12 +232,15 @@ kestrel/
 │       └── Settings/
 │           ├── SettingsWindow.swift
 │           ├── SettingsView.swift
+│           ├── KestrelGlass.swift        # the menu's material, for Kestrel's own windows
+│           ├── ModelPicker.swift          # choose a model, never type one
 │           ├── OnboardingWindow.swift
-│           ├── OnboardingView.swift      # the first-run checklist
+│           ├── OnboardingView.swift       # the shell: rail, step, footer
+│           ├── OnboardingSteps.swift      # the five steps themselves
 │           ├── OnboardingRow.swift
 │           ├── OnboardingModel.swift
-│           ├── OnboardingMotion.swift    # the window's springs, and Reduce Motion
-│           ├── OnboardingInterview.swift # the four questions that seed KESTREL.md
+│           ├── OnboardingMotion.swift     # the window's springs, and Reduce Motion
+│           ├── OnboardingInterview.swift  # the four questions that seed KESTREL.md
 │           ├── KokoroRow.swift
 │           └── HotkeyRecorder.swift
 └── Tests/
@@ -382,6 +385,21 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   sentence, and a fixed-duration animation restarted mid-flight jumps; a spring is retargeted from
   where the window actually is, keeping its velocity.
 - Must be excluded from screenshots (see 8.3).
+
+### 8.11a Setup window
+- Five steps, one purpose each: welcome, voice, permissions, profile, ready. A rail across the top
+  says which. One window size for all of them — a window that resized between steps would turn a
+  step change into two movements.
+- The voice download comes *before* the permissions on purpose: it is long, it keeps running in the
+  background, and by the time the last switch is flipped it has usually finished on its own.
+- Only the three macOS grants appear on the permissions step. Tools — the CLIs, the speech engine —
+  are somebody else's installer, and anything still missing is listed on the ready step.
+- Both this window and Settings are backed by `NSVisualEffectView` with the `.menu` material: the
+  same glass as the menu bar dropdown, not an imitation of it, so it tracks dark mode and Reduce
+  Transparency for free. Windows need `applyGlassChrome()` or the strip behind the titlebar keeps
+  the window's own background.
+- The island is the exception and stays pure black (§8.11). It has to match the camera housing;
+  anything translucent there puts a seam around the notch.
 
 ### 8.12 StatusMenu
 - Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers (toggle), Cleanup dictation (toggle), Open memory file, Open settings, Check dependencies, Quit.

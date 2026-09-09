@@ -16,10 +16,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func build() -> NSWindow {
         let hosting = NSHostingController(rootView: SettingsView())
         let window = NSWindow(contentViewController: hosting)
-        window.title = "Kestrel Settings"
+        window.title = "Kestrel"
         window.styleMask = [.titled, .closable, .miniaturizable]
+        window.applyGlassChrome()
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 460, height: 560))
+        window.setContentSize(NSSize(width: 470, height: 580))
         window.delegate = self
         return window
     }

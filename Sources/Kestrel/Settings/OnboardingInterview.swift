@@ -3,46 +3,21 @@ import SwiftUI
 /// Four questions on first run, which become `KESTREL.md`.
 ///
 /// Kestrel reads that file before every answer, so the difference between a generic assistant and
-/// one that knows who it is talking to is four fields filled in once. Every one is optional and the
-/// whole thing is skippable: an empty profile is no worse than the file we shipped before.
+/// one that knows who it is talking to is four fields filled in once. Every one is optional: an
+/// empty profile is no worse than the file we shipped before. The step around it — heading, glass,
+/// footer — belongs to `OnboardingSteps`.
 struct OnboardingInterview: View {
     @ObservedObject var model: InterviewModel
-    var onBack: () -> Void
-    var onDone: () -> Void
 
     var body: some View {
-        // The same header / body / footer as the checklist, so stepping between them looks like one
-        // window changing its contents rather than two windows swapping places.
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider()
-            ScrollView { fields.padding(18) }
-            Divider()
-            footer
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            OnboardingHeading(step: 2, title: "Tell Kestrel who it's talking to")
-            Text("This goes in a file on your Mac that Kestrel reads before it answers. "
-                 + "Skip anything you'd rather not say — you can edit it later from the menu.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(18)
-    }
-
-    private var fields: some View {
         VStack(alignment: .leading, spacing: 16) {
             field("What should I call you?", placeholder: "Ash", text: $model.name)
             field("What do you do?", placeholder: "iOS engineer", text: $model.role)
-            field("What are you working on right now?",
+            field("What are you working on?",
                   placeholder: "A voice assistant for macOS", text: $model.project)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("How should I answer?")
+                Text("How much should I say?")
                     .font(.system(size: 12, weight: .medium))
                 Picker("", selection: $model.style) {
                     ForEach(InterviewModel.Style.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -52,24 +27,6 @@ struct OnboardingInterview: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var footer: some View {
-        HStack(spacing: 10) {
-            Button("Back", action: onBack)
-                .buttonStyle(.bordered)
-            Spacer()
-            Button("Skip", action: onDone)
-                .buttonStyle(.bordered)
-            Button("Save") {
-                model.save()
-                onDone()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.isEmpty)
-            .keyboardShortcut(.defaultAction)
-        }
-        .padding(16)
     }
 
     private func field(_ label: String, placeholder: String, text: Binding<String>) -> some View {
@@ -89,9 +46,9 @@ final class InterviewModel: ObservableObject {
 
         var title: String {
             switch self {
-            case .brief: return "Short"
+            case .brief: return "Just the answer"
             case .normal: return "Normal"
-            case .thorough: return "Thorough"
+            case .thorough: return "Talk me through it"
             }
         }
 

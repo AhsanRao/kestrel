@@ -6,14 +6,34 @@ import SwiftUI
 /// State behind the first-run window: what is missing, and how to ask for each thing.
 @MainActor
 final class OnboardingModel: ObservableObject {
-    /// The two halves of setup, in the order they are shown.
-    enum Step { case checklist, interview }
+    /// Setup, one purpose at a time. Order matters: the voice download is long and runs in the
+    /// background, so it is started before the permissions rather than after them — by the time
+    /// the last switch is flipped it has usually finished on its own.
+    enum Step: Int, CaseIterable {
+        case welcome, voice, permissions, profile, ready
+
+        /// What the rail calls it. One word where one word will do.
+        var title: String {
+            switch self {
+            case .welcome: return "Hello"
+            case .voice: return "Voice"
+            case .permissions: return "Access"
+            case .profile: return "You"
+            case .ready: return "Ready"
+            }
+        }
+
+        var next: Step? { Step(rawValue: rawValue + 1) }
+        var previous: Step? { Step(rawValue: rawValue - 1) }
+    }
 
     @Published private(set) var report: DependencyCheck.Report
     @Published var relaunchNeeded = false
-    /// Which half is on screen. Here rather than in the view so reopening the window starts at the
-    /// checklist again instead of resuming wherever the user happened to leave it.
-    @Published var step: Step = .checklist
+    /// Which step is on screen. Here rather than in the view so reopening the window starts at the
+    /// beginning instead of resuming wherever the user happened to leave it.
+    @Published var step: Step = .welcome
+    /// Which way the last move went, so a step leaves by the side it would have come back from.
+    @Published private(set) var isGoingBack = false
 
     /// Owned here so a download survives the row being redrawn.
     let voiceDownloader = KokoroDownloader()
@@ -34,6 +54,34 @@ final class OnboardingModel: ObservableObject {
     }
 
     var readyToUse: Bool { report.readyToUse }
+
+    /// Only the three macOS grants. The rest of the report is tools, which are somebody else's
+    /// installer and belong on the last step with everything else still outstanding.
+    var permissions: [DependencyCheck.Item] {
+        [.microphone, .screenRecording, .accessibility].compactMap { report.item($0) }
+    }
+
+    /// Everything that is not a macOS permission: the CLIs, the speech engine, the voice.
+    var tools: [DependencyCheck.Item] {
+        report.items.filter { ![.microphone, .screenRecording, .accessibility].contains($0.requirement) }
+    }
+
+    var unfinishedTools: [DependencyCheck.Item] { tools.filter { !$0.ok } }
+
+    func go(to step: Step) {
+        isGoingBack = step.rawValue < self.step.rawValue
+        self.step = step
+    }
+
+    func advance() {
+        guard let next = step.next else { return }
+        go(to: next)
+    }
+
+    func goBack() {
+        guard let previous = step.previous else { return }
+        go(to: previous)
+    }
 
     /// Permissions are granted in System Settings, outside this app, so the window keeps looking.
     func startPolling() {

@@ -14,27 +14,27 @@ enum DependencyCheck {
             case .microphone: return "Microphone"
             case .screenRecording: return "Screen Recording"
             case .accessibility: return "Accessibility"
-            case .speech: return "Speech to text"
+            case .speech: return "Hearing you"
             case .whisperBinary: return "whisper-cli"
             case .whisperModel: return "Speech model"
-            case .voice: return "Kokoro voice"
-            case .claude: return "Claude Code CLI"
-            case .codex: return "Codex CLI"
+            case .voice: return "My voice"
+            case .claude: return "Claude"
+            case .codex: return "Codex"
             }
         }
 
         /// Why Kestrel wants it, in the user's terms.
         var reason: String {
             switch self {
-            case .microphone: return "To hear the question you hold the hotkey to ask."
-            case .screenRecording: return "To see the screen you are asking about."
-            case .accessibility: return "To hold ⌃⌥ as a hotkey, to paste dictated text, and to circle part of the screen."
-            case .speech: return "Turns your voice into text on this Mac. Nothing is uploaded."
-            case .whisperBinary: return "The engine Kestrel was told to use instead of Apple's."
-            case .whisperModel: return "The speech model whisper reads. About 148 MB."
-            case .voice: return "A neural voice that reads answers aloud, better than the ones macOS ships. Skip it and the best system voice is used instead."
-            case .claude: return "Answers your questions using your Claude subscription."
-            case .codex: return "Optional second backend, using your ChatGPT subscription."
+            case .microphone: return "So I can hear you when you hold the hotkey."
+            case .screenRecording: return "So I can see the screen you're asking about."
+            case .accessibility: return "So ⌃⌥ works as a hotkey, dictation can paste, and you can circle things."
+            case .speech: return "Turns your voice into text, right here. Nothing gets uploaded."
+            case .whisperBinary: return "The engine you told me to use instead of Apple's."
+            case .whisperModel: return "The model whisper reads from. About 148 MB."
+            case .voice: return "My proper voice. Skip it and I'll use one of macOS's instead."
+            case .claude: return "How I think. Runs on your Claude subscription."
+            case .codex: return "A second brain, on your ChatGPT subscription. Optional."
             }
         }
 
@@ -102,21 +102,21 @@ enum DependencyCheck {
         case .microphone:
             let granted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
             return Item(requirement: requirement, ok: granted,
-                        detail: granted ? "Allowed" : "System Settings ▸ Privacy & Security ▸ Microphone")
+                        detail: granted ? "All good" : "System Settings ▸ Privacy & Security ▸ Microphone")
 
         case .screenRecording:
             let granted = CGPreflightScreenCaptureAccess()
             return Item(requirement: requirement, ok: granted,
-                        detail: granted ? "Allowed" : "System Settings ▸ Privacy & Security ▸ Screen Recording")
+                        detail: granted ? "All good" : "System Settings ▸ Privacy & Security ▸ Screen Recording")
 
         case .accessibility:
             let granted = AXIsProcessTrusted()
             return Item(requirement: requirement, ok: granted,
-                        detail: granted ? "Allowed" : "Needed for the ask hotkey and dictation")
+                        detail: granted ? "All good" : "Needed for the hotkey and for dictation")
 
         case .speech:
             if config.effectiveTranscriptionEngine == .apple {
-                return Item(requirement: requirement, ok: true, detail: "Apple, built in — nothing to install")
+                return Item(requirement: requirement, ok: true, detail: "Apple's, built in — nothing to install")
             }
             let ready = check(.whisperBinary, config: config).ok && check(.whisperModel, config: config).ok
             return Item(requirement: requirement, ok: ready,
@@ -136,7 +136,7 @@ enum DependencyCheck {
 
         case .voice:
             if config.voiceEngine == .system {
-                return Item(requirement: requirement, ok: true, detail: "Using the macOS voices")
+                return Item(requirement: requirement, ok: true, detail: "Using a macOS voice")
             }
             let installed = KokoroInstall.isReady
             return Item(requirement: requirement, ok: installed,
