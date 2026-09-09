@@ -113,9 +113,8 @@ struct Config: Codable, Equatable {
         }
     }
 
-    /// Which engine reads answers aloud. Kokoro is a small neural model that runs on this Mac and
-    /// sounds markedly better than anything Apple ships; the system voices need nothing installed
-    /// and are what Kestrel falls back to when the download was skipped.
+    /// Which engine reads answers aloud. Kokoro sounds markedly better; the macOS voices need
+    /// nothing installed, and are the fallback when the download is skipped.
     enum VoiceEngine: String, Codable, CaseIterable {
         case kokoro
         case system

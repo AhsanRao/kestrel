@@ -1,17 +1,14 @@
 import Foundation
 
-/// The Kokoro voices Kestrel offers.
+/// Four of the model's 54 voices — enough to choose from, short enough to read.
 ///
-/// The model carries 53 of them across nine languages. Kestrel ships four: enough that a voice you
-/// dislike is not the only option, few enough that the picker is a choice rather than a catalogue.
-/// The speaker ids are the model's own indices — sherpa-onnx selects a voice by number, not name,
-/// so these must match `kokoro-multi-lang-v1_0`'s ordering exactly. They are not guessable and
-/// not alphabetical: they come from the `speaker2id` table in the model's own ONNX metadata.
+/// sherpa-onnx selects by index, not name. The indices are not alphabetical; they come from the
+/// model's own `speaker2id` metadata, and a wrong one speaks in a stranger's voice.
 struct KokoroVoice: Identifiable, Equatable {
     let id: String
     let speakerID: Int
     let title: String
-    /// What it sounds like, for the picker.
+    /// Shown in the picker.
     let note: String
 
     static let all: [KokoroVoice] = [
@@ -21,7 +18,7 @@ struct KokoroVoice: Identifiable, Equatable {
         KokoroVoice(id: "am_puck", speakerID: 18, title: "Puck", note: "American, bright"),
     ]
 
-    /// Kokoro's flagship voice, and the one the model is best tuned for.
+    /// Kokoro's flagship, and its best-tuned voice.
     static let `default` = all[0]
 
     static func named(_ id: String) -> KokoroVoice {

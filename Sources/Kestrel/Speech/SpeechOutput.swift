@@ -3,19 +3,15 @@ import CoreAudio
 import Foundation
 import os
 
-/// The front door for spoken answers (spec §8.9). Strips markdown, refuses to talk into a muted
-/// output device, and hands the words to whichever engine the config asks for.
-///
-/// Both engines are held, not built on demand: a `KokoroSpeaker` keeps a warm model behind it, and
-/// paying that load again on every sentence would put a pause in the middle of the answer.
+/// The front door for spoken answers (spec §8.9). Strips markdown, skips a muted output device,
+/// and routes to the engine the config asks for. Both are held so neither is rebuilt mid-answer.
 final class SpeechOutput: Speaker {
     private static let log = Logger(subsystem: "dev.0xash.kestrel", category: "speech")
 
     private let system = SystemSpeaker()
     private let kokoro = KokoroSpeaker()
 
-    /// Which engine is mid-sentence. Kept so `stop()` and `isSpeaking` answer for the one that is
-    /// actually talking, even if the config changed underneath them.
+    /// The engine mid-sentence, so `stop()` and `isSpeaking` answer for the one actually talking.
     private var current: Speaker?
 
     var isSpeaking: Bool { current?.isSpeaking ?? false }
@@ -27,8 +23,7 @@ final class SpeechOutput: Speaker {
         }
     }
 
-    /// Kokoro when it is chosen and installed; the system voices otherwise. A missing model is not
-    /// an error — it is the user having skipped the download, and Apple's voices still work.
+    /// A missing model is not an error — it is a skipped download, and the macOS voices still work.
     private func engine(for config: Config) -> Speaker {
         guard config.voiceEngine == .kokoro, KokoroInstall.isReady else { return system }
         return kokoro
@@ -49,7 +44,7 @@ final class SpeechOutput: Speaker {
             return false
         }
         let speaker = engine(for: config)
-        // Switching engines mid-answer would leave the old one talking over the new one.
+        // Or the old engine talks over the new one.
         if let current, current !== speaker { current.stop() }
         current = speaker
         return speaker.enqueue(spoken, config: config)

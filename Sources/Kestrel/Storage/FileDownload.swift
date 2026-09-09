@@ -2,11 +2,10 @@ import Foundation
 
 /// One file, to one place, reporting bytes as they land.
 ///
-/// `URLSession.bytes` would be shorter, but it yields one `UInt8` at a time: a 150 MB model is
-/// 150 million loop iterations and minutes of CPU spent doing nothing. A download task with a
-/// delegate streams straight to disk and just tells us how far it has got.
+/// Not `URLSession.bytes`: it yields a byte at a time, so a 350 MB model is 350 million loop
+/// iterations. A download task streams to disk and just reports progress.
 enum FileDownload {
-    /// Downloads `url` to `destination`, calling `onProgress` with the running byte count.
+    /// Calls `onProgress` with the running byte count.
     static func fetch(_ url: URL,
                       to destination: URL,
                       onProgress: @escaping @Sendable (Int64) -> Void) async throws -> URL {
@@ -26,7 +25,7 @@ enum FileDownload {
     private final class Delegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
         private let destination: URL
         private let onProgress: @Sendable (Int64) -> Void
-        /// Set once, before the task starts; read once, when it ends.
+        /// Set before the task starts, read when it ends.
         var continuation: CheckedContinuation<URL, Error>?
         private var finished = false
 
@@ -41,7 +40,7 @@ enum FileDownload {
             onProgress(totalBytesWritten)
         }
 
-        /// The temporary file is gone as soon as this returns, so the move has to happen here.
+        /// The temp file is gone once this returns, so move it here.
         func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                         didFinishDownloadingTo location: URL) {
             let code = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 0
@@ -63,7 +62,7 @@ enum FileDownload {
             resume(with: .failure(error))
         }
 
-        /// A failed download reports through both callbacks; the continuation may only be used once.
+        /// A failure reports through both callbacks; the continuation is single-use.
         private func resume(with result: Result<URL, Error>) {
             guard !finished else { return }
             finished = true

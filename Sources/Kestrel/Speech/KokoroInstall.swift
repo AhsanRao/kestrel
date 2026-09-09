@@ -1,14 +1,11 @@
 import Foundation
 import os
 
-/// Where Kokoro lives on disk, and whether it is usable.
+/// Where Kokoro lives, and whether it is usable. Two downloads: sherpa-onnx's synthesizer, and
+/// the model.
 ///
-/// Two pieces, downloaded separately because they come from different releases: the sherpa-onnx
-/// command-line synthesizer (a binary and the ONNX runtime it links against) and the Kokoro model
-/// itself. Both land under `~/.kestrel/kokoro`, like every other thing Kestrel installs.
-///
-/// The binary finds `libonnxruntime.dylib` through an `@loader_path/../lib` rpath, which is why
-/// `bin` and `lib` must stay siblings — moving either one breaks the launch with no useful error.
+/// `bin` and `lib` must stay siblings — the binary finds `libonnxruntime.dylib` through an
+/// `@loader_path/../lib` rpath, and moving either breaks the launch with no useful error.
 enum KokoroInstall {
     private static let log = Logger(subsystem: "dev.0xash.kestrel", category: "speech")
 
@@ -26,7 +23,7 @@ enum KokoroInstall {
     static let espeakData = modelDirectory.appendingPathComponent("espeak-ng-data", isDirectory: true)
     static let lexicon = modelDirectory.appendingPathComponent("lexicon-us-en.txt")
 
-    /// Everything the synthesizer needs before it can be spawned.
+    /// Everything needed before the synthesizer can be spawned.
     static var isReady: Bool {
         let fm = FileManager.default
         return fm.isExecutableFile(atPath: binary.path)
@@ -38,12 +35,10 @@ enum KokoroInstall {
             && fm.fileExists(atPath: lexicon.path)
     }
 
-    /// Roughly what the two downloads cost, for the onboarding row to promise before it starts.
+    /// What the onboarding row promises before starting.
     static let downloadSummary = "About 370 MB, once."
 
-    /// The engine's own tarball layout puts everything under one versioned directory. The files
-    /// Kestrel keeps are pulled out of it by name, so a new sherpa-onnx release can be dropped in
-    /// without the paths above changing.
+    /// Pulled out by name, so a new sherpa-onnx release drops in without changing the paths.
     static func installEngine(fromExtracted directory: URL) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: binDirectory, withIntermediateDirectories: true)
@@ -54,18 +49,13 @@ enum KokoroInstall {
         try replace(found, with: binary)
         try replace(runtime, with: runtimeLibrary)
         try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binary.path)
-        // Downloaded executables are quarantined; left set, launching one shows a Gatekeeper
-        // panel that a background app cannot dismiss.
+        // Quarantined executables raise a Gatekeeper panel a background app cannot dismiss.
         clearQuarantine(binary)
         clearQuarantine(runtimeLibrary)
     }
 
-    /// The model tarball holds one directory of loose files. Its whole contents are kept: beyond
-    /// the model and voices there is the espeak-ng data the phonemizer reads, which is a tree, and
-    /// the lexicon the v1.0 models need.
-    ///
-    /// The quantized build names its weights `model.int8.onnx`; renaming it on the way in means
-    /// nothing downstream has to know which of the two was downloaded.
+    /// Keeps the whole directory: the espeak-ng data and lexicon matter as much as the weights.
+    /// The quantized build names them `model.int8.onnx`, renamed here so nothing downstream cares.
     static func installModel(fromExtracted directory: URL) throws {
         let names = ["model.onnx", "model.int8.onnx"]
         guard let weights = names.compactMap({ firstFile(named: $0, under: directory) }).first else {
@@ -98,7 +88,7 @@ enum KokoroInstall {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
         process.arguments = ["-d", "com.apple.quarantine", url.path]
         process.standardError = FileHandle.nullDevice
-        // Fails harmlessly when the attribute was never set, which is the common case.
+        // Fails harmlessly when the attribute was never set.
         try? process.run()
         process.waitUntilExit()
     }

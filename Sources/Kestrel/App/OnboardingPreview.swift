@@ -3,11 +3,8 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-/// Opens the setup window on its own, and optionally photographs it.
-///
-/// Runs only when `KESTREL_PREVIEW_ONBOARDING` is set. Set it to `download` and the voice download
-/// starts with the window, which is the only way to see the progress meter without a finger on the
-/// button — the state it spends its whole life in is the one that never survives a static render.
+/// Opens the setup window, and optionally photographs it. `KESTREL_PREVIEW_ONBOARDING=download`
+/// also starts the voice download — the only way to see the progress meter without pressing it.
 enum OnboardingPreview {
     static var isRequested: Bool {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_ONBOARDING"] != nil
@@ -33,8 +30,7 @@ enum OnboardingPreview {
         }
     }
 
-    /// Same trade as the other probes: the deprecated call is the one that works when the app is
-    /// launched from a terminal rather than the Finder.
+    /// Same trade as the other probes: the deprecated call is the one that works from a terminal.
     private static func capture(to url: URL) {
         guard let image = CGWindowListCreateImage(
             .infinite, .optionAll, kCGNullWindowID, [.bestResolution]),

@@ -3,16 +3,13 @@ import AVFoundation
 import CoreGraphics
 import SwiftUI
 
-/// State behind the first-run window: what is still missing, and how to ask for each thing.
-///
-/// Main-actor isolated: it drives SwiftUI directly, and it owns the voice downloader, which
-/// publishes its progress from the main thread.
+/// State behind the first-run window: what is missing, and how to ask for each thing.
 @MainActor
 final class OnboardingModel: ObservableObject {
     @Published private(set) var report: DependencyCheck.Report
     @Published var relaunchNeeded = false
 
-    /// Owned here rather than by the row so a download survives the row being redrawn.
+    /// Owned here so a download survives the row being redrawn.
     let voiceDownloader = KokoroDownloader()
 
     private var pollTimer: Timer?
@@ -76,8 +73,7 @@ final class OnboardingModel: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    /// Declining the download is a real answer, not a postponement: the config is switched to the
-    /// macOS voices so the row can tick and the checklist can finish.
+    /// A real answer, not a postponement — switching engines lets the row tick and setup finish.
     func skipKokoro() {
         ConfigStore.shared.update { $0.voiceEngine = .system }
         refresh()

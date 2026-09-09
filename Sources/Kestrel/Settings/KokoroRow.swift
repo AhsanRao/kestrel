@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// The voice row's controls: download, watch it arrive, or skip and keep the macOS voices.
-///
-/// Its own view because it is the only checklist row with state of its own — everything else is a
-/// permission that is either granted or not, and can be drawn from the report alone.
+/// The voice row's controls: download, watch it arrive, or skip. Its own view because it is the
+/// only checklist row with state beyond granted/not-granted.
 struct KokoroRowAction: View {
     @ObservedObject var downloader: KokoroDownloader
     @ObservedObject var model: OnboardingModel
@@ -50,8 +48,7 @@ struct KokoroRowAction: View {
     }
 }
 
-/// A bar that fills as the bytes land, with a highlight travelling along the filled part so a slow
-/// download still looks alive when the number has not moved for a second.
+/// Fills as bytes land. The travelling highlight keeps a slow download looking alive.
 private struct DownloadMeter: View {
     let fraction: Double
     let caption: String

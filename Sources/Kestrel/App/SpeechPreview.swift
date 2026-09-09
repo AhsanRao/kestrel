@@ -1,31 +1,24 @@
 import AppKit
 import Foundation
 
-/// Reads a line aloud through the real `SpeechOutput`, then exits.
+/// Reads `KESTREL_PREVIEW_SPEECH` aloud through the real `SpeechOutput`, then exits. Sentences go
+/// in one at a time, as `SessionCoordinator` feeds them.
 ///
-/// Only runs when `KESTREL_PREVIEW_SPEECH` is set, like the panel and overlay probes beside it. It
-/// exists because the part of Kokoro that can actually go wrong is not the synthesizer — that is a
-/// subprocess with fixed flags — but the queueing around it: whether sentences play in order,
-/// whether the pipeline stays ahead of the ear, and whether `onFinish` ever arrives so the panel
-/// can close. None of that survives a unit test.
-///
-/// `KESTREL_PREVIEW_SPEECH` is the text; sentences are fed in one at a time, exactly as
-/// `SessionCoordinator` feeds them from a streaming answer.
+/// The synthesizer is a subprocess with fixed flags; what can go wrong is the queueing around it —
+/// play order, staying ahead of the ear, whether `onFinish` arrives. None of it unit-testable.
 enum SpeechPreview {
     static var isRequested: Bool {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_SPEECH"] != nil
     }
 
-    /// `KESTREL_PREVIEW_VOICE_DOWNLOAD` runs the real download and install, printing each phase.
-    /// The onboarding button is the only other way to reach this code, and a button cannot be
-    /// pressed from a build script.
+    /// Runs the real download and install. The onboarding button is the only other way in, and a
+    /// button cannot be pressed from a script.
     static var isDownloadRequested: Bool {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_VOICE_DOWNLOAD"] != nil
     }
 
-    /// `KESTREL_PREVIEW_VOICE_INSTALL="<engine.tar.bz2>:<model.tar.bz2>"` unpacks and installs two
-    /// tarballs already on disk. It exercises the half of the download that a slow network makes
-    /// painful to reach: unpacking, the file layout, and whether the binary can then be launched.
+    /// `"<engine.tar.bz2>:<model.tar.bz2>"` — installs tarballs already on disk, so unpacking and
+    /// layout can be checked without waiting out a slow network.
     static var installTarballs: (engine: URL, model: URL)? {
         let raw = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_VOICE_INSTALL"] ?? ""
         let parts = raw.split(separator: ":").map(String.init)
@@ -101,7 +94,7 @@ enum SpeechPreview {
             print("  [\(index)] spoke=\(spoke)  \(sentence.prefix(48))")
         }
 
-        // A stuck pipeline must fail loudly rather than hang a probe forever.
+        // Fail loudly rather than hang forever.
         DispatchQueue.main.asyncAfter(deadline: .now() + 90) {
             print("TIMED OUT — onFinish never arrived")
             NSApp.terminate(nil)

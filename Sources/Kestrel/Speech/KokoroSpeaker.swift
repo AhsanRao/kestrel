@@ -2,30 +2,25 @@ import AVFoundation
 import Foundation
 import os
 
-/// Speaks with Kokoro, an 82 M-parameter neural voice model, run through sherpa-onnx's offline
-/// synthesizer as a subprocess — the same shape as the whisper fallback, and for the same reason:
-/// it keeps a C++ runtime out of the app while staying entirely on this Mac.
+/// Kokoro through sherpa-onnx's offline synthesizer, spawned per sentence — the whisper-fallback
+/// shape, keeping a C++ runtime out of the app.
 ///
-/// Synthesis is slower than playback is fast (about 1.5× real time), so sentences are synthesized
-/// on a serial queue *while the previous one is still playing*. Only the first sentence of an
-/// answer waits; after that the pipeline stays ahead of the ear.
+/// Synthesis runs while the previous sentence plays, so only the first one waits.
 ///
-/// `@unchecked Sendable`: every stored property is read and written on the main thread; only the
-/// subprocess call itself runs on `synthQueue`.
+/// `@unchecked Sendable`: state is main-thread only; just the subprocess runs on `synthQueue`.
 final class KokoroSpeaker: NSObject, Speaker, AVAudioPlayerDelegate, @unchecked Sendable {
     private static let log = Logger(subsystem: "dev.0xash.kestrel", category: "speech")
 
-    /// Serial, so sentences come back in the order they were asked for.
+    /// Serial, so sentences come back in order.
     private let synthQueue = DispatchQueue(label: "dev.0xash.kestrel.kokoro", qos: .userInitiated)
 
     private var player: AVAudioPlayer?
     private var playing: URL?
-    /// Synthesized and waiting for the ear.
+    /// Synthesized, waiting to play.
     private var ready: [URL] = []
-    /// Still inside the synthesizer. The answer is not over until this reaches zero.
+    /// Still synthesizing. The answer is not over until this hits zero.
     private var outstanding = 0
-    /// Bumped by `stop()`, so a sentence that was already being synthesized is thrown away when it
-    /// arrives instead of talking over whatever replaced it.
+    /// Bumped by `stop()`, so work already in flight is discarded rather than talked over.
     private var generation = 0
 
     private(set) var isSpeaking = false
@@ -74,7 +69,7 @@ final class KokoroSpeaker: NSObject, Speaker, AVAudioPlayerDelegate, @unchecked 
     private func playNextIfIdle() {
         guard player == nil else { return }
         guard !ready.isEmpty else {
-            // Nothing to play and nothing still cooking: the answer has been read out.
+            // Nothing queued and nothing synthesizing: the answer is read out.
             if outstanding == 0, isSpeaking {
                 isSpeaking = false
                 onFinish?()
@@ -107,15 +102,10 @@ final class KokoroSpeaker: NSObject, Speaker, AVAudioPlayerDelegate, @unchecked 
 
     // MARK: - Synthesis
 
-    /// One sentence, one process. The model costs about 0.2 s to load, which is cheap enough to
-    /// pay per sentence and buys back the memory between answers.
+    /// One sentence, one process — the model loads in ~0.2 s, cheap enough to pay each time.
     ///
-    /// Flags recorded from `sherpa-onnx-offline-tts --help`, v1.13.7:
-    ///   --kokoro-model / --kokoro-voices / --kokoro-tokens   the model and its tables
-    ///   --kokoro-data-dir                                    espeak-ng data, for phonemes
-    ///   --kokoro-lexicon                                     pronunciations; required for v1.0
-    ///   --sid                                                speaker index, not a name
-    ///   --num-threads=4                                      measured fastest on Apple Silicon
+    /// Flags from `sherpa-onnx-offline-tts --help`, v1.13.7. `--sid` is an index, not a name;
+    /// `--kokoro-lexicon` is required for v1.0; four threads measured fastest on Apple Silicon.
     private static func synthesize(_ text: String, voice: KokoroVoice) -> URL? {
         let output = Paths.temporaryFile(ext: "wav")
         let process = Process()

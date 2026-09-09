@@ -1,12 +1,10 @@
 import Foundation
 import os
 
-/// Fetches the two pieces Kokoro needs and installs them, reporting progress the onboarding row
-/// can draw (spec §8.9).
+/// Fetches and installs Kokoro, reporting progress for the onboarding row (spec §8.9).
 ///
-/// Both come from the sherpa-onnx project's own releases, pinned to an exact version: an engine
-/// that silently changed its flags under Kestrel would be a bad day, and a model that changed its
-/// speaker ordering would put a stranger's voice on the user's Mac.
+/// Both pieces are pinned to an exact release: drifting flags or a reordered speaker table would
+/// break quietly rather than loudly.
 @MainActor
 final class KokoroDownloader: ObservableObject {
     enum Phase: Equatable {
@@ -26,7 +24,7 @@ final class KokoroDownloader: ObservableObject {
         }
     }
 
-    /// 0…1 across both files, so the bar fills once rather than twice.
+    /// 0…1 across both files, so the bar fills once.
     var fraction: Double {
         switch phase {
         case .downloading(let received, let total):
@@ -40,11 +38,10 @@ final class KokoroDownloader: ObservableObject {
     private static let log = Logger(subsystem: "dev.0xash.kestrel", category: "speech")
     private static let engineURL = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.7/sherpa-onnx-v1.13.7-osx-arm64-shared.tar.bz2")!
     private static let modelURL = URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2")!
-    /// The full-precision model, not the quantized one. Counter-intuitively it is the faster of
-    /// the two on Apple Silicon — measured at 3.6x real time against int8's 1.5x — so the only
-    /// thing int8 buys is a smaller download, and it costs quality to get it.
+    /// Full precision, not int8: measured 3.6x real time against int8's 1.5x on Apple Silicon, so
+    /// quantizing would cost quality and buy only a smaller download.
     ///
-    /// Content lengths as published, used to show one bar across two downloads.
+    /// Published content lengths, for one bar across two downloads.
     private static let engineBytes: Int64 = 20_262_139
     private static let modelBytes: Int64 = 349_906_910
     static var totalBytes: Int64 { engineBytes + modelBytes }
@@ -103,7 +100,7 @@ final class KokoroDownloader: ObservableObject {
         }
     }
 
-    /// bzip2 tarballs, unpacked with the system tar rather than a library.
+    /// bzip2, unpacked with the system tar.
     nonisolated static func extract(_ tarball: URL) throws -> URL {
         let directory = tarball.deletingLastPathComponent()
             .appendingPathComponent(tarball.lastPathComponent + "-out", isDirectory: true)

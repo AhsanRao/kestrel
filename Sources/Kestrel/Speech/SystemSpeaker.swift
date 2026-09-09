@@ -2,11 +2,11 @@ import AVFoundation
 import Foundation
 import os
 
-/// Speaks with `AVSpeechSynthesizer`, the voices macOS ships — including a Personal Voice, if the
-/// user has trained one. Kestrel's fallback engine, and the only one that needs nothing installed.
+/// `AVSpeechSynthesizer` and the voices macOS ships, a trained Personal Voice included. The
+/// fallback engine, and the only one needing nothing installed.
 ///
-/// `@unchecked Sendable`: `AVSpeechSynthesizerDelegate` is implicitly Sendable, but the synthesizer
-/// it holds is not. Every method here is called on the main thread.
+/// `@unchecked Sendable`: the synthesizer is not Sendable; every method here runs on the main
+/// thread.
 final class SystemSpeaker: NSObject, Speaker, AVSpeechSynthesizerDelegate, @unchecked Sendable {
     private static let log = Logger(subsystem: "dev.0xash.kestrel", category: "speech")
     private let synthesizer = AVSpeechSynthesizer()
@@ -33,8 +33,7 @@ final class SystemSpeaker: NSObject, Speaker, AVSpeechSynthesizerDelegate, @unch
         return true
     }
 
-    /// Rate and pitch are left at `AVSpeechUtterance`'s defaults, so a voice sounds here exactly as
-    /// it does in System Settings' own preview — no Kestrel-specific tuning to fight against.
+    /// Rate and pitch stay at their defaults, so a voice sounds as it does in System Settings.
     private func utterance(_ text: String, config: Config) -> AVSpeechUtterance {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = SystemSpeaker.voice(config: config)
@@ -61,10 +60,8 @@ final class SystemSpeaker: NSObject, Speaker, AVSpeechSynthesizerDelegate, @unch
 
     // MARK: - Voice
 
-    /// A Personal Voice is the user's own voice, trained on-device (macOS 14+). It is hidden from
-    /// `speechVoices()` until the app asks for it, so ask once at launch, long before the first
-    /// answer needs speaking. The system remembers the answer per bundle id; when the user has
-    /// already allowed apps to use it in Accessibility settings, nothing is shown on screen.
+    /// A Personal Voice is hidden from `speechVoices()` until asked for, so ask at launch. The
+    /// answer is remembered per bundle id, and is silent when Accessibility already allows it.
     static func requestPersonalVoice() {
         AVSpeechSynthesizer.requestPersonalVoiceAuthorization { status in
             log.info("personal voice authorization: \(status.rawValue, privacy: .public)")
@@ -79,9 +76,8 @@ final class SystemSpeaker: NSObject, Speaker, AVSpeechSynthesizerDelegate, @unch
         return bestAvailableVoice()
     }
 
-    /// macOS ships several tiers under the same names. The compact voices are the ones that sound
-    /// synthetic; premium and enhanced are neural and are what Kestrel wants. Among equals, prefer
-    /// the voices Apple built for reading long passages, which are the calmest.
+    /// Compact voices are the synthetic-sounding tier; premium and enhanced are neural. Among
+    /// equals, prefer the voices Apple built for long passages — the calmest.
     static let preferredNames = ["Ava", "Zoe", "Serena", "Allison", "Samantha", "Evan", "Tom", "Nathan", "Joelle"]
 
     static func bestAvailableVoice() -> AVSpeechSynthesisVoice? {
@@ -104,14 +100,13 @@ final class SystemSpeaker: NSObject, Speaker, AVSpeechSynthesizerDelegate, @unch
              isPersonal: voice.voiceTraits.contains(.isPersonalVoice))
     }
 
-    /// The ranking itself, over plain values, because `AVSpeechSynthesisVoice` cannot be
-    /// constructed in a test and a personal voice exists only on the Mac that trained one.
+    /// Over plain values: `AVSpeechSynthesisVoice` cannot be built in a test, and a Personal Voice
+    /// exists only on the Mac that trained it.
     static func rank(quality: AVSpeechSynthesisVoiceQuality,
                      name: String,
                      language: String,
                      isPersonal: Bool) -> Int {
-        // The user's own voice wins outright. It reports `.default` quality — the same tier as the
-        // robotic compact voices — so ranking it by quality would bury it at the bottom.
+        // Wins outright: it reports `.default` quality, so ranking by quality would bury it.
         if isPersonal { return 400 }
         var score: Int
         switch quality {

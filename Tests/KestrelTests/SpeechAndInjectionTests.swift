@@ -7,8 +7,7 @@ final class SpeechAndInjectionTests: XCTestCase {
     // MARK: - Voice ranking
 
     func testAPersonalVoiceOutranksEveryInstalledVoice() {
-        // A personal voice reports `.default` quality, the same tier as the robotic compact
-        // voices, so only the explicit check keeps it off the bottom of the list.
+        // It reports `.default` quality, so only the explicit check keeps it off the bottom.
         let personal = SystemSpeaker.rank(quality: .default, name: "Ahsan\u{2019}s Personal Voice",
                                          language: "en-US", isPersonal: true)
         let premium = SystemSpeaker.rank(quality: .premium, name: "Zoe", language: "en-US",
@@ -32,10 +31,8 @@ final class SpeechAndInjectionTests: XCTestCase {
 
     // MARK: - Kokoro voices
 
-    /// sherpa-onnx picks a Kokoro voice by index, and the indices are neither alphabetical nor
-    /// guessable — they come from the `speaker2id` table in the model's own ONNX metadata. Getting
-    /// one wrong does not fail: it speaks in a stranger's voice. Pinned here so a future edit to
-    /// the list has to be deliberate.
+    /// Indices come from the model's `speaker2id` metadata, not from any order you could guess.
+    /// A wrong one does not fail — it speaks in a stranger's voice — so they are pinned.
     func testKokoroSpeakerIDsMatchTheModelMetadata() {
         XCTAssertEqual(KokoroVoice.named("af_heart").speakerID, 3)
         XCTAssertEqual(KokoroVoice.named("af_sarah").speakerID, 9)
@@ -48,13 +45,13 @@ final class SpeechAndInjectionTests: XCTestCase {
         XCTAssertEqual(Config.defaults.kokoroVoice, "af_heart")
     }
 
-    /// A hand-edited config naming a voice Kestrel does not ship must still speak.
+    /// A hand-edited config naming an unshipped voice must still speak.
     func testAnUnknownKokoroVoiceFallsBackToTheDefault() {
         XCTAssertEqual(KokoroVoice.named("bf_emma"), KokoroVoice.default)
         XCTAssertEqual(KokoroVoice.named("").id, "af_heart")
     }
 
-    /// Skipping the download is a supported answer, so the system engine has to remain reachable.
+    /// Skipping the download is supported, so the system engine must stay reachable.
     func testVoiceEngineDefaultsToKokoroButSystemIsSelectable() {
         XCTAssertEqual(Config.defaults.voiceEngine, .kokoro)
         XCTAssertTrue(Config.VoiceEngine.allCases.contains(.system))

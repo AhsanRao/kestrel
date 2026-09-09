@@ -32,7 +32,7 @@ enum DependencyCheck {
             case .speech: return "Turns your voice into text on this Mac. Nothing is uploaded."
             case .whisperBinary: return "The engine Kestrel was told to use instead of Apple's."
             case .whisperModel: return "The speech model whisper reads. About 148 MB."
-            case .voice: return "A neural voice that reads answers aloud, far better than the ones macOS ships. Skip it and Kestrel uses the best system voice instead."
+            case .voice: return "A neural voice that reads answers aloud, better than the ones macOS ships. Skip it and the best system voice is used instead."
             case .claude: return "Answers your questions using your Claude subscription."
             case .codex: return "Optional second backend, using your ChatGPT subscription."
             }
