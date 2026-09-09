@@ -8,7 +8,7 @@ import SwiftUI
 struct DrawsOn<S: Shape>: View {
     let shape: S
     var color: Color = KestrelPalette.cyan
-    var lineWidth: CGFloat = 3.5
+    var lineWidth: CGFloat = 1.5
     var duration: Double = 0.5
     var delay: Double = 0
     /// False for a stroke drawn while another one is already carrying the cursor.
@@ -66,7 +66,7 @@ private struct AnimatedStroke<S: Shape>: View, Animatable {
                 drawn
                     .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round,
                                                       lineJoin: .round))
-                    .shadow(color: color.opacity(0.55), radius: 9)
+                    .shadow(color: color.opacity(0.45), radius: 6)
                 if showsCursor, progress > 0.001, let tip = drawn.currentPoint {
                     let drawing = progress < 0.995
                     CursorHalo()

@@ -9,6 +9,12 @@ code, the reason for it is given here.
 
 ---
 
+## [1.2.1] — 2026-09-09 — A finer line
+
+The rings and boxes Kestrel draws around what it is talking about were heavy enough to hide the
+thing underneath them. The stroke is thinner now, and the glow behind it is tighter, so a mark
+points at a control instead of covering it.
+
 ## [1.2.0] — 2026-09-09 — Your own voice
 
 ### Kestrel can answer in your Personal Voice

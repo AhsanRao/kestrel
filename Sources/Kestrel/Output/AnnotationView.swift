@@ -78,7 +78,7 @@ struct AnnotationView: View {
 
     /// Pencil width. Thin enough that a ring around a pane does not read as a border the app
     /// itself drew, heavy enough to stay visible over a busy screen.
-    static let stroke: CGFloat = 2.25
+    static let stroke: CGFloat = 1.5
 
     private func comesFromLeft(_ rect: CGRect) -> Bool { rect.minX > 190 }
 
