@@ -218,6 +218,8 @@ kestrel/
 │       ├── Output/
 │       │   ├── TextInjector.swift
 │       │   ├── PanelWindow.swift
+│       │   ├── PanelFrameAnimator.swift   # the window frame, sprung and display-synced
+│       │   ├── PanelSpring.swift          # one number on a spring
 │       │   ├── PanelView.swift
 │       │   └── OverlayWindow.swift        # v2
 │       ├── Storage/
@@ -366,6 +368,12 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 - Auto-hide timers: 20 s after answer, 3 s after dictation, 8 s after error, 3 s after "Didn't
   catch that" — nothing was heard, so there is nothing to read. Hover pauses the timer, and the
   session state is cleared on the same clock as the window, not left in `.error` behind it.
+- Arrives by unrolling out of the top edge and leaves by rolling back up into it, on the same
+  curve reversed — a shape that grows out of the notch has to go back the way it came.
+- The window frame follows the island on a spring (`PanelFrameAnimator`, on the same response and
+  damping as `PanelView`), not on a fixed curve. A streaming answer resizes the window every
+  sentence, and a fixed-duration animation restarted mid-flight jumps; a spring is retargeted from
+  where the window actually is, keeping its velocity.
 - Must be excluded from screenshots (see 8.3).
 
 ### 8.12 StatusMenu

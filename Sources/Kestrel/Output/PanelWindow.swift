@@ -7,8 +7,9 @@ import SwiftUI
 /// The window follows the island rather than the island fitting the window. AppKit measures a
 /// window from its bottom-left corner, so letting it resize itself around growing content pushed
 /// the top edge up past the screen and the island off the display; here every size change is
-/// applied as an explicit frame whose top edge is pinned to the screen, and animated, which is
-/// also what makes opening look like one object growing rather than two.
+/// applied as an explicit frame whose top edge is pinned to the screen, sprung on the island's own
+/// numbers by `PanelFrameAnimator`, which is what makes opening look like one object growing
+/// rather than two.
 /// `sharingType = .none` keeps it out of every screenshot, including Kestrel's own.
 final class PanelWindow: NSObject, NSWindowDelegate {
     let model = PanelModel()
@@ -18,6 +19,11 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     private var hideTimer: DispatchWorkItem?
     /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
     var levelTimer: Timer?
+    /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
+    var frameAnimator: PanelFrameAnimator?
+    /// True while the island is rolling back up into the top edge, so a question asked during the
+    /// exit can call it off rather than let it finish and order the window out underneath.
+    var isLeaving = false
     /// The island's own size, as SwiftUI last measured it.
     private var islandSize: CGSize = .zero
     /// True until the first frame has been placed, so the opening is not animated from nothing.
@@ -28,6 +34,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     func show() {
         let panel = ensurePanel()
         cancelHideTimer()
+        cancelRollUp(panel)
         let wasVisible = panel.isVisible
         if !wasVisible { isPlacing = true }
         position(panel)
@@ -40,6 +47,8 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     func hideImmediately() {
         cancelHideTimer()
         stopLevelAnimation()
+        isLeaving = false
+        frameAnimator?.stop()
         panel?.orderOut(nil)
     }
 
@@ -52,7 +61,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
                 self.hide(after: 3)
                 return
             }
-            self.fadeOut()
+            self.rollUp()
         }
         hideTimer = work
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
@@ -123,6 +132,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         panel.sharingType = .none          // excluded from screen capture
         panel.delegate = self
         self.panel = panel
+        frameAnimator = PanelFrameAnimator(window: panel)
         return panel
     }
 
@@ -145,23 +155,13 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         guard let panel else { return }
         let screen = model.notch.screenFrame
         guard screen.width > 0 else { return }
-        // The island sits at the top of the window with a margin around the rest of it, so the
-        // window's own top edge is the island's top edge.
-        let frame = NSRect(x: (screen.midX - size.width / 2).rounded(),
-                           y: (screen.maxY - size.height).rounded(),
-                           width: size.width.rounded(), height: size.height.rounded())
-        guard frame != panel.frame else { return }
         guard animated, panel.isVisible, !isPlacing else {
-            panel.setFrame(frame, display: true)
+            frameAnimator?.place(size, on: screen)
             return
         }
-        // Matched to the island's own spring closely enough that the black shape and the window
-        // holding it appear to be the same object changing size.
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
-            panel.animator().setFrame(frame, display: true)
-        }
+        // On the island's own spring, so the black shape and the window holding it are one object
+        // changing size — and so a size arriving mid-movement redirects it instead of restarting it.
+        frameAnimator?.animate(to: size, on: screen)
     }
 }
 

@@ -9,6 +9,36 @@ code, the reason for it is given here.
 
 ---
 
+## [1.4.0] — 2026-09-10 — One object, moving
+
+### The window and the island move as one thing
+
+The black shape is drawn by SwiftUI on a spring; the window holding it was resized on a fixed curve
+of a different length. Two curves on two objects that are meant to look like one object, and the
+seam showed on every open. The window frame is on a spring now, given the island's own response and
+damping, integrated a frame at a time in step with the display.
+
+### An answer arriving line by line grows in one movement
+
+This is what the spring is really for. A streaming answer resizes the window once a sentence, and a
+window's frame reads as the *target* of an animation the moment that animation starts — so each new
+sentence restarted the movement from a place the window had not reached yet, and the island grew in
+stutters. A spring is retargeted rather than restarted: it keeps the size and the speed it already
+had, and four sentences landing faster than the spring's own response settle into one continuous
+growth.
+
+Width and height are separate springs. A single spring on the diagonal desynchronises as soon as
+the two axes have different distances to cover, which is most of the time.
+
+### It leaves the way it came
+
+The island unrolled out of the top edge to arrive, then faded where it stood to go — a shape that
+grows out of the notch has to go back into it, or the illusion that it *is* the notch goes with it.
+It rolls back up now, on the entrance curve reversed. A question asked while it is leaving calls
+the exit off instead of letting it finish underneath the answer.
+
+---
+
 ## [1.3.3] — 2026-09-10 — One button at a time
 
 ### The second way in appears once the first has been tried

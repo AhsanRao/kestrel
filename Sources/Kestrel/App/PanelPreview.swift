@@ -60,6 +60,24 @@ enum PanelPreview {
                 body: "Hi Sam,\n\nThursday won't work on my end — I'm out with the team until "
                     + "late afternoon. Friday morning is clear if that suits, otherwise any time "
                     + "Monday.\n\nSorry for the shuffle.\n\nAsh")
+        case "stream":
+            // Sentence by sentence, the way an answer really arrives — the case the frame spring
+            // exists for, and the only way to see it retarget mid-movement.
+            panel.model.state = .answering
+            panel.model.transcript = "What is this window for?"
+            let sentences = [
+                "That's Xcode's build settings.",
+                "The tabs across the top switch between targets.",
+                "The search box filters every setting by name.",
+                "Levels shows where a value was actually set.",
+            ]
+            for (index, sentence) in sentences.enumerated() {
+                // Closer together than the spring's own response, so every sentence after the
+                // first lands while the window is still moving.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1 + Double(index) * 0.12) {
+                    panel.model.answer += panel.model.answer.isEmpty ? sentence : " " + sentence
+                }
+            }
         case "thinking":
             panel.model.state = .thinking
             panel.model.transcript = "How do I export this as a PDF?"
