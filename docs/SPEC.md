@@ -146,7 +146,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 | Audio capture | `AVAudioEngine` with `AVAudioConverter` to 16 kHz mono Int16 WAV | Raw Core Audio: more code for no gain |
 | Speech-to-text | Apple's `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26+), the system dictation engine, on-device; whisper.cpp CLI as the fallback below macOS 26 and as a config override | `SFSpeechRecognizer`: the old API, weaker and superseded; whisper as the default: ~6× slower on the same clip and a 148 MB model to install; cloud STT: violates local-first |
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
-| Text-to-speech | `AVSpeechSynthesizer`, preferring the user's Personal Voice, then premium/enhanced voices | Cloud TTS: not covered by subscriptions, adds latency. Siri's voices: no API exposes them. Local neural models (Kokoro, Piper): better than Apple's premium tier, but a third-party runtime and a 325 MB model to install |
+| Text-to-speech | Kokoro 82M through sherpa-onnx's CLI, downloaded on first run; `AVSpeechSynthesizer` when it is declined | Cloud TTS: not covered by subscriptions, adds latency. Siri's voices: no API exposes them. Apple's premium voices: audibly worse than Kokoro, which is the whole reason for the download. Python + kokoro-onnx: works, but onboarding would have to install Homebrew Python and a venv |
 | LLM access | Subprocess to `claude` / `codex` CLIs | Direct API + OAuth: prohibited. Agent SDK library: fine for Claude but Codex has no equivalent; the CLI boundary keeps both symmetrical |
 | Config | JSON at `~/.kestrel/config.json` | `UserDefaults`: hard to hand-edit and version |
 | Memory | Markdown `~/.kestrel/KESTREL.md`, symlinked as `CLAUDE.md` and `AGENTS.md` | Both CLIs auto-load their file from cwd, so one file serves both |
@@ -202,7 +202,13 @@ kestrel/
 │       │   ├── Transcriber.swift          # protocol + RoutingTranscriber
 │       │   ├── AppleSpeechTranscriber.swift # SpeechAnalyzer, macOS 26+
 │       │   ├── WhisperTranscriber.swift
-│       │   └── SpeechOutput.swift
+│       │   ├── Speaker.swift              # protocol behind the two voice engines
+│       │   ├── SpeechOutput.swift         # routes to one, strips markdown, checks mute
+│       │   ├── SystemSpeaker.swift        # AVSpeechSynthesizer, incl. Personal Voice
+│       │   ├── KokoroSpeaker.swift        # sherpa-onnx subprocess, pipelined
+│       │   ├── KokoroVoice.swift          # the four offered voices and their speaker ids
+│       │   ├── KokoroInstall.swift        # where it lives, and whether it is usable
+│       │   └── KokoroDownloader.swift     # the onboarding download
 │       ├── Backends/
 │       │   ├── Backend.swift              # protocol + Query/Answer contract
 │       │   ├── BackendRouter.swift
@@ -217,6 +223,7 @@ kestrel/
 │       ├── Storage/
 │       │   ├── Config.swift
 │       │   ├── MemoryStore.swift
+│       │   ├── FileDownload.swift         # one file, to one place, with progress
 │       │   └── Paths.swift                # ~/.kestrel/* constants
 │       └── Settings/
 │           ├── SettingsWindow.swift
@@ -239,6 +246,7 @@ User data directory (created on first launch):
 ├── CLAUDE.md -> KESTREL.md
 ├── AGENTS.md -> KESTREL.md
 ├── models/ggml-base.en.bin
+├── kokoro/                 # optional neural voice: bin/, lib/, model/
 ├── skills/                 # v2: per-app markdown snippets injected by bundle id
 └── logs/
 ```
@@ -312,15 +320,26 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 - v2 option (config flag `autoRoute`): a cheap heuristic picks Codex for short factual questions and Claude for screen-heavy/deep ones. Off by default.
 
 ### 8.9 SpeechOutput
-- Speaks `Answer.text` with a configurable rate (0.3–0.7) and voice identifier. Strips markdown (code fences, bullets, headers) before speaking; the panel keeps the formatted text.
+- Speaks `Answer.text` with a configurable rate (0.3–0.7) and voice. Strips markdown (code fences,
+  bullets, headers) before speaking; the panel keeps the formatted text.
 - Interruptible: any new hotkey press stops speech immediately.
 - If system output is muted, skip speech and show a "muted, answer on screen" note.
-- Voices are ranked Personal → premium → enhanced → compact, with a nudge for the names Apple
-  built for reading long passages and for the listener's own region. A Personal Voice reports
-  `.default` quality — the tier the robotic compact voices use — so it is ranked on its trait
-  instead, and is labelled "Personal" rather than "Compact" in the picker.
-- `requestPersonalVoice()` runs once at launch: a Personal Voice is absent from
-  `speechVoices()` until the app has asked for it.
+- Two engines behind one `Speaker` protocol, chosen by `voiceEngine`:
+  - **Kokoro** (default) — an 82 M-parameter neural model run as a subprocess, the same shape as
+    the whisper fallback. Four voices are offered; `af_heart` is the default. Selection is by
+    speaker *index*, not name, and the indices come from the model's own `speaker2id` metadata.
+  - **System** — `AVSpeechSynthesizer`. Voices are ranked Personal → premium → enhanced → compact,
+    with a nudge for the names Apple built for reading long passages and for the listener's own
+    region. A Personal Voice reports `.default` quality — the tier the robotic compact voices use —
+    so it is ranked on its trait instead, and labelled "Personal" rather than "Compact".
+    `requestPersonalVoice()` runs once at launch: a Personal Voice is absent from `speechVoices()`
+    until the app has asked for it.
+- A missing Kokoro install is not an error. It means the user declined the download, and the system
+  voices answer instead — so nothing about speech can ever block first use.
+- Kokoro synthesises at roughly 3.6× real time, which is slower than playback is fast, so sentences
+  are synthesised on a serial queue *while the previous one plays*. Only the first sentence of an
+  answer waits. The model costs about 0.2 s to load and is loaded per sentence, which is cheap
+  enough to pay and returns the memory between answers.
 
 ### 8.10 TextInjector
 - Pasteboard + synthetic ⌘V, restore previous pasteboard contents after the target app consumes the paste.
@@ -356,7 +375,9 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 | `whisperBinary` | path | `/opt/homebrew/bin/whisper-cli` | fallback engine only |
 | `whisperModel` | path | `~/.kestrel/models/ggml-base.en.bin` | fallback engine only |
 | `speakAnswers` | bool | true | |
-| `voiceIdentifier` | string or null | null | when null, the best ranked voice: Personal Voice if one exists, else premium |
+| `voiceEngine` | `"kokoro" \| "system"` | `"kokoro"` | falls back to `system` when Kokoro is not installed |
+| `kokoroVoice` | string | `"af_heart"` | one of `af_heart`, `af_sarah`, `am_michael`, `am_puck` |
+| `voiceIdentifier` | string or null | null | `system` engine only. When null, the best ranked voice: Personal Voice if one exists, else premium |
 | `voiceRate` | float | 0.52 | |
 | `cleanupDictation` | bool | true | |
 | `injectMode` | `"paste" \| "type"` | `"paste"` | |

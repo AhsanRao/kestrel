@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Hosts `OnboardingView`. Kestrel is an accessory app with no Dock icon, so the window has to
 /// activate the app itself or it opens behind whatever the user is doing.
+@MainActor
 final class OnboardingWindow: NSObject, NSWindowDelegate {
-    private let model = OnboardingModel()
+    let model = OnboardingModel()
     private var window: NSWindow?
 
     var onFinish: (() -> Void)?

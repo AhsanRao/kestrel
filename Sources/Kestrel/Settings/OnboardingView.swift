@@ -28,7 +28,7 @@ struct OnboardingView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     section("Permissions", [.microphone, .screenRecording, .accessibility])
-                    section("Tools", [.speech, .whisperBinary, .whisperModel, .claude, .codex])
+                    section("Tools", [.speech, .whisperBinary, .whisperModel, .voice, .claude, .codex])
                 }
                 .padding(.vertical, 4)
             }

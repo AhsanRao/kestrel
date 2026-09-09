@@ -1,0 +1,97 @@
+import SwiftUI
+
+/// The voice row's controls: download, watch it arrive, or skip and keep the macOS voices.
+///
+/// Its own view because it is the only checklist row with state of its own — everything else is a
+/// permission that is either granted or not, and can be drawn from the report alone.
+struct KokoroRowAction: View {
+    @ObservedObject var downloader: KokoroDownloader
+    @ObservedObject var model: OnboardingModel
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            switch downloader.phase {
+            case .downloading, .installing:
+                DownloadMeter(fraction: downloader.fraction, caption: caption)
+                Button("Cancel") { downloader.cancel() }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+            case .failed(let message):
+                Text(message)
+                    .font(.system(size: 10))
+                    .foregroundStyle(KestrelPalette.coral)
+                    .frame(width: 168, alignment: .trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try again") { downloader.start() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            default:
+                Button("Download") { downloader.start() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                Button("Use macOS voice") { model.skipKokoro() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: downloader.phase)
+    }
+
+    private var caption: String {
+        switch downloader.phase {
+        case .downloading(let received, let total):
+            let f = ByteCountFormatter()
+            f.allowedUnits = [.useMB]
+            f.countStyle = .file
+            return "\(f.string(fromByteCount: received)) of \(f.string(fromByteCount: total))"
+        case .installing: return "Unpacking…"
+        default: return ""
+        }
+    }
+}
+
+/// A bar that fills as the bytes land, with a highlight travelling along the filled part so a slow
+/// download still looks alive when the number has not moved for a second.
+private struct DownloadMeter: View {
+    let fraction: Double
+    let caption: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shimmer: CGFloat = -1
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.16))
+                Capsule()
+                    .fill(KestrelPalette.cyan)
+                    .frame(width: max(6, 168 * fraction))
+                    .overlay(alignment: .leading) {
+                        if !reduceMotion {
+                            Capsule()
+                                .fill(LinearGradient(
+                                    colors: [.clear, .white.opacity(0.55), .clear],
+                                    startPoint: .leading, endPoint: .trailing))
+                                .frame(width: 52)
+                                .offset(x: shimmer * (168 * fraction + 52) - 26)
+                                .blendMode(.plusLighter)
+                        }
+                    }
+                    .clipShape(Capsule())
+            }
+            .frame(width: 168, height: 5)
+            .animation(.easeOut(duration: 0.35), value: fraction)
+
+            Text(caption)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .contentTransition(.numericText())
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
+                shimmer = 1.4
+            }
+        }
+    }
+}

@@ -42,7 +42,7 @@ final class SettingsModel: ObservableObject {
         )
     }
 
-    var voices: [AVSpeechSynthesisVoice] { SpeechOutput.rankedVoices() }
+    var voices: [AVSpeechSynthesisVoice] { SystemSpeaker.rankedVoices() }
 
     /// Opens System Settings ▸ Accessibility ▸ Spoken Content, the only place macOS lets you
     /// install the neural voices. It opens the pane; the download itself is Apple's "Manage

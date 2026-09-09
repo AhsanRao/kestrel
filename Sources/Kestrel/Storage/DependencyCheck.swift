@@ -7,7 +7,7 @@ import Foundation
 enum DependencyCheck {
     enum Requirement: String, CaseIterable {
         case microphone, screenRecording, accessibility
-        case speech, whisperBinary, whisperModel, claude, codex
+        case speech, whisperBinary, whisperModel, voice, claude, codex
 
         var title: String {
             switch self {
@@ -17,6 +17,7 @@ enum DependencyCheck {
             case .speech: return "Speech to text"
             case .whisperBinary: return "whisper-cli"
             case .whisperModel: return "Speech model"
+            case .voice: return "Kokoro voice"
             case .claude: return "Claude Code CLI"
             case .codex: return "Codex CLI"
             }
@@ -31,6 +32,7 @@ enum DependencyCheck {
             case .speech: return "Turns your voice into text on this Mac. Nothing is uploaded."
             case .whisperBinary: return "The engine Kestrel was told to use instead of Apple's."
             case .whisperModel: return "The speech model whisper reads. About 148 MB."
+            case .voice: return "A neural voice that reads answers aloud, far better than the ones macOS ships. Skip it and Kestrel uses the best system voice instead."
             case .claude: return "Answers your questions using your Claude subscription."
             case .codex: return "Optional second backend, using your ChatGPT subscription."
             }
@@ -45,7 +47,7 @@ enum DependencyCheck {
         /// need it, asking does not.
         func isRequired(for config: Config) -> Bool {
             switch self {
-            case .codex: return false
+            case .codex, .voice: return false
             case .accessibility: return config.hotkeys.ask.isModifierOnly
             default: return true
             }
@@ -131,6 +133,15 @@ enum DependencyCheck {
             let found = FileManager.default.fileExists(atPath: url.path)
             return Item(requirement: requirement, ok: found,
                         detail: found ? Paths.tildeAbbreviated(url) : "./scripts/download-whisper-model.sh")
+
+        case .voice:
+            if config.voiceEngine == .system {
+                return Item(requirement: requirement, ok: true, detail: "Using the macOS voices")
+            }
+            let installed = KokoroInstall.isReady
+            return Item(requirement: requirement, ok: installed,
+                        detail: installed ? Paths.tildeAbbreviated(KokoroInstall.root)
+                                          : KokoroInstall.downloadSummary)
 
         case .claude, .codex:
             let name = requirement == .claude ? "claude" : "codex"

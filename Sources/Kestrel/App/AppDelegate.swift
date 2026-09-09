@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MemoryStore.bootstrap()
         SkillLibrary.bootstrap()
         LaunchAtLogin.sync(with: ConfigStore.shared.current.launchAtLogin)
-        SpeechOutput.requestPersonalVoice()
+        SystemSpeaker.requestPersonalVoice()
 
         let menu = StatusMenu()
         menu.onOpenSettings = { [weak self] in self?.showSettings() }
@@ -37,6 +37,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        if OnboardingPreview.isRequested {
+            OnboardingPreview.run()
+            return
+        }
+
+        if let tarballs = SpeechPreview.installTarballs {
+            SpeechPreview.runInstall(tarballs)
+            return
+        }
+
+        if SpeechPreview.isDownloadRequested {
+            SpeechPreview.runDownload()
+            return
+        }
+
+        if SpeechPreview.isRequested {
+            SpeechPreview.run(on: coordinator)
+            return
+        }
+
         if PanelPreview.isRequested {
             PanelPreview.run(on: coordinator.panel)
             return
@@ -52,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         coordinator.stop()
     }
 
+    @MainActor
     func showOnboarding() {
         if onboardingWindow == nil { onboardingWindow = OnboardingWindow() }
         onboardingWindow?.show()

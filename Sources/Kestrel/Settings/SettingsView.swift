@@ -79,16 +79,39 @@ struct SettingsView: View {
             Toggle("Speak answers out loud", isOn: model.binding(\.speakAnswers))
             Toggle("Play sound cues", isOn: model.binding(\.sounds))
 
-            HStack {
-                Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
-                    Text("Best available").tag("")
-                    ForEach(model.voices, id: \.identifier) { voice in
-                        Text(SpeechOutput.describe(voice)).tag(voice.identifier)
-                    }
-                }
-                Button("Preview") { model.previewVoice() }
+            Picker("Engine", selection: model.binding(\.voiceEngine)) {
+                ForEach(Config.VoiceEngine.allCases, id: \.self) { Text($0.title).tag($0) }
             }
-            if SpeechOutput.hasOnlyCompactVoices {
+
+            if model.config.voiceEngine == .kokoro {
+                HStack {
+                    Picker("Voice", selection: model.binding(\.kokoroVoice)) {
+                        ForEach(KokoroVoice.all) { voice in
+                            Text("\(voice.title) · \(voice.note)").tag(voice.id)
+                        }
+                    }
+                    Button("Preview") { model.previewVoice() }
+                }
+                if !KokoroInstall.isReady {
+                    Label("Not downloaded yet — Kestrel is using a macOS voice until it is. "
+                          + "The setup window has the download.",
+                          systemImage: "arrow.down.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                HStack {
+                    Picker("Voice", selection: model.optionalStringBinding(\.voiceIdentifier)) {
+                        Text("Best available").tag("")
+                        ForEach(model.voices, id: \.identifier) { voice in
+                            Text(SystemSpeaker.describe(voice)).tag(voice.identifier)
+                        }
+                    }
+                    Button("Preview") { model.previewVoice() }
+                }
+            }
+            if model.config.voiceEngine == .system, SystemSpeaker.hasOnlyCompactVoices {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 4) {

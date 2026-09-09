@@ -16,7 +16,9 @@ struct Config: Codable, Equatable {
 
     var speakAnswers: Bool
     var sounds: Bool
+    var voiceEngine: VoiceEngine
     var voiceIdentifier: String?
+    var kokoroVoice: String
 
     var cleanupDictation: Bool
     var injectMode: InjectMode
@@ -46,7 +48,9 @@ struct Config: Codable, Equatable {
         transcriptionHint: nil,
         speakAnswers: true,
         sounds: true,
+        voiceEngine: .kokoro,
         voiceIdentifier: nil,
+        kokoroVoice: KokoroVoice.default.id,
         cleanupDictation: true,
         injectMode: .paste,
         hotkeys: .defaults,
@@ -109,6 +113,21 @@ struct Config: Codable, Equatable {
         }
     }
 
+    /// Which engine reads answers aloud. Kokoro is a small neural model that runs on this Mac and
+    /// sounds markedly better than anything Apple ships; the system voices need nothing installed
+    /// and are what Kestrel falls back to when the download was skipped.
+    enum VoiceEngine: String, Codable, CaseIterable {
+        case kokoro
+        case system
+
+        var title: String {
+            switch self {
+            case .kokoro: return "Kokoro (neural, on this Mac)"
+            case .system: return "macOS built-in voices"
+            }
+        }
+    }
+
     /// What a question is asked *about*. Capturing just the frontmost window spends every pixel on
     /// the thing the user means, instead of shrinking a whole 5K desktop until the labels blur.
     enum CaptureMode: String, Codable, CaseIterable {
@@ -145,7 +164,9 @@ struct Config: Codable, Equatable {
         transcriptionHint = opt(.transcriptionHint)
         speakAnswers = v(.speakAnswers, d.speakAnswers)
         sounds = v(.sounds, d.sounds)
+        voiceEngine = v(.voiceEngine, d.voiceEngine)
         voiceIdentifier = opt(.voiceIdentifier)
+        kokoroVoice = v(.kokoroVoice, d.kokoroVoice)
         cleanupDictation = v(.cleanupDictation, d.cleanupDictation)
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
@@ -166,7 +187,9 @@ struct Config: Codable, Equatable {
          transcriptionEngine: TranscriptionEngine,
          whisperBinary: String, whisperModel: String, transcriptionHint: String?,
          speakAnswers: Bool, sounds: Bool,
+         voiceEngine: VoiceEngine,
          voiceIdentifier: String?,
+         kokoroVoice: String,
          cleanupDictation: Bool, injectMode: InjectMode,
          hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
          screenshotMaxEdge: Int, captureMode: CaptureMode,
@@ -178,7 +201,9 @@ struct Config: Codable, Equatable {
         self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
         self.transcriptionHint = transcriptionHint
         self.speakAnswers = speakAnswers; self.sounds = sounds
+        self.voiceEngine = voiceEngine
         self.voiceIdentifier = voiceIdentifier
+        self.kokoroVoice = kokoroVoice
         self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
         self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
         self.followUpSeconds = followUpSeconds

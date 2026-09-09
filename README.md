@@ -112,7 +112,9 @@ you save. The Settings window writes the same file.
 | `whisperBinary` | `/opt/homebrew/bin/whisper-cli` | only read by the whisper engine |
 | `whisperModel` | `~/.kestrel/models/ggml-base.en.bin` | only read by the whisper engine |
 | `speakAnswers` | `true` | |
-| `voiceIdentifier` / `voiceRate` | `null` / `0.52` | your Personal Voice is preferred when you have one, then premium voices |
+| `voiceEngine` | `"kokoro"` | `"system"` uses the macOS voices instead |
+| `kokoroVoice` | `"af_heart"` | `af_heart`, `af_sarah`, `am_michael`, `am_puck` |
+| `voiceIdentifier` / `voiceRate` | `null` / `0.52` | `system` engine only; your Personal Voice is preferred when you have one, then premium voices |
 | `cleanupDictation` | `true` | model fixes punctuation; falls back to the raw transcript |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
 | `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |

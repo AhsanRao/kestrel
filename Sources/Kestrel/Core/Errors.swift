@@ -19,6 +19,7 @@ enum KestrelError: LocalizedError, Equatable {
     case hotkeyNeedsAccessibility(String)
     case actionDenied(String)
     case actionFailed(String)
+    case speech(String)
 
     var errorDescription: String? {
         switch self {
@@ -55,6 +56,8 @@ enum KestrelError: LocalizedError, Equatable {
             return "Kestrel is not allowed to \(what) — edit ~/.kestrel/policy.json to permit it"
         case .actionFailed(let what):
             return "Could not \(what) — the control did not respond"
+        case .speech(let detail):
+            return detail
         case .hotkeyNeedsAccessibility(let combo):
             return "The \(combo) hotkey needs Accessibility to be seen — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
         }

@@ -9,6 +9,35 @@ code, the reason for it is given here.
 
 ---
 
+## [1.3.0] — 2026-09-10 — A voice worth listening to
+
+### Answers are read by Kokoro, not by macOS
+
+Apple's premium voices are the best it will lend an app — Siri's are locked to Siri, and no API
+exposes them — and they still sound like a machine reading. Kokoro is an 82 M-parameter neural
+model that runs on this Mac, free and offline, and sounds like a person.
+
+It arrives as a download in the setup window, about 370 MB once, and can be declined: skip it and
+Kestrel goes on using the best system voice, which is what it always did. Nothing about speech can
+block first use.
+
+Four voices are offered, out of the fifty-four the model carries: **Heart** (the default), Sarah,
+Michael and Puck. The model selects a voice by index rather than by name, and the indices are not
+alphabetical — they are read from the model's own metadata, because guessing them puts a stranger's
+voice on your Mac.
+
+The full-precision model is the one downloaded, not the quantized one. On Apple Silicon it is the
+*faster* of the two — 3.6× real time against int8's 1.5× — so quantizing would cost quality and
+buy nothing but a smaller download.
+
+Synthesis is slower than playback, so sentences are made ready while the previous one is still
+being spoken. Only the first sentence of an answer waits.
+
+### A Personal Voice is still there if you want it
+
+The macOS engine did not go away; it moved behind a switch. Settings ▸ Speech chooses between the
+two, and with the macOS voices selected a Personal Voice still outranks everything else.
+
 ## [1.2.1] — 2026-09-09 — A finer line
 
 The rings and boxes Kestrel draws around what it is talking about were heavy enough to hide the

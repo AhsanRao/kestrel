@@ -54,6 +54,15 @@ struct OnboardingRow: View {
 
     @ViewBuilder
     private var action: some View {
+        if item.requirement == .voice {
+            KokoroRowAction(downloader: model.voiceDownloader, model: model)
+        } else {
+            permissionOrCommand
+        }
+    }
+
+    @ViewBuilder
+    private var permissionOrCommand: some View {
         VStack(spacing: 5) {
             Button(actionTitle) { model.request(item.requirement) }
                 .buttonStyle(.borderedProminent)

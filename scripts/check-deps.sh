@@ -58,6 +58,21 @@ elif [ -n "$WHISPER" ]; then
 fi
 
 echo
+echo "Speech out loud"
+# Kokoro is optional: without it Kestrel falls back to the best macOS voice.
+VOICE_ENGINE="$(python3 -c 'import json,os;p=os.path.expanduser("~/.kestrel/config.json");print(json.load(open(p)).get("voiceEngine","kokoro") if os.path.exists(p) else "kokoro")' 2>/dev/null || echo kokoro)"
+KOKORO="$HOME/.kestrel/kokoro"
+if [ "$VOICE_ENGINE" = "system" ]; then
+  ok "using the macOS voices — nothing to install"
+elif [ -x "$KOKORO/bin/sherpa-onnx-offline-tts" ] && [ -f "$KOKORO/model/model.onnx" ]; then
+  ok "Kokoro — $KOKORO ($(du -sh "$KOKORO" | cut -f1))"
+  # The binary finds its runtime through an @loader_path/../lib rpath; moving either breaks it.
+  [ -f "$KOKORO/lib/libonnxruntime.dylib" ] || bad "libonnxruntime.dylib missing from $KOKORO/lib"
+else
+  warn "Kokoro voice not downloaded — the setup window offers it; macOS voices are used meanwhile"
+fi
+
+echo
 echo "User data"
 [ -d "$HOME/.kestrel" ] && ok "~/.kestrel exists" || warn "~/.kestrel will be created on first launch"
 [ -f "$HOME/.kestrel/KESTREL.md" ] && ok "memory file present" || warn "memory file seeded on first launch"
