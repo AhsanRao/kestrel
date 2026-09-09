@@ -94,8 +94,8 @@ struct OnboardingView: View {
             }
             .frame(height: 4)
             Text("\(done) of \(total) ready")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
                 .contentTransition(.numericText())
         }
         .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.progress), value: done)
@@ -108,7 +108,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
                 .padding(.bottom, 6)
@@ -160,7 +160,7 @@ struct OnboardingHeading: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("STEP \(step) OF 2")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
             Text(title)
                 .font(.system(size: 19, weight: .semibold))
         }

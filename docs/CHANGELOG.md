@@ -9,6 +9,40 @@ code, the reason for it is given here.
 
 ---
 
+## [1.3.3] — 2026-09-10 — One button at a time
+
+### The second way in appears once the first has been tried
+
+Every unmet permission offered two buttons at once — "Allow" and "Open Settings" — which is a choice
+between two routes to one thing before either has been tried. macOS shows its own prompt the first
+time and never again, so the pane is only worth the space once asking has visibly done nothing.
+"Open Settings" now appears under the row after "Allow" has been pressed.
+
+### Copying a command says so
+
+The tool rows put a shell command on the clipboard and gave no sign of it. The button says "Copied"
+for a moment afterwards, the same confirmation a copied draft gets.
+
+### The restart notice waits for the grant
+
+Pressing "Allow" on Screen Recording claimed a restart was pending whether or not the permission was
+ever given, and went on claiming it. The notice now belongs to the grant landing: Screen Recording
+reads as granted the moment it is given, but this process cannot capture anything until it is
+restarted, and that is exactly when there is something to say.
+
+### The checks are off the main thread
+
+They stat files and walk `PATH`, and they run every 1.5 seconds under a window that is animating.
+They run on their own queue now and hand the result back.
+
+### Small text is readable
+
+The command hints, the ready count and the download caption were 10pt tertiary — grey on grey, below
+the contrast a label needs. They are 11pt secondary, and the section headings and step labels are
+secondary too.
+
+---
+
 ## [1.3.2] — 2026-09-10 — Setup you can walk back through
 
 ### Two steps, and a way between them

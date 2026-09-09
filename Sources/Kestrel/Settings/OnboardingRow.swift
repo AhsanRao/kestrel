@@ -5,6 +5,7 @@ struct OnboardingRow: View {
     let item: DependencyCheck.Item
     @ObservedObject var model: OnboardingModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var copied = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -23,7 +24,7 @@ struct OnboardingRow: View {
                     Text(item.name).font(.system(size: 13, weight: .medium))
                     if !item.isRequired {
                         Text("optional")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                             .padding(.horizontal, 5).padding(.vertical, 1)
                             .background(Color.secondary.opacity(0.15), in: Capsule())
                             .foregroundStyle(.secondary)
@@ -35,8 +36,8 @@ struct OnboardingRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if !item.ok {
                     Text(item.detail)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .transition(.opacity)
@@ -71,13 +72,34 @@ struct OnboardingRow: View {
     @ViewBuilder
     private var permissionOrCommand: some View {
         VStack(spacing: 5) {
-            Button(actionTitle) { model.request(item.requirement) }
+            Button(actionTitle) { press() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-            if isPermission {
+            // macOS puts up its own prompt the first time and never again, so the pane is the way
+            // in from then on — but offering both at once asks the user to choose between two
+            // buttons for one thing before either has been tried.
+            if isPermission, model.asked.contains(item.requirement) {
                 Button("Open Settings") { model.openSettings(for: item.requirement) }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle),
+                   value: model.asked.contains(item.requirement))
+    }
+
+    /// The command lands on the clipboard with nothing to show for it, so the button that was just
+    /// pressed says so itself — the same confirmation a copied draft gets.
+    private func press() {
+        model.request(item.requirement)
+        guard !isPermission else { return }
+        withAnimation(OnboardingMotion.honoring(reduceMotion, .easeOut(duration: 0.15))) {
+            copied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(OnboardingMotion.honoring(reduceMotion, .easeOut(duration: 0.2))) {
+                copied = false
             }
         }
     }
@@ -86,5 +108,8 @@ struct OnboardingRow: View {
         [.microphone, .screenRecording, .accessibility].contains(item.requirement)
     }
 
-    private var actionTitle: String { isPermission ? "Allow" : "Copy command" }
+    private var actionTitle: String {
+        if isPermission { return "Allow" }
+        return copied ? "Copied" : "Copy command"
+    }
 }

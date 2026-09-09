@@ -18,8 +18,16 @@ final class OnboardingModel: ObservableObject {
     /// Owned here so a download survives the row being redrawn.
     let voiceDownloader = KokoroDownloader()
 
+    /// Requirements the user has already pressed the button on. Drives the second, quieter way in:
+    /// macOS shows its permission prompt once ever, so "Open Settings" is only worth the space once
+    /// asking has visibly failed to do anything.
+    @Published private(set) var asked: Set<DependencyCheck.Requirement> = []
+
     private var pollTimer: Timer?
     private let sounds = SoundBoard()
+    /// The checks stat files and walk PATH. Off the main thread, because they run every 1.5s under
+    /// a window that is animating.
+    private let checks = DispatchQueue(label: "dev.0xash.kestrel.dependency-check", qos: .utility)
 
     init() {
         report = DependencyCheck.run(config: ConfigStore.shared.current)
@@ -31,7 +39,7 @@ final class OnboardingModel: ObservableObject {
     func startPolling() {
         guard pollTimer == nil else { return }
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
-            self?.refresh()
+            Task { @MainActor in self?.refresh() }
         }
     }
 
@@ -42,13 +50,29 @@ final class OnboardingModel: ObservableObject {
 
     func refresh() {
         let config = ConfigStore.shared.current
-        let fresh = DependencyCheck.run(config: config)
+        checks.async { [weak self] in
+            let fresh = DependencyCheck.run(config: config)
+            Task { @MainActor in self?.apply(fresh, config: config) }
+        }
+    }
+
+    private func apply(_ fresh: DependencyCheck.Report, config: Config) {
         guard fresh.items.map(\.ok) != report.items.map(\.ok) else { return }
         let wasReady = report.readyToUse
+        let hadScreenRecording = granted(.screenRecording, in: report)
         report = fresh
+        // Screen Recording reads as granted the moment it is given, but this process cannot capture
+        // anything until it is restarted — so the notice belongs to the grant landing, not to the
+        // button being pressed. Pressed and then ignored, nothing needs restarting.
+        if !hadScreenRecording, granted(.screenRecording, in: fresh) { relaunchNeeded = true }
         // The last permission landing is the one moment in setup worth a sound. The row that ticked
         // is usually in another window's Settings pane, where the user cannot see it happen.
         if !wasReady, fresh.readyToUse { sounds.play(.ready, config: config) }
+    }
+
+    private func granted(_ requirement: DependencyCheck.Requirement,
+                         in report: DependencyCheck.Report) -> Bool {
+        report.item(requirement)?.ok ?? false
     }
 
     // MARK: - Actions
@@ -56,6 +80,7 @@ final class OnboardingModel: ObservableObject {
     /// Asks macOS for the permission, which shows the system prompt the first time only. After
     /// that the switch has to be flipped by hand, so the pane is opened instead.
     func request(_ requirement: DependencyCheck.Requirement) {
+        asked.insert(requirement)
         switch requirement {
         case .microphone:
             AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
@@ -63,7 +88,6 @@ final class OnboardingModel: ObservableObject {
             }
         case .screenRecording:
             if !CGRequestScreenCaptureAccess() { openSettings(for: requirement) }
-            relaunchNeeded = true
         case .accessibility:
             TextInjector.requestAccessibilityPermission()
         default:

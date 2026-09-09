@@ -16,7 +16,7 @@ struct KokoroRowAction: View {
                     .controlSize(.small)
             case .failed(let message):
                 Text(message)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(KestrelPalette.coral)
                     .frame(width: 168, alignment: .trailing)
                     .fixedSize(horizontal: false, vertical: true)
@@ -80,8 +80,8 @@ private struct DownloadMeter: View {
             .animation(.easeOut(duration: 0.35), value: fraction)
 
             Text(caption)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
                 .contentTransition(.numericText())
         }
         .onAppear {
