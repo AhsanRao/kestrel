@@ -54,6 +54,7 @@ final class SessionCoordinator {
         audio.onAutoStop = { [weak self] url in self?.audioStoppedOnItsOwn(url) }
         audio.onLevel = { [weak self] level in self?.panel.model.level = Double(level) }
         dragTracker.onChange = { [weak self] points in self?.selection.update(points: points) }
+        annotations.onHide = { [weak self] in self?.updateEscapeWatch() }
 
         hotkeys.handler = { [weak self] action, phase in self?.handle(action, phase) }
         hotkeys.registrationFailure = { [weak self] combo in
@@ -134,6 +135,35 @@ final class SessionCoordinator {
         onStateChange?(machine.state)
         for effect in effects { perform(effect) }
         render()
+        updateEscapeWatch()
+    }
+
+    /// Esc takes back whatever Kestrel is doing, from wherever the user is.
+    ///
+    /// It used to reach only the marks, and only while they were drawn — so an answer the user had
+    /// finished with could not be dismissed at all, and a pointer resting near the notch held it
+    /// there. Anything that puts itself on the screen has to have a way off it that does not
+    /// require finding a window first.
+    func cancelSession() {
+        guard machine.state != .idle else {
+            // Nothing running, but the marks outlive the panel — Esc still has to reach them.
+            annotations.hide()
+            return
+        }
+        audio.stop()
+        panel.hideImmediately()
+        apply(.cancelled)
+    }
+
+    /// The tap runs while Kestrel has something on the screen and not a moment longer: an event tap
+    /// left listening after the last mark has faded is a tap for no reason.
+    func updateEscapeWatch() {
+        guard machine.state != .idle || annotations.isVisible else {
+            return escapeWatcher.stop()
+        }
+        guard !escapeWatcher.isWatching else { return }
+        escapeWatcher.onEscape = { [weak self] in self?.cancelSession() }
+        escapeWatcher.start()
     }
 
     private func perform(_ effect: SessionEffect) {
@@ -144,9 +174,7 @@ final class SessionCoordinator {
         case .finishDictating: finishRecording(intent: .dictation)
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
-        case .clearOverlay:
-            escapeWatcher.stop()
-            annotations.hide()
+        case .clearOverlay: annotations.hide()
         case .reset: reset()
         }
     }

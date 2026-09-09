@@ -9,6 +9,43 @@ code, the reason for it is given here.
 
 ---
 
+## [1.4.1] — 2026-09-10 — A way out of everything
+
+### Esc dismisses whatever is on screen
+
+It used to reach only the marks, and only while they were drawn. An answer the user had finished
+with could not be dismissed at all — the only way out was to wait for the clock, and a pointer
+resting near the notch stopped even that. Esc now takes the panel, the marks and whatever Kestrel is
+saying, from wherever the user is, for as long as anything is showing. The event tap is torn down
+the moment nothing is.
+
+### A hover cannot hold the island forever
+
+Hovering pauses the auto-hide, because hovering usually means reading. A pointer parked near the top
+of the screen is not reading, and it used to pin the island there for the rest of the session. The
+pause now has a limit, and the session's own clock gives up at the same moment the window does
+rather than a moment later.
+
+### Clipped text says what was clipped
+
+A long answer stops at fourteen lines and a long draft at sixteen. They stopped silently, so the
+last line on screen read as the last line there was — worst on a draft, where the next thing anyone
+does is copy it. Both now say how many lines did not fit, and the draft says that the copy has all
+of them, which it always did.
+
+### An answer reaches VoiceOver
+
+The panel never takes focus — that is what lets you keep typing while it answers — so a screen
+reader had no reason to look at it. An answer that is not being read aloud is announced, and so is
+every error, which is never spoken.
+
+### Two labels that were too faint to read
+
+The hotkey hint and the transcript line sat at 35% and 45% white on pure black, which is 3.0:1 and
+4.4:1 — under what text needs. They are 55% and 60%.
+
+---
+
 ## [1.4.0] — 2026-09-10 — One object, moving
 
 ### The window and the island move as one thing

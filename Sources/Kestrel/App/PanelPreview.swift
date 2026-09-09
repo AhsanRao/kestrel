@@ -78,6 +78,16 @@ enum PanelPreview {
                     panel.model.answer += panel.model.answer.isEmpty ? sentence : " " + sentence
                 }
             }
+        case "clipped":
+            // Far past the line limits, so the note about what did not fit is the thing on show.
+            panel.model.state = .answering
+            panel.model.transcript = "Summarise this build settings pane."
+            panel.model.answer = String(repeating:
+                "Build settings resolve from the target, then the project, then any xcconfig. ", count: 14)
+            panel.model.draft = Draft(
+                subject: "Re: the settings audit",
+                body: (1...24).map { "Line \($0) of a draft that runs past what the island shows." }
+                    .joined(separator: "\n"))
         case "thinking":
             panel.model.state = .thinking
             panel.model.transcript = "How do I export this as a PDF?"

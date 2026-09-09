@@ -58,11 +58,11 @@ struct SessionMachine {
             state = .error(message)
             return [.interruptSpeech]
 
-        // Esc takes the marks off with everything else: they are the only thing Kestrel leaves on
-        // the screen, so cancelling has to be able to reach them.
+        // Esc takes off everything Kestrel has put on the screen or said out loud. The marks
+        // especially: they are the only thing it leaves behind, so cancelling has to reach them.
         case (_, .cancelled):
             state = .idle
-            return [.clearOverlay, .reset]
+            return [.clearOverlay, .interruptSpeech, .reset]
 
         case (.idle, .askPressed), (.error, .askPressed):
             state = .listening

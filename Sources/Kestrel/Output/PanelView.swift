@@ -25,6 +25,10 @@ struct PanelView: View {
     /// How much space the window carries around the island for the shadow.
     static let margin: CGFloat = 26
 
+    /// Where an answer stops. Long enough for anything worth reading off a notch, short enough that
+    /// the island cannot grow down the whole display.
+    static let answerLines = 14
+
     private var island: some View {
         VStack(alignment: .leading, spacing: 0) {
             notchRow
@@ -102,7 +106,7 @@ struct PanelView: View {
                 if model.isFollowUp {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.white.opacity(0.6))
                         .transition(.opacity.combined(with: .scale(scale: 0.8)))
                 }
                 trailing
@@ -145,7 +149,7 @@ struct PanelView: View {
             if !model.transcript.isEmpty {
                 Text(model.transcript)
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(2)
                     .textSelection(.enabled)
             }
@@ -154,15 +158,11 @@ struct PanelView: View {
                 // whatever space it is offered, and here the space it is offered is the window —
                 // whose height is being decided by this very measurement. The island grows to fit
                 // the answer instead, which is what an island is supposed to do.
-                Text(model.answer)
-                    .font(.system(size: 13))
-                    .lineSpacing(2.5)
-                    .foregroundStyle(.white)
-                    .textSelection(.enabled)
-                    .lineLimit(14)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentTransition(.opacity)
+                ClippedText(text: model.answer, font: .systemFont(ofSize: 13), lineSpacing: 2.5,
+                            limit: PanelView.answerLines) { hidden in
+                    "+\(hidden) more line\(hidden == 1 ? "" : "s")"
+                }
+                .contentTransition(.opacity)
             }
             if let draft = model.draft {
                 DraftCard(draft: draft)

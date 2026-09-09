@@ -11,6 +11,9 @@ struct DraftCard: View {
     let draft: Draft
     @State private var copied = false
 
+    /// Where the body stops on screen. The clipboard is never clipped.
+    static let bodyLines = 16
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -33,14 +36,11 @@ struct DraftCard: View {
             // draft disappears, leaving a card with a copy button and no text under it. The island
             // grows to fit instead, and a long draft is clipped at a line count rather than
             // running off the bottom of the display.
-            Text(draft.body)
-                .font(.system(size: 12, design: .monospaced))
-                .lineSpacing(3)
-                .foregroundStyle(.white.opacity(0.92))
-                .textSelection(.enabled)
-                .lineLimit(16)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ClippedText(text: draft.body, font: .monospacedSystemFont(ofSize: 12, weight: .regular),
+                        lineSpacing: 3, limit: DraftCard.bodyLines,
+                        color: .white.opacity(0.92)) { hidden in
+                "+\(hidden) more line\(hidden == 1 ? "" : "s") — Copy takes all of it"
+            }
         }
         .padding(10)
         .background(

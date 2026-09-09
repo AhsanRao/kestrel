@@ -33,11 +33,8 @@ extension SessionCoordinator {
         guard !marks.isEmpty else { return annotations.hide() }
         log.debug("annotating \(marks.count) control(s) alongside the answer")
         annotations.show(marks)
-        // Esc takes the marks off, and the tap is torn down as soon as they are gone either way —
-        // an event tap left running after the drawing has faded is a tap for no reason.
-        annotations.onHide = { [weak self] in self?.escapeWatcher.stop() }
-        escapeWatcher.onEscape = { [weak self] in self?.annotations.hide() }
-        escapeWatcher.start()
+        // The marks can outlive the panel, so Esc has to keep reaching them after it has gone.
+        updateEscapeWatch()
     }
 
     /// One sentence of the answer, as it is written. Shows in the panel and is queued for speech,
@@ -66,6 +63,9 @@ extension SessionCoordinator {
         panel.model.answer = answer.text
         apply(.answered)
         render()
+        // Only when Kestrel is not about to read it out: two voices saying the same sentence is
+        // worse than one.
+        if !config.speakAnswers { panel.announce(answer.text) }
         // Streaming already read it out; saying it again would double up.
         if !alreadySpoken, config.speakAnswers, speech.speak(answer.text, config: config) { return }
         if alreadySpoken, speech.isSpeaking { return }
@@ -136,6 +136,8 @@ extension SessionCoordinator {
         apply(.failed(message))
         render()
         panel.show()
+        // Errors are never read out, so this is the only way one reaches a screen reader.
+        panel.announce(message)
         dismiss(after: 8)
     }
 
@@ -154,8 +156,9 @@ extension SessionCoordinator {
             // live session, and clearing it would take the user's own answer off the screen.
             guard let self, case .error = self.machine.state else { return }
             // Hovering means it is being read, and the panel pauses its own timer for exactly
-            // that. The state has to wait with it, or the message goes blank under the pointer.
-            guard !self.panel.model.isHovering else { return self.dismiss(after: 3) }
+            // that. The state has to wait with it, or the message goes blank under the pointer —
+            // and it gives up at the same moment the window does, not later.
+            guard !self.panel.canHoldForHover else { return self.dismiss(after: 3) }
             self.apply(.autoHideElapsed)
         }
     }

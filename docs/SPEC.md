@@ -220,6 +220,8 @@ kestrel/
 │       │   ├── PanelWindow.swift
 │       │   ├── PanelFrameAnimator.swift   # the window frame, sprung and display-synced
 │       │   ├── PanelSpring.swift          # one number on a spring
+│       │   ├── ClippedText.swift          # text cut at a line count, saying how much is left
+│       │   ├── TextFit.swift              # how many lines a string needs, via CoreText
 │       │   ├── PanelView.swift
 │       │   └── OverlayWindow.swift        # v2
 │       ├── Storage/
@@ -364,10 +366,15 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   nothing is drawn over it — no rim, no material — because any edge or lighter value puts a visible
   seam around the notch. It opens downward only when there is something to read.
 - Shows: state dot + label, backend badge, transcript (secondary), answer, draft card, hotkey hint.
-  Everything is laid out at its full height; nothing scrolls, per §8.17.
+  Everything is laid out at its full height; nothing scrolls, per §8.17. An answer stops at 14 lines
+  and a draft body at 16, and both say how many lines did not fit — a clipped last line otherwise
+  reads as the last line. The clipboard is never clipped.
 - Auto-hide timers: 20 s after answer, 3 s after dictation, 8 s after error, 3 s after "Didn't
-  catch that" — nothing was heard, so there is nothing to read. Hover pauses the timer, and the
-  session state is cleared on the same clock as the window, not left in `.error` behind it.
+  catch that" — nothing was heard, so there is nothing to read. Hover pauses the timer for up to
+  `PanelWindow.maximumHold`, and the session state is cleared on the same clock as the window, not
+  left in `.error` behind it.
+- Esc dismisses whatever is on screen — panel, marks, speech — from wherever the user is, for as
+  long as anything is showing. The tap is torn down the moment nothing is.
 - Arrives by unrolling out of the top edge and leaves by rolling back up into it, on the same
   curve reversed — a shape that grows out of the notch has to go back the way it came.
 - The window frame follows the island on a spring (`PanelFrameAnimator`, on the same response and

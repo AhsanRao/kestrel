@@ -17,6 +17,10 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
     var panel: NSPanel?
     private var hideTimer: DispatchWorkItem?
+    /// The latest a hover may hold the island open. Reading pauses the clock; a pointer left near
+    /// the notch is not reading, and without a limit it pins the island there for the rest of the
+    /// session.
+    private var holdDeadline: Date?
     /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
     var levelTimer: Timer?
     /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
@@ -36,7 +40,10 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         cancelHideTimer()
         cancelRollUp(panel)
         let wasVisible = panel.isVisible
-        if !wasVisible { isPlacing = true }
+        if !wasVisible {
+            isPlacing = true
+            holdDeadline = nil
+        }
         position(panel)
         panel.orderFrontRegardless()
         if !wasVisible { animateIn(panel) }
@@ -46,6 +53,7 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     /// Ordered out synchronously so the screenshot taken right after cannot contain the panel.
     func hideImmediately() {
         cancelHideTimer()
+        holdDeadline = nil
         stopLevelAnimation()
         isLeaving = false
         frameAnimator?.stop()
@@ -54,10 +62,13 @@ final class PanelWindow: NSObject, NSWindowDelegate {
 
     func hide(after seconds: TimeInterval) {
         cancelHideTimer()
+        if holdDeadline == nil {
+            holdDeadline = Date().addingTimeInterval(PanelWindow.maximumHold)
+        }
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             // Hovering means the user is reading or selecting; keep it up (spec §8.11).
-            if self.model.isHovering {
+            if self.canHoldForHover {
                 self.hide(after: 3)
                 return
             }
@@ -65,6 +76,26 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         }
         hideTimer = work
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    /// How long a hover may keep the island on screen past its own clock.
+    static let maximumHold: TimeInterval = 90
+
+    /// Whether the pointer resting on the island should still hold it open. Asked by the
+    /// coordinator too, which runs the session's clock alongside the window's.
+    var canHoldForHover: Bool {
+        guard model.isHovering else { return false }
+        guard let holdDeadline else { return true }
+        return Date() < holdDeadline
+    }
+
+    /// Says a line to VoiceOver. The panel never takes focus — that is the point of it — so an
+    /// answer arriving is otherwise something a screen reader has no reason to look at.
+    func announce(_ text: String) {
+        guard !text.isEmpty else { return }
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: text,
+                                        .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
 
     func pulse() {

@@ -99,7 +99,7 @@ final class SessionStateTests: XCTestCase {
     /// The marks are the only thing Kestrel leaves drawn on the screen, so Esc has to reach them.
     func testEscapeTakesTheMarksOffTheScreen() {
         var machine = machineShowingAnAnswer()
-        XCTAssertEqual(machine.apply(.cancelled), [.clearOverlay, .reset])
+        XCTAssertEqual(machine.apply(.cancelled), [.clearOverlay, .interruptSpeech, .reset])
         XCTAssertEqual(machine.state, .idle)
     }
 
@@ -123,7 +123,7 @@ final class SessionStateTests: XCTestCase {
     func testTooShortPressCancelsBackToIdle() {
         var machine = SessionMachine()
         machine.apply(.askPressed)
-        XCTAssertEqual(machine.apply(.cancelled), [.clearOverlay, .reset])
+        XCTAssertEqual(machine.apply(.cancelled), [.clearOverlay, .interruptSpeech, .reset])
         XCTAssertEqual(machine.state, .idle)
     }
 }
