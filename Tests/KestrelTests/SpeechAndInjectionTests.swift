@@ -1,7 +1,34 @@
+import AVFoundation
 import XCTest
 @testable import Kestrel
 
 final class SpeechAndInjectionTests: XCTestCase {
+
+    // MARK: - Voice ranking
+
+    func testAPersonalVoiceOutranksEveryInstalledVoice() {
+        // A personal voice reports `.default` quality, the same tier as the robotic compact
+        // voices, so only the explicit check keeps it off the bottom of the list.
+        let personal = SpeechOutput.rank(quality: .default, name: "Ahsan\u{2019}s Personal Voice",
+                                         language: "en-US", isPersonal: true)
+        let premium = SpeechOutput.rank(quality: .premium, name: "Zoe", language: "en-US",
+                                        isPersonal: false)
+        XCTAssertGreaterThan(personal, premium)
+    }
+
+    func testPremiumOutranksEnhancedOutranksCompact() {
+        let premium = SpeechOutput.rank(quality: .premium, name: "Zoe", language: "en-US", isPersonal: false)
+        let enhanced = SpeechOutput.rank(quality: .enhanced, name: "Zoe", language: "en-US", isPersonal: false)
+        let compact = SpeechOutput.rank(quality: .default, name: "Zoe", language: "en-US", isPersonal: false)
+        XCTAssertGreaterThan(premium, enhanced)
+        XCTAssertGreaterThan(enhanced, compact)
+    }
+
+    func testAPreferredNameBreaksATieWithinTheSameQuality() {
+        let ava = SpeechOutput.rank(quality: .premium, name: "Ava", language: "en-US", isPersonal: false)
+        let unknown = SpeechOutput.rank(quality: .premium, name: "Grandma", language: "en-US", isPersonal: false)
+        XCTAssertGreaterThan(ava, unknown)
+    }
 
     // MARK: - Markdown stripping for speech
 

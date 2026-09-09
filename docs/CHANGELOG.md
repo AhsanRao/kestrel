@@ -9,6 +9,24 @@ code, the reason for it is given here.
 
 ---
 
+## [1.2.0] — 2026-09-09 — Your own voice
+
+### Kestrel can answer in your Personal Voice
+
+macOS trains a Personal Voice on the Mac itself from about fifteen minutes of recorded
+prompts — the user's own voice, never uploaded. Kestrel now asks for it once at launch and
+ranks it above every installed voice, so an answer comes back in a voice that belongs to the
+person who asked rather than a stranger's.
+
+The ranking needed the explicit rule. A Personal Voice reports `.default` quality, the same
+tier as the compact voices that sound like a speak-and-spell, so ranking it by quality alone
+put the best voice on the machine at the bottom of the list. It is ranked on its trait
+instead, labelled "Personal" in the voice picker, and no longer trips the "only compact voices
+are installed" warning.
+
+Siri's voices remain unavailable to any app; there is no API for them. Personal Voice is the
+one neural voice macOS will lend out.
+
 ## [1.1.0] — 2026-09-08 — Speech that needs no download
 
 ### Transcription uses macOS's own engine

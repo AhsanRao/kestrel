@@ -146,7 +146,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 | Audio capture | `AVAudioEngine` with `AVAudioConverter` to 16 kHz mono Int16 WAV | Raw Core Audio: more code for no gain |
 | Speech-to-text | Apple's `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26+), the system dictation engine, on-device; whisper.cpp CLI as the fallback below macOS 26 and as a config override | `SFSpeechRecognizer`: the old API, weaker and superseded; whisper as the default: ~6× slower on the same clip and a 148 MB model to install; cloud STT: violates local-first |
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
-| Text-to-speech | `AVSpeechSynthesizer`, prefer premium/enhanced voice if installed | Cloud TTS: not covered by subscriptions, adds latency |
+| Text-to-speech | `AVSpeechSynthesizer`, preferring the user's Personal Voice, then premium/enhanced voices | Cloud TTS: not covered by subscriptions, adds latency. Siri's voices: no API exposes them. Local neural models (Kokoro, Piper): better than Apple's premium tier, but a third-party runtime and a 325 MB model to install |
 | LLM access | Subprocess to `claude` / `codex` CLIs | Direct API + OAuth: prohibited. Agent SDK library: fine for Claude but Codex has no equivalent; the CLI boundary keeps both symmetrical |
 | Config | JSON at `~/.kestrel/config.json` | `UserDefaults`: hard to hand-edit and version |
 | Memory | Markdown `~/.kestrel/KESTREL.md`, symlinked as `CLAUDE.md` and `AGENTS.md` | Both CLIs auto-load their file from cwd, so one file serves both |
@@ -315,6 +315,12 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 - Speaks `Answer.text` with a configurable rate (0.3–0.7) and voice identifier. Strips markdown (code fences, bullets, headers) before speaking; the panel keeps the formatted text.
 - Interruptible: any new hotkey press stops speech immediately.
 - If system output is muted, skip speech and show a "muted, answer on screen" note.
+- Voices are ranked Personal → premium → enhanced → compact, with a nudge for the names Apple
+  built for reading long passages and for the listener's own region. A Personal Voice reports
+  `.default` quality — the tier the robotic compact voices use — so it is ranked on its trait
+  instead, and is labelled "Personal" rather than "Compact" in the picker.
+- `requestPersonalVoice()` runs once at launch: a Personal Voice is absent from
+  `speechVoices()` until the app has asked for it.
 
 ### 8.10 TextInjector
 - Pasteboard + synthetic ⌘V, restore previous pasteboard contents after the target app consumes the paste.
@@ -350,7 +356,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 | `whisperBinary` | path | `/opt/homebrew/bin/whisper-cli` | fallback engine only |
 | `whisperModel` | path | `~/.kestrel/models/ggml-base.en.bin` | fallback engine only |
 | `speakAnswers` | bool | true | |
-| `voiceIdentifier` | string or null | null | premium voice if present |
+| `voiceIdentifier` | string or null | null | when null, the best ranked voice: Personal Voice if one exists, else premium |
 | `voiceRate` | float | 0.52 | |
 | `cleanupDictation` | bool | true | |
 | `injectMode` | `"paste" \| "type"` | `"paste"` | |
@@ -433,6 +439,7 @@ thing and mark it. Ends with the `MARK:` contract of §8.15, and the `DRAFT:` co
 | Microphone | AudioCapture | first hotkey press |
 | Screen Recording | ScreenGrabber | first ask; requires relaunch after grant |
 | Accessibility | the bare-chord ask hotkey, AXElementScanner, AXContentReader, DragTracker, TextInjector | at launch, because without it the default hotkey cannot fire at all |
+| Personal Voice | SpeechOutput, to speak in the user's own voice | at launch; silent when Accessibility ▸ Personal Voice already allows apps to use it |
 
 - `Info.plist`: `LSUIElement = true` (menu bar only), usage-description strings for microphone and Apple events, bundle id `dev.0xash.kestrel`.
 - Ad-hoc codesign for personal use. TCC grants are tied to the bundle id + signature, so keep the signing identity stable across builds (ad-hoc is fine as long as the bundle id does not change).

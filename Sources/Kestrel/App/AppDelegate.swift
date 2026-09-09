@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MemoryStore.bootstrap()
         SkillLibrary.bootstrap()
         LaunchAtLogin.sync(with: ConfigStore.shared.current.launchAtLogin)
+        SpeechOutput.requestPersonalVoice()
 
         let menu = StatusMenu()
         menu.onOpenSettings = { [weak self] in self?.showSettings() }
