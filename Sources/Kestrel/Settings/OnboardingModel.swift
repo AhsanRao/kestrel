@@ -13,6 +13,7 @@ final class OnboardingModel: ObservableObject {
     let voiceDownloader = KokoroDownloader()
 
     private var pollTimer: Timer?
+    private let sounds = SoundBoard()
 
     init() {
         report = DependencyCheck.run(config: ConfigStore.shared.current)
@@ -34,9 +35,14 @@ final class OnboardingModel: ObservableObject {
     }
 
     func refresh() {
-        let fresh = DependencyCheck.run(config: ConfigStore.shared.current)
+        let config = ConfigStore.shared.current
+        let fresh = DependencyCheck.run(config: config)
         guard fresh.items.map(\.ok) != report.items.map(\.ok) else { return }
+        let wasReady = report.readyToUse
         report = fresh
+        // The last permission landing is the one moment in setup worth a sound. The row that ticked
+        // is usually in another window's Settings pane, where the user cannot see it happen.
+        if !wasReady, fresh.readyToUse { sounds.play(.ready, config: config) }
     }
 
     // MARK: - Actions

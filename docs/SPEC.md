@@ -227,7 +227,15 @@ kestrel/
 │       │   └── Paths.swift                # ~/.kestrel/* constants
 │       └── Settings/
 │           ├── SettingsWindow.swift
-│           └── SettingsView.swift
+│           ├── SettingsView.swift
+│           ├── OnboardingWindow.swift
+│           ├── OnboardingView.swift      # the first-run checklist
+│           ├── OnboardingRow.swift
+│           ├── OnboardingModel.swift
+│           ├── OnboardingMotion.swift    # the window's springs, and Reduce Motion
+│           ├── OnboardingInterview.swift # the four questions that seed KESTREL.md
+│           ├── KokoroRow.swift
+│           └── HotkeyRecorder.swift
 └── Tests/
     └── KestrelTests/
         ├── SessionStateTests.swift

@@ -9,6 +9,42 @@ code, the reason for it is given here.
 
 ---
 
+## [1.3.1] — 2026-09-10 — Setup that moves properly
+
+### The checklist reads as one list
+
+The setup window's rows arrive one after another, top to bottom. They always meant to: the delay
+was counted over every requirement Kestrel knows about, including the two whisper rows that are not
+shown at all on Apple's speech engine, so the cascade skipped beats where a hidden row would have
+been. And both sections started their own count from zero, so Permissions and Tools arrived side by
+side rather than in sequence. The rows are resolved before the list is laid out, and the second
+section continues the first one's count.
+
+The rule line under the last row of a section is gone. The next section's heading is the break, and
+two of them together read as a mistake.
+
+### Rows settle instead of snapping
+
+Granting a permission used to make the row jump: the tick bounced in, but the hint line and the two
+buttons under it vanished on the same frame and the row snapped to its shorter height. They fade and
+scale away now, and the row closes up around the tick on the same spring the rest of the window uses.
+
+### A sound when setup is done
+
+The last required permission is almost always granted in another window — System Settings, over the
+top of Kestrel — so the moment everything is in place is a moment the user cannot see. It gets a
+short rising cue, the footer line turns green, and the count ticks rather than snapping. Like every
+other cue it is off when sounds are off, and silent on a muted Mac.
+
+### Reduce Motion is honoured
+
+The setup window was the one part of Kestrel that ignored it. The progress bar, the row ticks, the
+window settling and the arrival cascade are all off under Reduce Motion — the cascade especially,
+because a stagger delays content for exactly the person who asked for less movement. All four now
+read the same setting, from one place.
+
+---
+
 ## [1.3.0] — 2026-09-10 — A voice worth listening to
 
 ### Answers are read by Kokoro, not by macOS

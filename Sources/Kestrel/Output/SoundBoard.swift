@@ -14,6 +14,7 @@ final class SoundBoard {
         case answered       // an answer arrived
         case inserted       // dictated text landed in the app
         case failed         // something went wrong
+        case ready          // setup has everything Kestrel needs
 
         /// Rising for progress, falling for failure. Frequencies in hertz.
         var tones: [Double] {
@@ -23,12 +24,13 @@ final class SoundBoard {
             case .answered: return [880, 1174]
             case .inserted: return [990]
             case .failed: return [440, 330]
+            case .ready: return [660, 880, 1174]
             }
         }
 
         var toneDuration: Double {
             switch self {
-            case .heard, .inserted: return 0.055
+            case .heard, .inserted, .ready: return 0.055
             default: return 0.075
             }
         }

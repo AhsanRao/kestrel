@@ -12,6 +12,7 @@ struct OnboardingView: View {
     /// nothing if the microphone is still off.
     @StateObject private var interview = InterviewModel()
     @State private var showsInterview = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if showsInterview {
@@ -22,13 +23,15 @@ struct OnboardingView: View {
     }
 
     private var checklist: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let permissions = rows(.microphone, .screenRecording, .accessibility)
+        let tools = rows(.speech, .whisperBinary, .whisperModel, .voice, .claude, .codex)
+        return VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
             ScrollView {
                 VStack(spacing: 0) {
-                    section("Permissions", [.microphone, .screenRecording, .accessibility])
-                    section("Tools", [.speech, .whisperBinary, .whisperModel, .voice, .claude, .codex])
+                    section("Permissions", permissions, startingAt: 0)
+                    section("Tools", tools, startingAt: permissions.count)
                 }
                 .padding(.vertical, 4)
             }
@@ -36,9 +39,17 @@ struct OnboardingView: View {
             footer
         }
         .frame(width: 520, height: 600)
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.readyToUse)
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle),
+                   value: model.readyToUse)
         .onAppear { model.startPolling() }
         .onDisappear { model.stopPolling() }
+    }
+
+    /// The rows this Mac actually has — the two whisper lines are absent on Apple's speech engine.
+    /// Resolved before the list is laid out so the arrival cascade counts real rows and has no gaps
+    /// where a missing one used to be.
+    private func rows(_ requirements: DependencyCheck.Requirement...) -> [DependencyCheck.Item] {
+        requirements.compactMap { model.report.item($0) }
     }
 
     private var header: some View {
@@ -72,11 +83,15 @@ struct OnboardingView: View {
             Text("\(done) of \(total) ready")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
+                .contentTransition(.numericText())
         }
-        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: done)
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.progress), value: done)
     }
 
-    private func section(_ title: String, _ requirements: [DependencyCheck.Requirement]) -> some View {
+    /// `startingAt` continues the cascade from where the section above it left off, so the whole
+    /// checklist reads top to bottom as one list rather than two arriving side by side.
+    private func section(_ title: String, _ items: [DependencyCheck.Item],
+                         startingAt offset: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .semibold))
@@ -84,10 +99,12 @@ struct OnboardingView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 14)
                 .padding(.bottom, 6)
-            ForEach(Array(requirements.enumerated()), id: \.element) { index, requirement in
-                if let item = model.report.item(requirement) {
-                    OnboardingRow(item: item, model: model)
-                        .modifier(StaggeredEntrance(delay: Double(index) * 0.045))
+            ForEach(Array(items.enumerated()), id: \.element.requirement) { index, item in
+                OnboardingRow(item: item, model: model)
+                    .modifier(StaggeredEntrance(
+                        delay: Double(offset + index) * OnboardingMotion.stagger))
+                // Nothing after the last row: the next section's heading is the break.
+                if index < items.count - 1 {
                     Divider().padding(.leading, 46)
                 }
             }
@@ -105,7 +122,8 @@ struct OnboardingView: View {
                 Text(model.readyToUse ? "Everything Kestrel needs is in place."
                                       : "You can start now and finish the rest later.")
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(model.readyToUse ? Color.green : .secondary)
+                    .contentTransition(.opacity)
             }
             Spacer()
             Button(model.readyToUse ? "Next" : "Skip for now") {

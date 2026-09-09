@@ -4,6 +4,7 @@ import SwiftUI
 struct OnboardingRow: View {
     let item: DependencyCheck.Item
     @ObservedObject var model: OnboardingModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -14,7 +15,7 @@ struct OnboardingRow: View {
                 // A tick that lands with a small bounce is the whole reward for granting a
                 // permission in another app and coming back.
                 .scaleEffect(item.ok ? 1 : 0.9)
-                .animation(.spring(response: 0.3, dampingFraction: 0.55), value: item.ok)
+                .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.tick), value: item.ok)
                 .contentTransition(.symbolEffect(.replace))
 
             VStack(alignment: .leading, spacing: 2) {
@@ -38,14 +39,20 @@ struct OnboardingRow: View {
                         .foregroundStyle(.tertiary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
                 }
             }
 
             Spacer(minLength: 8)
-            if !item.ok { action }
+            if !item.ok {
+                action.transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 11)
+        // The row closes up around the tick as its hint and buttons go, rather than snapping to
+        // the shorter height under them.
+        .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle), value: item.ok)
     }
 
     private var symbol: String {
@@ -80,22 +87,4 @@ struct OnboardingRow: View {
     }
 
     private var actionTitle: String { isPermission ? "Allow" : "Copy command" }
-}
-
-/// Rows arrive one after another instead of all at once, which turns a wall of requirements into
-/// a list the eye reads top to bottom.
-struct StaggeredEntrance: ViewModifier {
-    let delay: Double
-    @State private var shown = false
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(shown ? 1 : 0)
-            .offset(y: shown ? 0 : 8)
-            .onAppear {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.85).delay(delay)) {
-                    shown = true
-                }
-            }
-    }
 }
