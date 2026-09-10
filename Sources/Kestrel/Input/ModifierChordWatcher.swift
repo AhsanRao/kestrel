@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import os
 
-/// Watches for bare modifier chords (⌃⌘ held alone) through a listen-only `CGEventTap`.
+/// Watches for bare modifier chords (⌃⌥ held alone) through a listen-only `CGEventTap`.
 ///
 /// Carbon's `RegisterEventHotKey` needs a key code, so it cannot express this. The tap can, at the
 /// cost of Accessibility permission — the same grant dictation already requires.

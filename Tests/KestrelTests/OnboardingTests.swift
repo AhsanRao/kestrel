@@ -97,9 +97,11 @@ final class OnboardingTests: XCTestCase {
             XCTAssertFalse(requirement.reason.isEmpty, "\(requirement) has no explanation")
             let isPermission: Bool = [.microphone, .screenRecording, .accessibility].contains(requirement)
             // `speech` is the summary row: satisfied by the OS on Apple's engine, and on whisper it
-            // says to read the two rows under it, which carry the commands. It is the one
-            // requirement with nothing of its own to do.
-            guard !isPermission, requirement != .speech else { continue }
+            // says to read the two rows under it, which carry the commands. Nothing of its own to
+            // do. `voice` has a way forward, but it is a button rather than a command — the Kokoro
+            // download runs in the app (see `KokoroRowAction`), and skipping it just uses a macOS
+            // voice.
+            guard !isPermission, requirement != .speech, requirement != .voice else { continue }
             XCTAssertNotNil(DependencyCheck.fixCommand(for: requirement),
                             "\(requirement) offers neither a prompt nor a command")
         }

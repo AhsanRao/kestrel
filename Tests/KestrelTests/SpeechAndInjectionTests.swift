@@ -135,8 +135,8 @@ final class SpeechAndInjectionTests: XCTestCase {
     }
 
     func testTimeoutsMatchTheSpec() {
-        XCTAssertEqual(Query(text: "x", mode: .ask).timeout, 120)
-        XCTAssertEqual(Query(text: "x", mode: .dictationCleanup).timeout, 30)
+        XCTAssertEqual(Query(text: "x", mode: .ask).timeout, 75)
+        XCTAssertEqual(Query(text: "x", mode: .dictationCleanup).timeout, 20)
     }
 }
 

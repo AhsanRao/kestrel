@@ -188,7 +188,7 @@ final class OnboardingModel: ObservableObject {
     }
 
     /// Split out so the rule can be tested without depending on this Mac's real permissions.
-    static func shouldPresent(config: Config, report: DependencyCheck.Report) -> Bool {
+    nonisolated static func shouldPresent(config: Config, report: DependencyCheck.Report) -> Bool {
         !config.onboardingCompleted || !report.readyToUse
     }
 }

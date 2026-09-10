@@ -1,13 +1,14 @@
 import AppKit
 
-/// Decides when a bare modifier chord — ⌃⌘ held on its own, with no letter — counts as a press.
+/// Decides when a bare modifier chord — ⌃⌥ held on its own, with no letter — counts as a press.
 ///
-/// Pure logic so the awkward parts can be tested: the chord is also the prefix of every ⌃⌘-letter
-/// shortcut in macOS, so it must not fire the instant the modifiers go down. It waits out a short
+/// Pure logic so the awkward parts can be tested: the chord is also the prefix of every shortcut
+/// built on the same modifiers, so it must not fire the instant those go down. It waits out a short
 /// dwell, and any key pressed while it is held means the user was reaching for a shortcut, not
 /// talking to Kestrel.
 struct ModifierChordDetector {
-    /// Long enough that ⌃⌘K never trips it, short enough to feel immediate on a deliberate hold.
+    /// Long enough that reaching through the chord for a shortcut never trips it, short enough to
+    /// feel immediate on a deliberate hold.
     static let dwell: TimeInterval = 0.28
 
     enum Input: Equatable {

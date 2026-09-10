@@ -5,7 +5,7 @@ import Foundation
 /// A global hotkey as stored in config.json: modifier names plus, optionally, a virtual key code.
 /// Names rather than a bitmask so the file stays hand-editable.
 ///
-/// Omitting `keyCode` gives a **bare modifier chord** — ⌃⌘ held on its own. Carbon cannot register
+/// Omitting `keyCode` gives a **bare modifier chord** — ⌃⌥ held on its own. Carbon cannot register
 /// one of those, so it is watched through an event tap instead (`ModifierChordWatcher`), which is
 /// why a modifier-only hotkey needs Accessibility permission and a keyed one does not.
 struct HotkeyBinding: Codable, Equatable {
@@ -42,7 +42,7 @@ struct HotkeyBinding: Codable, Equatable {
         return mask
     }
 
-    /// "⌃⌘K", or just "⌃⌘" for a bare chord — used in the panel hint, the menu and Settings.
+    /// "⌃⌘K", or just "⌃⌥" for a bare chord — used in the panel hint, the menu and Settings.
     var display: String {
         var out = ""
         let normalized = normalizedModifiers

@@ -86,9 +86,6 @@ enum PanelPreview {
                 subject: "Re: the settings audit",
                 body: (1...24).map { "Line \($0) of a draft that runs past what the island shows." }
                     .joined(separator: "\n"))
-        case "thinking":
-            panel.model.state = .thinking
-            panel.model.transcript = "How do I export this as a PDF?"
         default:
             panel.model.state = .answering
             panel.model.transcript = "What is this window for?"
@@ -96,7 +93,6 @@ enum PanelPreview {
                 + "between targets, and the search box filters every setting by name."
         }
         panel.model.askHint = "⌃⌥"
-        panel.model.dictateHint = "⌃⌘D"
         // Lifted before the window is composited: flipping it moments before the shot is too late,
         // the exclusion is baked into how the window server has already drawn it.
         panel.show()

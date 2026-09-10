@@ -17,8 +17,9 @@ final class ErrorMessageTests: XCTestCase {
         for error in cases {
             let message = error.errorDescription ?? ""
             XCTAssertFalse(message.isEmpty)
-            let actionable = message.contains("run:") || message.contains("System Settings")
-                || message.contains("switch") || message.contains("install")
+            let hint = message.lowercased()
+            let actionable = hint.contains("run:") || hint.contains("system settings")
+                || hint.contains("switch") || hint.contains("install")
             XCTAssertTrue(actionable, "not actionable: \(message)")
         }
     }

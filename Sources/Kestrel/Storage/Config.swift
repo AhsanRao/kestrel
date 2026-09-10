@@ -97,9 +97,13 @@ struct Config: Codable, Equatable {
         /// Its modifiers must not be the ask chord's. ⌃⌥D was tried and both hotkeys fired from the
         /// one gesture: holding ⌃⌥ on the way to D is a question starting, and the D then aborted
         /// it. ⌃⌘ shares nothing with ⌃⌥, so the two cannot be confused for each other.
+        ///
+        /// The letter is K rather than D because macOS reserves four ⌃⌘ combinations — Space, D, F
+        /// and Q — and ⌃⌘D is Look Up. Taking it would mean dictation and the dictionary fighting
+        /// over the same press, in whichever app happened to be in front.
         static let defaults = Hotkeys(
             ask: HotkeyBinding(keyCode: nil, modifiers: ["control", "option"]),      // ⌃⌥ held
-            dictate: HotkeyBinding(keyCode: 2, modifiers: ["control", "command"])    // ⌃⌘D
+            dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])   // ⌃⌘K
         )
     }
 

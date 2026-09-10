@@ -11,7 +11,7 @@ only while you are holding the key.
 | | |
 |---|---|
 | **Ask** | Hold `⌃⌥`, speak, release. Kestrel screenshots the display your mouse is on, transcribes it on this Mac, asks Claude or Codex, then shows and speaks the answer. |
-| **Dictate** | Tap `⌃⌘D` and talk. The words appear in the frontmost app as you say them, a phrase at a time, and the take ends itself once you have been quiet for a couple of seconds — or on another tap. Newlines are collapsed in terminals so dictation can never run a command. |
+| **Dictate** | Tap `⌃⌘K` and talk. The words appear in the frontmost app as you say them, a phrase at a time, and the take ends itself once you have been quiet for a couple of seconds — or on another tap. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Kestrel draws on the real screen while it talks — a pencil rings the thing the answer is about, one mark after another. Ask *"how do I upload a file?"* and the button gets circled while the sentence is spoken. Esc clears it. |
 | **Write** | Ask for a reply, an email or a paragraph and you get it as text with a **Copy** button, not read aloud. |
 | **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
@@ -79,7 +79,7 @@ Privacy pane whenever something turns out to be missing mid-use.
   whatever it is talking about. It points instead of saying "in the top right", and if it names
   something without marking it, Kestrel works out what it meant and marks it anyway. Your real
   pointer is never touched. Press the hotkey again to interrupt, Esc to take the marks off.
-- **Dictate:** tap `⌃⌘D` and talk. Text lands in the focused app as you speak, and stops when you do.
+- **Dictate:** tap `⌃⌘K` and talk. Text lands in the focused app as you speak, and stops when you do.
 - **Be shown:** ask *"how do I upload a file here?"* and you get a sentence plus a mark on the
   thing it names. Nothing waits for you to click and nothing takes a second screenshot — do the
   thing, and ask again if you want the next part. That question gets a fresh look at the new screen.
@@ -118,7 +118,7 @@ you save. The Settings window writes the same file.
 | `cleanupDictation` | `true` | punctuation, capitals and the ums, fixed locally |
 | `dictationSilenceSeconds` | `2.5` | how long a pause ends a live dictation; `0` means only the hotkey does |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥` / `⌃⌘D` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `answerAnnotations` | `true` | draw on what a spoken answer is pointing at |
 | `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
 | `sounds` | `true` | short cues for each state change |

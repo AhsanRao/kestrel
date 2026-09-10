@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import XCTest
 @testable import Kestrel
@@ -56,6 +57,34 @@ final class PanelSizingTests: XCTestCase {
         model.notch = NotchMetrics(notchSize: CGSize(width: 179, height: 32),
                                    screenFrame: CGRect(x: 0, y: 0, width: 1470, height: 956))
         XCTAssertGreaterThan(model.width, model.notch.notchSize.width + 100)
+    }
+
+    /// The width floor exists for one reason: the longest state label has to fit beside the
+    /// housing. It was once 30 points narrower and "Transcribing" came out as "Transcribin…", so
+    /// this measures every label at the font the row actually draws it in rather than trusting the
+    /// arithmetic in the comment.
+    func testEveryStateLabelFitsTheShoulderItIsGiven() {
+        let model = PanelModel()
+        model.notch = NotchMetrics(notchSize: CGSize(width: 179, height: 32),
+                                   screenFrame: CGRect(x: 0, y: 0, width: 1470, height: 956))
+        // A shoulder is half of what the housing leaves, less the inset and the indicator column
+        // — `PanelIndicator` at 16 points plus the 8-point gap in `PanelView.notchRow`.
+        let indicatorColumn: CGFloat = 24
+        let budget = (model.width - model.notch.notchSize.width) / 2
+            - PanelView.inset - indicatorColumn
+        let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+
+        let states: [SessionState] = [
+            .idle, .listening, .dictating, .transcribing(.ask), .transcribing(.dictation),
+            .thinking, .answering, .injecting, .error("whisper-cli not found"),
+        ]
+        for state in states {
+            model.state = state
+            let label = model.headline
+            let width = NSAttributedString(string: label, attributes: [.font: font]).size().width
+            XCTAssertLessThanOrEqual(width, budget,
+                                     "\"\(label)\" needs \(width) points and the shoulder gives \(budget)")
+        }
     }
 }
 

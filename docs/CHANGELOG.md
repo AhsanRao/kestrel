@@ -9,11 +9,33 @@ code, the reason for it is given here.
 
 ---
 
+## [1.7.1] — 2026-09-10 — a shortcut macOS was not already using
+
+Dictation is on `⌃⌘K`. `⌃⌘D` is Look Up, one of the four `⌃⌘` combinations macOS keeps for itself
+alongside Space, F and Q — so on the old shortcut a tap either started a dictation or opened the
+dictionary, depending on which app was in front, and there was no way to tell which you would get.
+
+The island stopped redrawing itself for nothing. A timer had been publishing a `levelPhase` value
+every 0.6 s for as long as the panel was on screen; no view had read it since the real microphone
+level took over the pips, and every tick still invalidated the whole island. The panel also carried
+a second hotkey hint that nothing displayed — the dictation shortcut is named in the menu and in
+setup, which is where anyone looks for it.
+
+The island's width is unchanged, and now says so out loud. It is `notch + 260`, which on a 179-point
+housing leaves each shoulder 76 points for its word after the inset and the indicator; measured at
+the row's own font, `.system(12, .semibold)`, the longest label — "Transcribing" — is 73.8 points,
+and no other label reaches 55. That is the floor, not a guess: taking 30 points off is what once cut
+it to "Transcribin…", so `testEveryStateLabelFitsTheShoulderItIsGiven` now measures every label
+against the shoulder the width actually gives it instead of trusting the arithmetic in a comment.
+Opened, the same width leaves 379 points of text, which is around 55 characters a line.
+
+---
+
 ## [1.7.0] — 2026-09-10 — dictation that types while you talk
 
 Dictation used to be a recording: tap, say the whole thing, tap again, wait, and the paragraph
 appeared at once — when it worked at all. Now the words land in the app as they are spoken, a
-phrase at a time, and the take ends itself once you have been quiet. The shortcut is `⌃⌘D`.
+phrase at a time, and the take ends itself once you have been quiet. The shortcut is `⌃⌘K`.
 
 `AppleLiveDictation` feeds the microphone into `SpeechAnalyzer` as it arrives instead of handing it
 a finished file. Only settled text is typed; the engine's running guess goes on the panel, because

@@ -305,7 +305,7 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 
 ### 8.1 HotkeyService
 - Registers two global hotkeys with Carbon; delivers `pressed`/`released` events on the main thread.
-- Defaults: `⌃⌥` held = ask, `⌃⌘D` = dictation (toggle). The two must not share modifiers: with dictation on `⌃⌥D` the one gesture fired both, the chord starting a question that the letter then aborted. Configurable via `config.json` (key code + modifiers). Settings UI in M3.
+- Defaults: `⌃⌥` held = ask, `⌃⌘K` = dictation (toggle). The two must not share modifiers: with dictation on `⌃⌥D` the one gesture fired both, the chord starting a question that the letter then aborted. The letter is K, not D, because macOS reserves `⌃⌘Space`, `⌃⌘D`, `⌃⌘F` and `⌃⌘Q` — `⌃⌘D` is Look Up. Configurable via `config.json` (key code + modifiers). Settings UI in M3.
 - Edge cases: re-register on config change; ignore auto-repeat; Caps Lock must not break modifiers; if registration fails (conflict), surface a panel error naming the conflicting combo.
 - `HotkeyPressFilter` decides what counts. Auto-repeat is suppressed by time (0.3 s), never by a remembered "still down" flag: Carbon drops the release when the modifiers are let up first, and a flag left stuck down swallows every press after it — which is exactly how dictation used to turn on and refuse to turn off. A release is still paired against a press, so push-to-talk cannot be ended by one it never saw start.
 
@@ -403,6 +403,12 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 - The collapsed bar is a few points taller than the housing (`NotchMetrics.housingOvershoot`), and
   nothing is drawn over it — no rim, no material — because any edge or lighter value puts a visible
   seam around the notch. It opens downward only when there is something to read.
+- Width is `notch + 260`, floored at 300 collapsed and 420 opened for a display with no housing.
+  The floor is the longest state label: each shoulder is half of what the housing leaves, less the
+  inset and the indicator, which on a 179-point notch is 76 points against the 73.8 that
+  "Transcribing" measures at `.system(12, .semibold)`. Opened, that leaves 379 points of text —
+  about 55 characters a line. Checked by `testEveryStateLabelFitsTheShoulderItIsGiven`, because the
+  arithmetic in a comment is what let an earlier, narrower island ship "Transcribin…".
 - Shows: state dot + label, backend badge, transcript (secondary), answer, draft card, hotkey hint.
   Everything is laid out at its full height; nothing scrolls, per §8.17. An answer stops at 14 lines
   and a draft body at 16, and both say how many lines did not fit — a clipped last line otherwise
@@ -508,7 +514,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 | `cleanupDictation` | bool | true | |
 | `dictationSilenceSeconds` | float | 2.5 | how long a pause ends a live take; `0` means only the hotkey does. Clamped to 1–30 |
 | `injectMode` | `"paste" \| "type"` | `"paste"` | |
-| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌃⌥ held / ⌃⌘D | |
+| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌃⌥ held / ⌃⌘K | |
 | `panelAutoHideSeconds` | int | 20 | |
 | `screenshotMaxEdge` | int | 2048 | |
 | `apiKeys.anthropic` / `apiKeys.openai` | string or null | null | optional pay-as-you-go override |

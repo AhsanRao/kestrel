@@ -44,12 +44,16 @@ final class TextFitTests: XCTestCase {
 
     /// The measurement has to follow the font it is given, or a monospaced draft is counted with
     /// the proportional metrics of an answer.
+    ///
+    /// The width is picked deliberately: two fonts that wrap differently still tie at plenty of
+    /// widths, and at 300 these two both land on 8 lines, which says nothing either way. At 340
+    /// the same string is 6 proportional lines and 8 monospaced ones.
     func testItMeasuresWithTheFontItIsGiven() {
         let text = String(repeating: "measured ", count: 30)
-        let proportional = TextFit.lineCount(text, font: font, lineSpacing: 3, width: 300)
+        let proportional = TextFit.lineCount(text, font: font, lineSpacing: 3, width: 340)
         let monospaced = TextFit.lineCount(
             text, font: .monospacedSystemFont(ofSize: 13, weight: .regular),
-            lineSpacing: 3, width: 300)
+            lineSpacing: 3, width: 340)
         XCTAssertNotEqual(proportional, monospaced)
     }
 }

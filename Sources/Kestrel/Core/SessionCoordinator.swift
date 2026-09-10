@@ -100,8 +100,8 @@ final class SessionCoordinator {
         audio.stop()
     }
 
-    /// The modifiers turned out to be the start of a real shortcut (⌃⌘K, ⌃⌘Q…), so the recording
-    /// that the chord began is thrown away without a word.
+    /// The modifiers turned out to be the start of a real shortcut — ⌃⌥ plus a letter — so the
+    /// recording that the chord began is thrown away without a word.
     private func chordAborted() {
         guard machine.state == .listening else { return }
         audio.stop()
@@ -128,7 +128,6 @@ final class SessionCoordinator {
     private func applyConfigToPanel(_ config: Config) {
         panel.model.backend = config.backend
         panel.model.askHint = config.hotkeys.ask.display
-        panel.model.dictateHint = config.hotkeys.dictate.display
     }
 
     // MARK: - Hotkeys

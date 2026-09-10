@@ -27,7 +27,6 @@ extension PanelWindow {
     /// entrance's control points reversed, so the path out retraces the path in.
     func rollUp() {
         guard let panel = self.panel, panel.isVisible else { return }
-        stopLevelAnimation()
         frameAnimator?.stop()
         isLeaving = true
         let settled = panel.frame
@@ -59,20 +58,5 @@ extension PanelWindow {
             panel.animator().alphaValue = 1
             panel.animator().setFrame(current, display: false)
         }
-    }
-    /// Cheap breathing animation while recording; no audio metering, so no extra tap on the input.
-    func startLevelAnimation() {
-        guard levelTimer == nil else { return }
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            guard self.model.isRecording else { self.model.levelPhase = 0; return }
-            self.model.levelPhase = self.model.levelPhase > 0.5 ? 0 : 1
-        }
-    }
-
-    func stopLevelAnimation() {
-        levelTimer?.invalidate()
-        levelTimer = nil
-        model.levelPhase = 0
     }
 }

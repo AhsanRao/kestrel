@@ -22,8 +22,6 @@ final class PanelWindow: NSObject, NSWindowDelegate {
     /// session.
     private var holdDeadline: Date?
     /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
-    var levelTimer: Timer?
-    /// Internal, not private: the motion lives in `PanelWindow+Motion.swift`.
     var frameAnimator: PanelFrameAnimator?
     /// True while the island is rolling back up into the top edge, so a question asked during the
     /// exit can call it off rather than let it finish and order the window out underneath.
@@ -47,14 +45,12 @@ final class PanelWindow: NSObject, NSWindowDelegate {
         position(panel)
         panel.orderFrontRegardless()
         if !wasVisible { animateIn(panel) }
-        startLevelAnimation()
     }
 
     /// Ordered out synchronously so the screenshot taken right after cannot contain the panel.
     func hideImmediately() {
         cancelHideTimer()
         holdDeadline = nil
-        stopLevelAnimation()
         isLeaving = false
         frameAnimator?.stop()
         panel?.orderOut(nil)
