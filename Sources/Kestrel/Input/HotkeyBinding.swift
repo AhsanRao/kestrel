@@ -12,8 +12,6 @@ struct HotkeyBinding: Codable, Equatable {
     var keyCode: UInt32?
     var modifiers: [String]
 
-    static let modifierOrder = ["control", "option", "shift", "command"]
-
     var isModifierOnly: Bool { keyCode == nil }
 
     /// Canonical modifier names, so "cmd" and "command" compare equal.

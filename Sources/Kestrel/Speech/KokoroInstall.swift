@@ -69,10 +69,6 @@ enum KokoroInstall {
         }
     }
 
-    static func remove() {
-        try? FileManager.default.removeItem(at: root)
-    }
-
     // MARK: - Files
 
     private static func replace(_ source: URL, with destination: URL) throws {
@@ -95,10 +91,6 @@ enum KokoroInstall {
 
     private static func firstFile(named name: String, under directory: URL) -> URL? {
         enumerate(directory).first { $0.lastPathComponent == name }
-    }
-
-    private static func firstDirectory(containing name: String, under directory: URL) -> URL? {
-        enumerate(directory).first { $0.lastPathComponent == name }?.deletingLastPathComponent()
     }
 
     private static func enumerate(_ directory: URL) -> [URL] {

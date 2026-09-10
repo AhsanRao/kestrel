@@ -10,8 +10,6 @@ enum BackendKind: String, Codable, CaseIterable, Equatable {
         case .codex: return "Codex"
         }
     }
-
-    var executableName: String { rawValue }
 }
 
 /// Vendor-neutral contract. Implementations spawn the vendor CLI; nothing here ever touches an

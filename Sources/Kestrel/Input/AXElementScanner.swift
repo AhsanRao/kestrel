@@ -30,14 +30,10 @@ enum AXElementScanner {
     /// content of a modern app starts.
     static let maximumDepth = 30
     static let maximumElements = 220
-    /// Acting needs more of the app than describing it does: driving Spotify means reaching
-    /// Playback ▸ Next, which is a menu item, not a button on the window.
-    static let maximumElementsWhenActing = 420
-    /// How far into the menu bar the planning scan walks: menus and their titles, not their items.
-    /// Every item of every menu would crowd out the window's own controls at `maximumElements`.
+    /// How far into the menu bar to walk: menus and their titles, not their items. Every item of
+    /// every menu would crowd out the window's own controls at `maximumElements`.
     static let menuDepth = 3
-    /// Two levels further: the items inside each menu, not just the menu titles. Used by the live
-    /// re-targeting scan and by anything that has to actually drive the app.
+    /// Two levels further, reaching the items inside each menu.
     static let deepMenuDepth = 5
 
     struct Element: Equatable {

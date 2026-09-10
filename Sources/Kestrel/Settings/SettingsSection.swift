@@ -1,12 +1,9 @@
 import SwiftUI
 
-/// The settings window's left-hand list.
-///
-/// Eight small pages rather than three long ones. Three tabs meant every page was a scroll, and a
-/// scroll is where a setting goes to be lost — the user has to remember which of three lists a
-/// thing was in and then hunt down it. A named page each means the sidebar itself is the index.
+/// The settings window's left-hand list: nine short pages rather than three long ones, so finding
+/// a setting is reading a list of names instead of scrolling three.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case brain, shortcuts, seeing, typing, voice, hearing, memory, advanced
+    case brain, shortcuts, seeing, typing, voice, hearing, memory, advanced, about
 
     var id: String { rawValue }
 
@@ -20,6 +17,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .hearing: return "Hearing you"
         case .memory: return "Memory"
         case .advanced: return "Advanced"
+        case .about: return "About"
         }
     }
 
@@ -33,11 +31,11 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .hearing: return "waveform"
         case .memory: return "book.closed"
         case .advanced: return "gearshape.2"
+        case .about: return "info.circle"
         }
     }
 
-    /// One line under the heading, saying what the page is for. It replaces the paragraph that used
-    /// to sit inside the list and take a row of its own.
+    /// One line under the heading, in place of a paragraph taking a row inside the list.
     var caption: String {
         switch self {
         case .brain: return "Which assistant answers you, and on which model."
@@ -48,6 +46,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .hearing: return "How your voice becomes text. All of it on this Mac."
         case .memory: return "What I read before every answer."
         case .advanced: return "The island's timings, keys, and where it all lives."
+        case .about: return "Which build you're on, and who made it."
         }
     }
 }

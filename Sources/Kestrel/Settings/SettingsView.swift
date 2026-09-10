@@ -1,16 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// Settings, as a sidebar and a page.
+/// Settings: a sidebar of short pages, so the window is its own index and nothing scrolls.
 ///
-/// It was three tabs, and every one of them was a scroll — which is where a setting goes to be
-/// lost. Eight short pages named in a list means the window itself is the index: you read down the
-/// left until you find the word you had in mind, and the thing is on the screen with no scrolling.
-///
-/// The two columns are an `HStack` rather than a `NavigationSplitView`. The split view brings its
-/// own sidebar material, which sits opaque in front of the glass, and its own selection highlight,
-/// which is the Mac's accent colour and not Kestrel's — and neither can be turned off from SwiftUI.
-/// Two views and a divider get the same layout with the appearance under our own control.
+/// The two columns are an `HStack`, not a `NavigationSplitView`. The split view brings a sidebar
+/// material that sits opaque in front of the glass and a selection highlight in the Mac's accent
+/// colour rather than Kestrel's, and SwiftUI can turn off neither.
 struct SettingsView: View {
     @StateObject private var model = SettingsModel()
     @StateObject private var status = OnboardingModel()
@@ -19,6 +14,7 @@ struct SettingsView: View {
     @State private var section = SettingsView.initialSection
 
     var onOpenSetup: () -> Void = {}
+    var onCheckInstalled: () -> Void = {}
 
     /// Room for the titlebar, which the glass runs underneath.
     private let titlebar: CGFloat = 30
@@ -62,8 +58,7 @@ struct SettingsView: View {
                 }
             }
             Spacer(minLength: 12)
-            // Pinned rather than a row in the list: it is not a page you visit, it is a light that
-            // has to be on whichever page you are looking at.
+            // Pinned, not a row: a light that has to be on whichever page you are looking at.
             PermissionStrip(model: status, onFix: onOpenSetup)
         }
         .padding(.horizontal, 10)
@@ -76,25 +71,37 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(section.title)
-                    .font(.system(size: 19, weight: .semibold))
-                    .tracking(-0.3)
-                Text(section.caption)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            // About carries its own heading — the mark and the name say what one would have said.
+            if section != .about {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(section.title)
+                        .font(.system(size: 19, weight: .semibold))
+                        .tracking(-0.3)
+                    Text(section.caption)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, titlebar + 10)
+                .padding(.bottom, 2)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, titlebar + 10)
-            .padding(.bottom, 2)
 
-            SettingsPane(section: section, model: model, onOpenSetup: onOpenSetup)
-                .id(section)
+            page.id(section)
 
-            BrandFooter()
+            if section != .about { BrandFooter() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder private var page: some View {
+        if section == .about {
+            AboutPane(onOpenSetup: onOpenSetup, onCheckInstalled: onCheckInstalled)
+                .padding(.top, titlebar)
+        } else {
+            SettingsPane(section: section, model: model,
+                         onOpenSetup: onOpenSetup, onCheckInstalled: onCheckInstalled)
+        }
     }
 }
 

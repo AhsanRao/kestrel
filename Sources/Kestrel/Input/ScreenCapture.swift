@@ -3,13 +3,10 @@ import Foundation
 
 /// A screenshot, and where a rectangle on the screen falls inside it.
 ///
-/// Kestrel does not ask a model for coordinates at all: it offers a numbered list of real controls
-/// read from macOS and the model picks one, because locating a small control in a resized
-/// screenshot is genuinely hard for a vision model while reading an exact frame out of the
-/// Accessibility tree is free and correct. All the arithmetic for translating a model's own grid
-/// back onto the display went with the walkthroughs that needed it. What remains is the one
-/// conversion the circled-region crop still makes — AppKit measures up from the bottom, a PNG
-/// counts down from the top.
+/// The model is never asked for coordinates: it picks from a numbered list of real controls read
+/// out of the Accessibility tree, which is exact and free, where locating a small control in a
+/// resized screenshot is not. The only conversion left is the circled-region crop — AppKit
+/// measures up from the bottom, a PNG counts down from the top.
 struct ScreenCapture: Equatable {
     var url: URL
     /// Frame of whatever was captured — the front window, or the whole display — in global

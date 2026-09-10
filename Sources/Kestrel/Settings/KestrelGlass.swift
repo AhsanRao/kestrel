@@ -62,13 +62,9 @@ extension NSWindow {
     }
 }
 
-/// Kestrel's primary action: the brand pair, whichever way round the theme needs it.
-///
-/// The stock prominent button takes whatever accent the Mac is set to, which is why it was a blue
-/// with nothing to do with Kestrel. One fixed brand colour is no better: navy on dark glass is
-/// 1.18:1 and aqua on light glass is 1.09:1, so either choice disappears in one of the two themes.
-/// `primaryFill` and `onPrimaryFill` resolve themselves against the appearance they are drawn
-/// into, so the button is decided once here rather than at every call site.
+/// Kestrel's primary action: the brand pair, whichever way round the theme needs it. The stock
+/// prominent button takes the Mac's accent colour; one fixed brand colour is no better, since
+/// either disappears in one theme (see `KestrelPalette`).
 struct KestrelPrimaryButton: ButtonStyle {
     var size: CGFloat = 13
 

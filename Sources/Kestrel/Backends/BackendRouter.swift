@@ -38,8 +38,4 @@ final class BackendRouter {
     func cancel() {
         inFlight?.cancel()
     }
-
-    func switchTo(_ kind: BackendKind) {
-        ConfigStore.shared.update { $0.backend = kind }
-    }
 }

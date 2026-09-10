@@ -11,6 +11,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     /// What the sidebar's access light does when pressed. The settings window cannot open the setup
     /// window itself — only the delegate that owns both can — so it is handed in.
     var onOpenSetup: (() -> Void)?
+    var onCheckInstalled: (() -> Void)?
 
     func show() {
         if window == nil { window = build() }
@@ -21,7 +22,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     private func build() -> NSWindow {
         let hosting = NSHostingController(
-            rootView: SettingsView(onOpenSetup: { [weak self] in self?.onOpenSetup?() }))
+            rootView: SettingsView(onOpenSetup: { [weak self] in self?.onOpenSetup?() },
+                                   onCheckInstalled: { [weak self] in self?.onCheckInstalled?() }))
         let window = NSWindow(contentViewController: hosting)
         window.title = "Kestrel"
         window.titleVisibility = .hidden

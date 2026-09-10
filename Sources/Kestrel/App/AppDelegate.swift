@@ -101,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindow == nil {
             let settings = SettingsWindow()
             settings.onOpenSetup = { [weak self] in self?.showOnboarding() }
+            settings.onCheckInstalled = { [weak self] in self?.showDependencyReport() }
             settingsWindow = settings
         }
         settingsWindow?.show()

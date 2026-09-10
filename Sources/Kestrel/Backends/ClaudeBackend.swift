@@ -14,9 +14,8 @@ import os
 ///   --model <model>                    alias ("sonnet") or full id
 ///   --no-session-persistence           do not write a resumable session (only works with --print)
 ///   --strict-mcp-config                use only MCP servers passed on the command line — none.
-///     Measured on this machine: 16.9 s per question with the user's claude.ai connectors being
-///     discovered, 5.2 s without. Kestrel asks about the screen; it needs no connectors until the
-///     v3 agent work, which is what `allowMCPServers` in config.json turns back on.
+///     Measured here: 16.9 s per question while the user's claude.ai connectors are discovered,
+///     5.2 s without. `allowMCPServers` in config.json turns them back on.
 /// There is no --max-turns in this release; Read-only single answers finish in one turn anyway.
 final class ClaudeBackend: Backend {
     let kind: BackendKind = .claude

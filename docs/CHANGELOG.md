@@ -9,6 +9,33 @@ code, the reason for it is given here.
 
 ---
 
+## [1.5.6] — 2026-09-10 — An About page, a red Quit, and a clear-out
+
+### Where the version lives
+
+Settings has an About page: the icon, the name, the version, who made it, the licence, where your
+files are, and the two things in that window that are not settings — opening setup, and the
+dependency report. It is the one page with no heading above it, because the mark and the name are
+the heading.
+
+### The one item that ends the session looks like it
+
+Quit in the menu bar dropdown is `KestrelPalette.dangerColor`. It takes an attributed title and a
+tinted glyph rather than a template one, since a menu item cannot be both a template and a colour —
+which would otherwise have left the row half red.
+
+### Dead code out
+
+`Backend.executableName`, `BackendRouter.switchTo`, `DragTracker.isTracking`,
+`HotkeyBinding.modifierOrder`, `KokoroInstall.remove`, `KokoroInstall.firstDirectory`,
+`PanelPreview.outputPath` and `AXElementScanner.maximumElementsWhenActing` had no callers. The last
+of those, and two comments beside it, were left over from the acting feature that was removed.
+
+The brand hexes were written twice — once as a `Color`, once inside the dynamic role that used them.
+`KestrelPalette.Brand` holds each number once and everything else builds from it.
+
+---
+
 ## [1.5.5] — 2026-09-10 — The colours the logo actually has, and a settings window with a spine
 
 ### Two brand colours, measured rather than remembered

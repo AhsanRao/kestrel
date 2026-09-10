@@ -1,11 +1,8 @@
 import SwiftUI
 
-/// A setting and the sentence that explains it, in one row instead of two.
-///
-/// The old window gave every explanation its own `Form` row, which cost a separator and two lots of
-/// vertical padding each — eight controls filled a 596-point window and still scrolled. Folding the
-/// note under its own control is most of the density back, and it also puts the words next to the
-/// thing they are about rather than under the thing after it.
+/// A setting and the sentence explaining it, in one row instead of two. A `Form` row per
+/// explanation costs a separator and two lots of padding, which is what made eight controls
+/// overflow the window — and put each note under the row after the one it described.
 struct Setting<Control: View>: View {
     let title: String
     var note: String?
@@ -70,11 +67,8 @@ struct SettingWarning: View {
     }
 }
 
-/// The three macOS grants, as three dots at the foot of the sidebar.
-///
-/// They live here rather than on a settings page of their own because they are not a setting — you
-/// cannot flip them from inside the app. What the user needs is to know at a glance whether one has
-/// been revoked, which is exactly the thing a window full of switches otherwise hides.
+/// The three macOS grants, as three dots at the foot of the sidebar. Not a page of their own:
+/// they cannot be flipped from in here, and what is needed is to notice a revoked one at a glance.
 struct PermissionStrip: View {
     @ObservedObject var model: OnboardingModel
     var onFix: () -> Void

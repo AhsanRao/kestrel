@@ -5,14 +5,12 @@ import UniformTypeIdentifiers
 
 /// The one screenshot routine the preview probes share.
 ///
-/// `CGWindowListCreateImage` is deprecated in macOS 14 and kept anyway. The replacement,
-/// ScreenCaptureKit, is async and wants the main run loop — which a probe blocks. And
-/// `/usr/sbin/screencapture`, which `ScreenGrabber` uses for real captures, is worse here: as a
-/// subprocess its Screen Recording grant is judged against whatever launched Kestrel, so it fails
-/// from a terminal, which is precisely where these are run from.
+/// `CGWindowListCreateImage` is deprecated in macOS 14 and kept anyway: ScreenCaptureKit is async
+/// and wants the main run loop, which a probe blocks, and `/usr/sbin/screencapture` has its Screen
+/// Recording grant judged against whatever launched Kestrel — so it fails from a terminal, which is
+/// where these run.
 enum PreviewCapture {
-    /// How long to let things settle before the shutter, and where to put the file. A probe with no
-    /// `KESTREL_PREVIEW_OUT` just leaves the window open to be looked at by hand.
+    /// Where the file goes. A probe with no `KESTREL_PREVIEW_OUT` just leaves the window open.
     static var destination: URL? {
         ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"].map { URL(fileURLWithPath: $0) }
     }
@@ -34,9 +32,8 @@ enum PreviewCapture {
     /// context the picture is being taken for.
     static let wholeScreen: () -> CGRect = { .infinite }
 
-    /// One window and the breathing room around it, so a shot of a 540-point panel is not mostly
-    /// wallpaper. Screen coordinates run from the top down and AppKit's from the bottom up, hence
-    /// the flip.
+    /// One window and the room around it. Screen coordinates run top-down and AppKit's bottom-up,
+    /// hence the flip.
     @MainActor
     static func around(_ window: NSWindow?, margin: CGFloat = 24) -> () -> CGRect {
         {
@@ -49,8 +46,8 @@ enum PreviewCapture {
         }
     }
 
-    /// Straight away, on whatever queue is asking — `MenuPreview` has to shoot from a background
-    /// queue, because menu tracking runs a modal loop that starves the main one.
+    /// Straight away, on whatever queue is asking: menu tracking runs a modal loop that starves
+    /// the main one, so `MenuPreview` shoots from a background queue.
     static func now(_ region: CGRect) {
         guard let url = destination else { return }
         write(region, to: url)

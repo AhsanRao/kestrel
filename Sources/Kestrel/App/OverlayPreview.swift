@@ -1,7 +1,5 @@
 import AppKit
 import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
 
 /// Puts the drawing on screen with made-up targets, and optionally photographs it.
 ///

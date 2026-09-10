@@ -238,6 +238,7 @@ kestrel/
 │           ├── SettingsSection.swift      # the eight pages, their names and symbols
 │           ├── SettingsPanes.swift        # brain, shortcuts, seeing, typing
 │           ├── SettingsPanes+Voice.swift  # voice, hearing, memory, advanced
+│           ├── SettingsAbout.swift        # the mark, the version, the notice
 │           ├── SettingsControls.swift     # a setting and its explanation, in one row
 │           ├── KestrelGlass.swift        # the menu's material, for Kestrel's own windows
 │           ├── BrandMark.swift           # the logo, the version, the notice
@@ -428,9 +429,9 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   glass at that size.
 
 ### 8.11b Settings window
-- A sidebar of eight short pages — Brain, Shortcuts, Seeing, Typing, My voice, Hearing you, Memory,
-  Advanced — and a page on the right. Three tabs meant every page was a scroll, and a scroll is
-  where a setting goes to be lost; a named page each makes the window its own index.
+- A sidebar of nine short pages — Brain, Shortcuts, Seeing, Typing, My voice, Hearing you, Memory,
+  Advanced, About — and a page on the right. Three tabs meant every page was a scroll, and a scroll
+  is where a setting goes to be lost; a named page each makes the window its own index.
 - The two columns are an `HStack`, not a `NavigationSplitView`. The split view brings its own
   sidebar material, which sits opaque in front of the glass, and its own selection highlight, which
   is the Mac's accent colour and not Kestrel's. Neither can be turned off from SwiftUI.
@@ -446,8 +447,13 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   `fullSizeContentView` would otherwise draw the titlebar string on top of it.
 - Reset puts the config back to `Config.defaults` behind a confirmation, and deliberately leaves the
   memory file and the downloaded voice alone — neither is a setting.
+- About is the one page with no heading above it (the mark and the name are the heading) and no
+  `Form` — it carries the icon, version, licence and copyright, and the two actions that are not
+  settings: opening setup, and the dependency report.
 
 ### 8.12 StatusMenu
+- Quit is the only coloured item — `KestrelPalette.dangerColor`, as an attributed title with a
+  matching tinted glyph, since an item cannot be both a template and a colour.
 - Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers
   (toggle), Clean up dictation (toggle), Open what I remember, Open per-app notes, Setup &
   permissions, Check what's installed, Settings, Quit.

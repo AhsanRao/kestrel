@@ -6,6 +6,7 @@ struct SettingsPane: View {
     let section: SettingsSection
     @ObservedObject var model: SettingsModel
     var onOpenSetup: () -> Void
+    var onCheckInstalled: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -24,6 +25,7 @@ struct SettingsPane: View {
             case .hearing: hearing
             case .memory: memory
             case .advanced: advanced
+            case .about: EmptyView()   // AboutPane is not a Form; SettingsView shows it directly
             }
         }
         .formStyle(.grouped)

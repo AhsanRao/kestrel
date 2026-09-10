@@ -87,7 +87,20 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         addItem("Check what's installed…", #selector(checkDependencies), symbol: "stethoscope")
         addItem("Settings…", #selector(openSettings), key: ",", symbol: "gearshape")
         menu.addItem(.separator())
-        addItem("Quit Kestrel", #selector(quit), key: "q", symbol: "power")
+        addQuit()
+    }
+
+    /// The only item that ends the session, and the only one in a colour. Its glyph is tinted to
+    /// match rather than left a template, or the row would be half-red.
+    private func addQuit() {
+        let item = NSMenuItem(title: "Quit Kestrel", action: #selector(quit), keyEquivalent: "q")
+        item.target = self
+        item.attributedTitle = NSAttributedString(
+            string: "Quit Kestrel",
+            attributes: [.foregroundColor: KestrelPalette.dangerColor,
+                         .font: NSFont.menuFont(ofSize: 0)])
+        item.image = StatusMenu.icon("power", tint: KestrelPalette.dangerColor)
+        menu.addItem(item)
     }
 
     private func addItem(_ title: String, _ action: Selector, key: String = "", symbol: String? = nil) {
@@ -105,15 +118,19 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         menu.addItem(item)
     }
 
-    /// A menu item's icon, at the size AppKit expects. Template so it inverts with the menu and
-    /// stays legible when the row is highlighted — a tinted glyph on a blue row does not.
-    private static func icon(_ symbol: String?) -> NSImage? {
+    /// A menu item's icon, at the size AppKit expects. Template by default so it inverts with the
+    /// menu and stays legible on a highlighted row; a `tint` opts out, for the one item that is
+    /// deliberately a colour.
+    private static func icon(_ symbol: String?, tint: NSColor? = nil) -> NSImage? {
         guard let symbol,
               let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         else { return nil }
-        let configured = image.withSymbolConfiguration(
-            .init(pointSize: 13, weight: .regular)) ?? image
-        configured.isTemplate = true
+        var configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        if let tint {
+            configuration = configuration.applying(.init(paletteColors: [tint]))
+        }
+        let configured = image.withSymbolConfiguration(configuration) ?? image
+        configured.isTemplate = tint == nil
         return configured
     }
 

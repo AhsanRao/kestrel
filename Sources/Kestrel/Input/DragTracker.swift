@@ -5,24 +5,16 @@ import os
 /// Watches for a mouse drag while the ask hotkey is held, so the user can circle part of the screen
 /// and ask about that (spec §8.16).
 ///
-/// The press and the release are **swallowed**, not merely observed. They used to be watched with a
-/// passive global monitor, which cannot consume anything, so circling a paragraph in a browser also
-/// selected it, circling a link followed it, and — because every ask hotkey contains Control, and
-/// Control-click is the secondary click on macOS — circling anything at all opened the context menu
-/// on top of the thing the user was trying to ask about. A click aimed at Kestrel should not reach
-/// the app underneath, so while the hotkey is down the button events go nowhere else.
+/// The press and the release are swallowed, not just observed: a passive monitor cannot consume,
+/// so circling a link followed it, and — every ask hotkey contains Control, which is the secondary
+/// click — circling anything opened the context menu over the thing being asked about.
 ///
 /// The movement between them is let through. Consuming a drag stops the window server moving the
-/// pointer, which froze the cursor mid-gesture and — because the trail was read from
-/// `NSEvent.mouseLocation` — recorded a hundred copies of the point where the press landed. Every
-/// circle came out as a dot, failed the minimum span, and was thrown away: the gesture looked
-/// dead. Points now come from each event's own coordinates, which are right whether or not
-/// anything is consumed, and an app that sees drags without ever seeing the press that would have
-/// started them has nothing to act on.
+/// pointer, so the trail became a hundred copies of the press point and every circle came out as a
+/// dot. Points come from each event's own coordinates instead, which are right either way.
 ///
-/// Consuming events needs a real event tap and therefore Accessibility. Without it the old passive
-/// monitor is used instead: circling still works, and still clicks through, which is worse but far
-/// better than the gesture not working at all.
+/// Consuming needs a real event tap and so Accessibility. Without it the passive monitor is the
+/// fallback: circling still works and still clicks through.
 final class DragTracker {
     private let log = Logger(subsystem: "dev.0xash.kestrel", category: "drag")
     private var monitors: [Any] = []
@@ -36,7 +28,6 @@ final class DragTracker {
     /// Called on the main thread as the trail grows, so the overlay can draw it.
     var onChange: (([CGPoint]) -> Void)?
 
-    var isTracking: Bool { tap != nil || !monitors.isEmpty }
 
     /// Left *and* right buttons. With Control held, macOS reports the press as a secondary click,
     /// so a tracker that listened only for the left button saw nothing and consumed nothing.

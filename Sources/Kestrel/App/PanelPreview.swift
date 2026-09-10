@@ -1,5 +1,4 @@
 import AppKit
-import CoreGraphics
 
 /// Shows the panel with sample content, and optionally photographs it.
 ///
@@ -13,10 +12,6 @@ enum PanelPreview {
     }
 
     /// Where to write a PNG of the window, if asked.
-    private static var outputPath: String? {
-        ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"]
-    }
-
     /// A plain backdrop behind the panel, because a black island on a black desktop tells you
     /// nothing about its edges — and its edges are the entire design. `KESTREL_PREVIEW_BACKDROP`
     /// takes `light` or `grid`.
@@ -34,7 +29,7 @@ enum PanelPreview {
         let view = NSView(frame: screen.frame)
         view.wantsLayer = true
         view.layer?.backgroundColor = kind == "grid"
-            ? NSColor(hex: 0x02_58_6F).withAlphaComponent(0.85).cgColor
+            ? NSColor(hex: KestrelPalette.Brand.teal).withAlphaComponent(0.85).cgColor
             : NSColor.white.cgColor
         window.contentView = view
         window.orderFrontRegardless()
