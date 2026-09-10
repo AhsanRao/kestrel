@@ -24,8 +24,10 @@ struct SettingsView: View {
             speech.tabItem { Label("Voice", systemImage: "waveform") }.tag(1)
             advanced.tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }.tag(2)
         }
-        .padding(16)
-        .frame(width: 470, height: 580)
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .safeAreaInset(edge: .bottom, spacing: 0) { BrandFooter().padding(.top, 10) }
+        .frame(width: 470, height: 596)
         .background(GlassBackground().ignoresSafeArea())
         // A settling arrival, matching the panel and onboarding rather than the flat pop of a
         // stock window.
@@ -144,13 +146,14 @@ struct SettingsView: View {
                 Picker("Engine", selection: model.binding(\.transcriptionEngine)) {
                     ForEach(Config.TranscriptionEngine.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                TextField("Words to expect — names, jargon, Roman Urdu",
+                TextField("Words to expect",
                           text: model.optionalStringBinding(\.transcriptionHint))
                 if model.config.transcriptionEngine == .whisper {
                     TextField("Whisper binary", text: model.binding(\.whisperBinary))
                     TextField("Whisper model", text: model.binding(\.whisperModel))
                 }
-                Text("Your audio never leaves this Mac. English only — Roman Urdu comes out in "
+                Text("Names, jargon, Roman Urdu — anything I'd otherwise mishear. Your audio "
+                     + "never leaves this Mac, and it's English only: Roman Urdu comes out in "
                      + "English letters, which is how it's written anyway.")
                     .font(.caption).foregroundStyle(.secondary)
             }

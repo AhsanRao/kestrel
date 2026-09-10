@@ -17,7 +17,7 @@ struct KokoroRowAction: View {
             case .failed(let message):
                 Text(message)
                     .font(.system(size: 11))
-                    .foregroundStyle(KestrelPalette.coral)
+                    .foregroundStyle(KestrelPalette.danger)
                     .frame(width: 168, alignment: .trailing)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Try again") { downloader.start() }
@@ -59,9 +59,9 @@ private struct DownloadMeter: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.16))
+                Capsule().fill(KestrelPalette.track)
                 Capsule()
-                    .fill(KestrelPalette.cyan)
+                    .fill(KestrelPalette.accent)
                     .frame(width: max(6, 168 * fraction))
                     .overlay(alignment: .leading) {
                         if !reduceMotion {

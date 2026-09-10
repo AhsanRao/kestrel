@@ -9,6 +9,36 @@ code, the reason for it is given here.
 
 ---
 
+## [1.5.1] — 2026-09-10 — Colour with a job, and a name at the bottom
+
+### One palette, named by what each colour is for
+
+`KestrelPalette` had six brand values and nothing else, so views reached for `Color.green` for a
+tick here and `Color.secondary.opacity(0.22)` for a track there — two windows, two nearly-identical
+greys, no way to change either without hunting. It now names roles: `accent`, `success`, `warning`,
+`danger`, `surface`, `surfaceBorder`, `track`. Views ask for the job, never the hue, and the brand
+sits underneath in one place. The success green is cooled towards the logo's cyan so a row of ticks
+beside the rail reads as one palette rather than two.
+
+### Setup fills its window
+
+Every step laid out from the top, which left the short ones pinned under the rail with the rest of
+the window empty below. Content is centred in the room between the rail and the footer now, and
+scrolls only when a step genuinely needs more than that.
+
+### The logo, the version, the notice
+
+Both setup and settings carry a quiet strip along the bottom: the mark, the version, and who wrote
+it. It says which build you are looking at, and it gives the bottom of a glass window somewhere to
+end. The welcome step opens with the app icon.
+
+`make icon` now also writes `assets/KestrelMark.png` — the artwork with its alpha rather than the
+plated icon — and `build.sh` ships it as the logo. The plate is right in the Dock and wrong on
+glass; the bare mark is the other way round at large sizes, which is why the welcome screen uses
+the icon and everything else uses the mark.
+
+---
+
 ## [1.5.0] — 2026-09-10 — Made of the same glass
 
 ### Setup is five steps, one thing at a time

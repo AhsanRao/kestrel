@@ -24,7 +24,8 @@ struct StepHeading: View {
 /// Step one. What Kestrel is, in the time it takes to read one screen.
 struct WelcomeStep: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
+            AppIconMark(size: 60)
             StepHeading(title: "Hey — I'm Kestrel.",
                         detail: "Hold ⌃⌥, ask about whatever's on your screen, and I'll answer out "
                               + "loud. Let go and I'm gone again.")
@@ -47,7 +48,7 @@ struct WelcomeStep: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 14))
-                .foregroundStyle(KestrelPalette.cyan)
+                .foregroundStyle(KestrelPalette.accent)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13, weight: .medium))
@@ -81,7 +82,7 @@ struct VoiceStep: View {
                                                 : "Using a macOS voice. That works too.",
                           systemImage: "checkmark.circle.fill")
                         .font(.system(size: 13))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(KestrelPalette.success)
                 } else {
                     KokoroRowAction(downloader: downloader, model: model)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,8 +206,8 @@ private struct HotkeyCard: View {
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 7,
-                                                                              style: .continuous))
+                .background(KestrelPalette.surfaceStrong,
+                            in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             Text(detail)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)

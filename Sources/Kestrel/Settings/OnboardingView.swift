@@ -19,14 +19,19 @@ struct OnboardingView: View {
                 .padding(.top, 40)
                 .padding(.bottom, 22)
 
-            // Scrolls only when a step runs long — the ready step with four things outstanding is
-            // the tall one — so nothing is ever cut off at a fixed window height.
-            ScrollView {
-                content.padding(.bottom, 8)
+            // Centred in whatever room is left, and scrolling only once a step needs more than
+            // that. A step laid out from the top leaves its short screens sitting against the rail
+            // with the rest of the window empty under them.
+            GeometryReader { geometry in
+                ScrollView {
+                    content
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: geometry.size.height)
+                }
             }
-            .frame(maxHeight: .infinity)
 
             footer
+            BrandFooter()
         }
         // One size for every step: a window that resizes as the content changes turns a step
         // change into two movements, and only one of them is the one being asked for.
@@ -83,7 +88,8 @@ struct OnboardingView: View {
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 26)
-        .padding(.vertical, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
     }
 
     private var primaryTitle: String {
@@ -123,7 +129,7 @@ private struct StepRail: View {
                 let done = step.rawValue < current.rawValue
                 VStack(spacing: 6) {
                     Capsule()
-                        .fill(done || step == current ? KestrelPalette.cyan : Color.secondary.opacity(0.22))
+                        .fill(done || step == current ? KestrelPalette.accent : KestrelPalette.track)
                         .frame(height: 3)
                     Text(step.title)
                         .font(.system(size: 10, weight: step == current ? .semibold : .regular))

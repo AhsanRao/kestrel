@@ -87,20 +87,3 @@ final class PanelModel: ObservableObject {
         }
     }
 }
-
-/// Taken from the shipped logo (`assets/kestrel-logo.svg`): deep navy body, cyan waveform.
-/// The spec's §15 table described a cream/amber concept that the final artwork replaced.
-enum KestrelPalette {
-    /// The island's fill. Pure black with no opacity of its own and no material behind it, because
-    /// it has to be the same colour as the camera housing it grows out of — anything lighter, or
-    /// anything that lets the wallpaper through, puts a visible edge around the notch.
-    static let housing = Color(.sRGB, red: 0, green: 0, blue: 0, opacity: 1)
-    static let navy = Color(red: 0.059, green: 0.125, blue: 0.220)
-    static let cyan = Color(red: 0.165, green: 0.941, blue: 0.855)
-    static let blue = Color(red: 0.180, green: 0.361, blue: 0.541)
-    /// The same blue, lifted for use on black.
-    static let sky = Color(red: 0.404, green: 0.667, blue: 0.949)
-    static let cream = Color(red: 0.961, green: 0.945, blue: 0.910)
-    static let coral = Color(red: 0.847, green: 0.353, blue: 0.188)
-    static let idle = Color.secondary
-}

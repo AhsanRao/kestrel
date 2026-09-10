@@ -25,12 +25,14 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 cp -R Resources/Prompts "$APP/Contents/Resources/"
 cp Resources/DefaultMemory.md "$APP/Contents/Resources/"
 
-if [ ! -f assets/AppIcon.icns ] || [ ! -f assets/MenuBarIcon.png ]; then
+if [ ! -f assets/AppIcon.icns ] || [ ! -f assets/MenuBarIcon.png ] || [ ! -f assets/KestrelMark.png ]; then
   echo "==> icons missing, generating"
   ./scripts/make-icon.sh
 fi
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp assets/MenuBarIcon.png "$APP/Contents/Resources/MenuBarIcon.png"
+# The artwork without the icon's plate, for the logo in the setup and settings windows.
+cp assets/KestrelMark.png "$APP/Contents/Resources/Logo.png"
 
 # Ad-hoc signing (`--sign -`) derives the signature from a hash of the binary, so *every* rebuild
 # produces a new identity and macOS silently drops Accessibility and Screen Recording — the grant

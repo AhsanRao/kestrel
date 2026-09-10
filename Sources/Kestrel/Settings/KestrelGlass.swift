@@ -34,10 +34,10 @@ struct GlassPanel: ViewModifier {
     func body(content: Content) -> some View {
         content.background(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
+                .fill(KestrelPalette.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.09), lineWidth: 1)
+                        .strokeBorder(KestrelPalette.surfaceBorder, lineWidth: 1)
                 )
         )
     }

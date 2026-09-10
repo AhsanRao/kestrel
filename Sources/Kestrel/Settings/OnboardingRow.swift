@@ -11,7 +11,8 @@ struct OnboardingRow: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: item.ok ? "checkmark.circle.fill" : symbol)
                 .font(.system(size: 16))
-                .foregroundStyle(item.ok ? Color.green : (item.isRequired ? KestrelPalette.coral : .secondary))
+                .foregroundStyle(item.ok ? KestrelPalette.success
+                                         : (item.isRequired ? KestrelPalette.danger : .secondary))
                 .frame(width: 22)
                 // A tick that lands with a small bounce is the whole reward for granting a
                 // permission in another app and coming back.
@@ -26,7 +27,7 @@ struct OnboardingRow: View {
                         Text("optional")
                             .font(.system(size: 10, weight: .semibold))
                             .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(Color.secondary.opacity(0.15), in: Capsule())
+                            .background(KestrelPalette.track, in: Capsule())
                             .foregroundStyle(.secondary)
                     }
                 }

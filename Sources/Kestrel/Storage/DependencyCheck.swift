@@ -34,7 +34,7 @@ enum DependencyCheck {
             case .whisperModel: return "The model whisper reads from. About 148 MB."
             case .voice: return "My proper voice. Skip it and I'll use one of macOS's instead."
             case .claude: return "How I think. Runs on your Claude subscription."
-            case .codex: return "A second brain, on your ChatGPT subscription. Optional."
+            case .codex: return "A second brain, on your ChatGPT subscription."
             }
         }
 

@@ -4,6 +4,7 @@ Kestrel.app/
 assets/AppIcon.iconset/
 assets/AppIcon.icns
 assets/AppIconMaster.png
+assets/KestrelMark.png
 .DS_Store
 *.xcodeproj
 .agents/

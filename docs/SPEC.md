@@ -218,6 +218,7 @@ kestrel/
 │       ├── Output/
 │       │   ├── TextInjector.swift
 │       │   ├── PanelWindow.swift
+│       │   ├── KestrelPalette.swift       # the colours, by the job they do
 │       │   ├── PanelFrameAnimator.swift   # the window frame, sprung and display-synced
 │       │   ├── PanelSpring.swift          # one number on a spring
 │       │   ├── ClippedText.swift          # text cut at a line count, saying how much is left
@@ -233,6 +234,7 @@ kestrel/
 │           ├── SettingsWindow.swift
 │           ├── SettingsView.swift
 │           ├── KestrelGlass.swift        # the menu's material, for Kestrel's own windows
+│           ├── BrandMark.swift           # the logo, the version, the notice
 │           ├── ModelPicker.swift          # choose a model, never type one
 │           ├── OnboardingWindow.swift
 │           ├── OnboardingView.swift       # the shell: rail, step, footer
@@ -400,6 +402,16 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   the window's own background.
 - The island is the exception and stays pure black (§8.11). It has to match the camera housing;
   anything translucent there puts a seam around the notch.
+- A step's content is centred in the room left between the rail and the footer, and scrolls only
+  once it needs more than that.
+- `KestrelPalette` is the single source of colour. Views name a role — `accent`, `success`,
+  `danger`, `surface`, `track` — never a hue; the six brand values under them come from the logo.
+  Two nearly-identical greens in adjacent windows is what naming by role prevents.
+- Both windows carry `BrandFooter`: the mark, the version from `CFBundleShortVersionString`, and
+  the notice. `build.sh` copies `assets/KestrelMark.png` in as `Logo.png` — the artwork with its
+  alpha, not the plated icon, which `make icon` extracts alongside the icon masters. The welcome
+  step uses the app icon itself, because most of the bare mark is a navy that disappears on dark
+  glass at that size.
 
 ### 8.12 StatusMenu
 - Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers (toggle), Cleanup dictation (toggle), Open memory file, Open settings, Check dependencies, Quit.

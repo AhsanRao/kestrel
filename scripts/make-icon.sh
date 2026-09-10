@@ -33,6 +33,10 @@ if [ ! -s "$WORK/logo.png" ]; then
   mv "$WORK"/*.png "$WORK/logo.png"
 fi
 
+# The artwork on its own, alpha intact, for the logo in Kestrel's own windows. The icon masters
+# below sit it on a plate, which is right for the Dock and wrong on glass.
+cp "$WORK/logo.png" "$ASSETS/KestrelMark.png"
+
 echo "==> building masters"
 swift scripts/icon-tool.swift "$WORK/logo.png" "$ASSETS"
 
@@ -48,4 +52,4 @@ done
 iconutil -c icns "$ICONSET" -o "$ASSETS/AppIcon.icns"
 
 echo "==> done"
-ls -la "$ASSETS/AppIcon.icns" "$ASSETS/MenuBarIcon.png" "$ASSETS/kestrel-menubar-template.svg"
+ls -la "$ASSETS/AppIcon.icns" "$ASSETS/MenuBarIcon.png" "$ASSETS/KestrelMark.png" "$ASSETS/kestrel-menubar-template.svg"
