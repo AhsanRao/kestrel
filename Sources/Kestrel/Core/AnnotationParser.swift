@@ -58,10 +58,24 @@ enum AnnotationParser {
         var isEmpty: Bool { elements.isEmpty && labels.isEmpty }
     }
 
-    /// True for a streamed sentence that is really the marker line, so it is never read out loud.
-    static func isMarker(_ sentence: String) -> Bool {
-        let head = sentence.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        return head.hasPrefix(marker) || head.hasPrefix(legacyMarker)
+    /// Splits a line into what the user hears and what Kestrel draws.
+    ///
+    /// The marker is asked for on its own line and usually gets one. When it does not — "What's
+    /// up? MARK: none", all on one line — matching only at the start of a line left the marker in
+    /// the prose, and Kestrel read the word "mark" and the word "none" out loud at the end of an
+    /// otherwise good answer. Marks are drawn, never narrated.
+    static func split(_ line: String) -> (kept: String, marker: String?) {
+        for needle in [marker, legacyMarker] {
+            guard let range = line.range(of: needle, options: .caseInsensitive) else { continue }
+            return (String(line[line.startIndex..<range.lowerBound]),
+                    String(line[range.upperBound...]))
+        }
+        return (line, nil)
+    }
+
+    /// The part of a sentence that is really the answer. Empty when the whole of it was a marker.
+    static func withoutMarker(_ sentence: String) -> String {
+        split(sentence).kept.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func parse(_ raw: String) -> Result {
@@ -71,11 +85,11 @@ enum AnnotationParser {
         var sawMarker = false
 
         for line in raw.components(separatedBy: .newlines) {
-            guard isMarker(line) else { kept.append(line); continue }
+            let (prose, body) = split(line)
+            guard let body else { kept.append(line); continue }
             sawMarker = true
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            let head = trimmed.uppercased().hasPrefix(marker) ? marker.count : legacyMarker.count
-            let body = trimmed.dropFirst(head)
+            // Whatever came before the marker on the same line is still the answer.
+            if !prose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { kept.append(prose) }
             for token in body.components(separatedBy: ",") {
                 let cleaned = token.trimmingCharacters(in: CharacterSet(charactersIn: " \t\"'“”.·—-[]()"))
                 guard !cleaned.isEmpty, cleaned.lowercased() != "none" else { continue }

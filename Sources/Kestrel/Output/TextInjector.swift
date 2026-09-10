@@ -46,9 +46,14 @@ enum TextInjector {
     }
 
     /// Main thread only. Throws when Accessibility has not been granted.
-    static func inject(_ text: String, mode: Config.InjectMode) throws {
-        let payload = sanitize(text, frontmostBundleID: frontmostBundleID())
-        guard !payload.isEmpty else { return }
+    ///
+    /// - Parameter spaced: put a space in front of it. Live dictation arrives a phrase at a time
+    ///   and each phrase is typed as it lands, so something has to keep the words apart — and it
+    ///   cannot be a leading space in the text itself, which `sanitize` trims off.
+    static func inject(_ text: String, mode: Config.InjectMode, spaced: Bool = false) throws {
+        let cleaned = sanitize(text, frontmostBundleID: frontmostBundleID())
+        guard !cleaned.isEmpty else { return }
+        let payload = spaced ? " " + cleaned : cleaned
         guard hasAccessibilityPermission else { throw KestrelError.accessibilityDenied }
 
         if mode == .type {

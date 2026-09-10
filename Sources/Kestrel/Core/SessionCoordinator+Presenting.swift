@@ -73,8 +73,10 @@ extension SessionCoordinator {
         guard case .thinking = machine.state else { return }
         // The answer got here first, so the filler is not needed.
         cancelAcknowledgement()
-        // The trailing marker line is an instruction to Kestrel, not part of the answer.
-        guard !AnnotationParser.isMarker(sentence) else { return }
+        // The marker is an instruction to Kestrel, not part of the answer — including when the
+        // model puts it on the end of a sentence rather than on a line of its own.
+        let sentence = AnnotationParser.withoutMarker(sentence)
+        guard !sentence.isEmpty else { return }
         // Everything from the DRAFT: line onward is the thing the user asked to be written, and
         // reading an email out loud is nobody's idea of help. The decision has to be made here,
         // sentence by sentence, because speech starts before the whole answer exists.
@@ -152,8 +154,6 @@ extension SessionCoordinator {
                 try TextInjector.inject(output, mode: self.config.injectMode)
                 self.panel.model.transcript = output
                 self.apply(.injected)
-                self.render()
-                self.panel.hide(after: 3)
             } catch {
                 self.fail(error)
             }

@@ -9,6 +9,56 @@ code, the reason for it is given here.
 
 ---
 
+## [1.7.0] — 2026-09-10 — dictation that types while you talk
+
+Dictation used to be a recording: tap, say the whole thing, tap again, wait, and the paragraph
+appeared at once — when it worked at all. Now the words land in the app as they are spoken, a
+phrase at a time, and the take ends itself once you have been quiet. The shortcut is `⌃⌘D`.
+
+`AppleLiveDictation` feeds the microphone into `SpeechAnalyzer` as it arrives instead of handing it
+a finished file. Only settled text is typed; the engine's running guess goes on the panel, because
+it is rewritten with every syllable and nothing that changes belongs in a document. There is no
+model cleanup pass on this path — it rewrites a finished paragraph, and by then the paragraph has
+already been typed — so the local rules do the work, minus the two that only make sense for a
+finished thought: a fragment is not capitalised and gets no full stop. whisper, and macOS below 26,
+cannot transcribe a stream and keep the recorded take exactly as it was.
+
+What counts as a pause took three tries, all measured against the real engine. The microphone level
+alone cannot tell a quiet room from a quiet person. Recognised words alone arrive up to two seconds
+late, and a take ended on those cut the start of the next sentence off. `SpeechDetector`, the
+framework's own voice-activity module, reported nothing at all. So `SilenceWatch` ends the take when
+the room has been quiet for `dictationSilenceSeconds` — 2.5 s by default, or Off in Settings ▸
+Typing — *and* the transcriber has had a moment to catch up; or, for a room that never falls quiet,
+when nothing has been recognised in twice that.
+
+Before any of it could work, the shortcut had to. Pressing it a second time did nothing: the panel
+sat on "Dictating" until the user gave up and pressed Esc, which threw the recording away. Carbon
+does not deliver `kEventHotKeyReleased` when the modifiers are let up before the key — the ordinary
+way to let go of a chord — and `HotkeyService` was pairing each press against the release of the one
+before it. One lost release left the key marked down forever, and every press after it was discarded
+as auto-repeat. Presses now stand on their own and only the keyboard's repeat rate (0.3 s) suppresses
+one; releases are still paired, so push-to-talk cannot be ended by a release that never had a press.
+
+Marks are drawn, never narrated. The model is asked to name what it is pointing at on a line of its
+own, and when it put that on the end of a sentence instead — "What's up? MARK: none" — Kestrel read
+the marker out loud as part of the answer. It is now stripped wherever it appears, before a sentence
+is spoken and before the answer is recorded.
+
+A failure from `claude` or `codex` reads as a sentence. When Claude Code hit the plan's usage limit
+it exited non-zero with an empty stderr and the reason somewhere inside a stdout full of hook events,
+and the panel showed 400 characters of `{"type":"system","subtype":"hook_started"…`. A failed run is
+now judged on everything it printed, not just stderr; the human fields are pulled out of the JSON
+before anything is shown; and a quota refusal names the hour it lifts — "You're out of Claude until
+4:15 pm" — because that is what decides whether to wait or switch brains.
+
+The island no longer says "Ready". It sat there for three seconds after every dictation and again at
+the end of every answer, which is a window telling the user that nothing is happening. It is also
+narrower — 420 points opened, 300 closed, down from 470 and 330 — because it sits over the user's
+own screen and every point of it covers something they were looking at. Not narrower than the words
+in it, though: the floor is what "Transcribing" needs beside its indicator.
+
+---
+
 ## [1.6.1] — 2026-09-10 — 300 lines that only their own tests were using
 
 `KeyChord`, `KeyEvents` and `MarkPlan` had no callers in the app. All three were left from the

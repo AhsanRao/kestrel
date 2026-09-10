@@ -16,6 +16,19 @@ enum DictationTidy {
         text.split(whereSeparator: \.isWhitespace).count > wordsWorthAModel
     }
 
+    /// One settled stretch of live dictation, on its way straight into the app.
+    ///
+    /// The same rules as `clean`, minus the two that only make sense for a finished thought: a
+    /// fragment is not capitalised, because it usually continues the sentence already typed, and
+    /// it is not given a full stop, because the speaker has not finished.
+    static func cleanFragment(_ text: String) -> String {
+        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !result.isEmpty else { return result }
+        result = spokenPunctuation(in: result)
+        result = withoutFillers(result)
+        return collapsingSpaces(result)
+    }
+
     static func clean(_ text: String) -> String {
         var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !result.isEmpty else { return result }

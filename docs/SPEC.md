@@ -8,7 +8,7 @@ should be corrected — see `CLAUDE.md`.
 
 ## 1. One-paragraph brief
 
-Kestrel is a personal, voice-first, screen-aware assistant for macOS. Hold a hotkey, ask a question about what is on screen, and hear the answer. Toggle another hotkey to dictate into any app. It draws on the real screen while it talks, marking whatever the answer is about, and writes drafts you can copy. It runs entirely on the user's existing **Claude Pro/Max** and/or **ChatGPT Plus/Pro** subscriptions by delegating to the vendors' own CLIs (`claude -p`, `codex exec`), which is the sanctioned way to use those plans programmatically. Speech-to-text is local. There is no Kestrel backend, no accounts, no telemetry.
+Kestrel is a personal, voice-first, screen-aware assistant for macOS. Hold a hotkey, ask a question about what is on screen, and hear the answer. Tap another hotkey and talk, and the words appear in whatever app you are in as you say them, stopping when you do. It draws on the real screen while it talks, marking whatever the answer is about, and writes drafts you can copy. It runs entirely on the user's existing **Claude Pro/Max** and/or **ChatGPT Plus/Pro** subscriptions by delegating to the vendors' own CLIs (`claude -p`, `codex exec`), which is the sanctioned way to use those plans programmatically. Speech-to-text is local. There is no Kestrel backend, no accounts, no telemetry.
 
 Kestrel is a single-user tool. Everything a commercial assistant needs in order to serve thousands of people — accounts, billing, a routing backend, telemetry, proactive tracking — is intentionally absent. It runs on the machine, on the owner's own subscriptions, and there is nowhere for it to phone home to.
 
@@ -117,10 +117,25 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
 
 ### 5.3 Request flow — dictation (v1)
 
-1. `⌃⌥D` toggles `dictating`. Panel shows a red indicator.
-2. Second `⌃⌥D` stops capture, transcribes.
-3. If `cleanupDictation` is on: `DictationTidy` fixes punctuation, capitals, fillers and spoken commands ("comma", "new line") locally, in microseconds. Only text over `DictationTidy.wordsWorthAModel` words then goes to the backend, with the tidied version as the fallback if that fails or times out.
-4. `TextInjector` writes to the pasteboard, sends ⌘V to the focused app, restores the previous pasteboard after ~400 ms. Falls back to typing via CGEvent key events if paste is rejected (terminals, some Electron apps).
+Live, where the engine can stream — macOS 26 with Apple's transcriber, which is the default:
+
+1. The hotkey toggles `dictating`. `AppleLiveDictation` starts, feeding the microphone into
+   `SpeechAnalyzer` as it is spoken rather than recording a file.
+2. Each settled stretch of speech is tidied by `DictationTidy.cleanFragment` and typed straight into
+   the app, a phrase at a time, while the sentence is still going. The engine's running guess goes
+   on the panel and nowhere else: it is rewritten with every syllable, and nothing that changes
+   belongs in the user's document.
+3. The take ends on the hotkey again, or on a pause of `dictationSilenceSeconds` — see
+   `SilenceWatch` for what counts as a pause.
+4. There is no model cleanup pass on this path. It rewrites a finished paragraph, and the paragraph
+   is already in the user's document a phrase at a time; `cleanupDictation` still governs the local
+   rules, which is what makes a phrase safe to type the moment it lands.
+
+Recorded, under whisper or below macOS 26:
+
+1. The hotkey toggles `dictating`; the second press stops capture and transcribes the WAV.
+2. If `cleanupDictation` is on: `DictationTidy` fixes punctuation, capitals, fillers and spoken commands ("comma", "new line") locally, in microseconds. Only text over `DictationTidy.wordsWorthAModel` words then goes to the backend, with the tidied version as the fallback if that fails or times out.
+3. `TextInjector` writes to the pasteboard, sends ⌘V to the focused app, restores the previous pasteboard after ~400 ms. Falls back to typing via CGEvent key events if paste is rejected (terminals, some Electron apps).
 
 ### 5.4 State machine
 
@@ -142,7 +157,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 |---|---|---|
 | Language / UI | Swift 5.9, AppKit shell with SwiftUI views | Electron/Tauri: heavier, worse permission story, not "native" |
 | Build system | Swift Package Manager + `build.sh` to assemble the `.app` bundle; Xcode project added only if needed for signing/notarization later | Xcode project first: slower to iterate, harder for Claude Code to edit |
-| Global hotkeys | Carbon `RegisterEventHotKey` for a keyed shortcut; `CGEventTap` for a bare modifier chord, which Carbon cannot register | Tap for everything: needs Accessibility just to hear keys. Carbon delivers press **and** release with no permission, so dictation keeps it — but holding ⌃⌥ for the length of a sentence is a better gesture for asking than a chord plus a letter, and that costs the grant. |
+| Global hotkeys | Carbon `RegisterEventHotKey` for a keyed shortcut; `CGEventTap` for a bare modifier chord, which Carbon cannot register | Tap for everything: needs Accessibility just to hear keys. Carbon needs no permission, which is why the keyed shortcut keeps it — but its release event is not dependable: let the modifiers up before the key, as most people do, and `kEventHotKeyReleased` never arrives. Dictation is a toggle and only reads presses, so it does not care; the held ask gesture is a chord for other reasons anyway. |
 | Audio capture | `AVAudioEngine` with `AVAudioConverter` to 16 kHz mono Int16 WAV | Raw Core Audio: more code for no gain |
 | Speech-to-text | Apple's `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26+), the system dictation engine, on-device; whisper.cpp CLI as the fallback below macOS 26 and as a config override | `SFSpeechRecognizer`: the old API, weaker and superseded; whisper as the default: ~6× slower on the same clip and a 148 MB model to install; cloud STT: violates local-first |
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
@@ -204,7 +219,11 @@ kestrel/
 │       │   └── ScreenGrabber.swift
 │       ├── Speech/
 │       │   ├── Transcriber.swift          # protocol + RoutingTranscriber
-│       │   ├── AppleSpeechTranscriber.swift # SpeechAnalyzer, macOS 26+
+│       │   ├── AppleSpeechTranscriber.swift # SpeechAnalyzer on a finished file, macOS 26+
+│       │   ├── LiveDictation.swift        # protocol + what this Mac can actually stream
+│       │   ├── AppleLiveDictation.swift   # SpeechAnalyzer on the live microphone
+│       │   ├── AppleLiveDictation+Audio.swift # the tap, the format conversion, the level
+│       │   ├── SilenceWatch.swift         # the pause that ends a live take
 │       │   ├── WhisperTranscriber.swift
 │       │   ├── Speaker.swift              # protocol behind the two voice engines
 │       │   ├── SpeechOutput.swift         # routes to one, strips markdown, checks mute
@@ -286,8 +305,9 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 
 ### 8.1 HotkeyService
 - Registers two global hotkeys with Carbon; delivers `pressed`/`released` events on the main thread.
-- Defaults: `⌃⌥Space` = ask (hold), `⌃⌥D` = dictation (toggle). Configurable via `config.json` (key code + modifiers). Settings UI in M3.
+- Defaults: `⌃⌥` held = ask, `⌃⌘D` = dictation (toggle). The two must not share modifiers: with dictation on `⌃⌥D` the one gesture fired both, the chord starting a question that the letter then aborted. Configurable via `config.json` (key code + modifiers). Settings UI in M3.
 - Edge cases: re-register on config change; ignore auto-repeat; Caps Lock must not break modifiers; if registration fails (conflict), surface a panel error naming the conflicting combo.
+- `HotkeyPressFilter` decides what counts. Auto-repeat is suppressed by time (0.3 s), never by a remembered "still down" flag: Carbon drops the release when the modifiers are let up first, and a flag left stuck down swallows every press after it — which is exactly how dictation used to turn on and refuse to turn off. A release is still paired against a press, so push-to-talk cannot be ended by one it never saw start.
 
 ### 8.2 AudioCapture
 - Starts/stops recording from the default input to a temp 16 kHz mono Int16 WAV.
@@ -325,7 +345,9 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 ### 8.5 Backend protocol
 - Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup`), `maxTokens` hint.
 - Output `Answer`: `text`, `raw` (full CLI output for debugging), `durationMs`, optional `steps` (v2).
-- Requirements: cancellable (kill the subprocess), timeouts (ask 75 s, cleanup 20 s — a question still unanswered past that has gone wrong, and a dead island for two minutes is worse than being asked to try again), never throws on non-zero exit without including stderr in the error.
+- Requirements: cancellable (kill the subprocess), timeouts (ask 75 s, cleanup 20 s — a question still unanswered past that has gone wrong, and a dead island for two minutes is worse than being asked to try again), never throws on non-zero exit without saying what the CLI printed.
+- What a failed run says is judged on everything it printed — stderr *and* stdout — because a run that dies on the plan's usage limit exits non-zero with an empty stderr and buries the reason in stream-json. That widening applies to failures only: on a successful run the answer and its token counts are not diagnostics, and reading them as such is what once ended good answers in "usage limit reached".
+- Nothing raw reaches the panel. `BackendSupport.readableFailure` keeps the human fields of each JSON object and drops the machinery, so a failure reads as a sentence rather than as `{"type":"system","subtype":"hook_started"…`. A quota refusal carries the reset time the CLI names (`usage limit reached|<epoch>`), because the user's next move depends on whether the wait is twenty minutes or two days.
 
 ### 8.6 ClaudeBackend
 - Command contract (verify against `claude --help` at build time; flags drift):
@@ -370,6 +392,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 
 ### 8.10 TextInjector
 - Pasteboard + synthetic ⌘V, restore previous pasteboard contents after the target app consumes the paste.
+- `spaced:` puts a space in front of the payload. Live dictation types a phrase at a time and something has to keep the words apart, which cannot be a leading space in the text itself — `sanitize` trims that off.
 - Fallback: per-character CGEvent typing when paste is rejected or when config `injectMode = type`.
 - Safety: collapse newlines when the frontmost app is a terminal (Terminal, iTerm2, Warp, Ghostty bundle ids) so dictated text can never execute as commands.
 - Requires Accessibility permission; prompt once and explain why.
@@ -483,8 +506,9 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 | `voiceIdentifier` | string or null | null | `system` engine only. When null, the best ranked voice: Personal Voice if one exists, else premium |
 | `voiceRate` | float | 0.52 | |
 | `cleanupDictation` | bool | true | |
+| `dictationSilenceSeconds` | float | 2.5 | how long a pause ends a live take; `0` means only the hotkey does. Clamped to 1–30 |
 | `injectMode` | `"paste" \| "type"` | `"paste"` | |
-| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌃⌥Space / ⌃⌥D | |
+| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌃⌥ held / ⌃⌘D | |
 | `panelAutoHideSeconds` | int | 20 | |
 | `screenshotMaxEdge` | int | 2048 | |
 | `apiKeys.anthropic` / `apiKeys.openai` | string or null | null | optional pay-as-you-go override |

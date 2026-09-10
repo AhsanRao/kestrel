@@ -83,7 +83,10 @@ extension SessionCoordinator {
 
     func render() {
         panel.model.state = machine.state
-        guard machine.state != .idle else { return }
+        // Idle is not a thing to announce. The island used to sit there afterwards reading
+        // "Ready" — for three seconds after a dictation, and again at the end of an answer — which
+        // is a window telling the user that nothing is happening.
+        guard machine.state != .idle else { return panel.rollUp() }
         panel.show()
     }
 }

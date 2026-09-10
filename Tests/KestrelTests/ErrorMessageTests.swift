@@ -12,7 +12,7 @@ final class ErrorMessageTests: XCTestCase {
             .microphoneDenied,
             .screenRecordingDenied,
             .accessibilityDenied,
-            .quotaExhausted("Claude"),
+            .quotaExhausted("Claude", resets: nil),
         ]
         for error in cases {
             let message = error.errorDescription ?? ""
@@ -32,6 +32,18 @@ final class ErrorMessageTests: XCTestCase {
 
     func testBackendFailureIncludesStderr() {
         let message = KestrelError.backendFailed(name: "claude", stderr: "boom: bad flag").errorDescription
-        XCTAssertEqual(message, "claude failed: boom: bad flag")
+        XCTAssertEqual(message, "claude stopped short — boom: bad flag")
+    }
+
+    /// A CLI that refuses on quota names the hour it will work again, and that hour is the whole
+    /// point of the message: without it the user cannot tell a twenty-minute wait from a two-day one.
+    func testQuotaErrorNamesTheResetTime() {
+        let resets = Date().addingTimeInterval(90 * 60)
+        let message = KestrelError.quotaExhausted("Claude", resets: resets).errorDescription ?? ""
+        XCTAssertTrue(message.contains("until"), message)
+        XCTAssertTrue(message.contains(KestrelError.clockTime(resets)), message)
+
+        let vague = KestrelError.quotaExhausted("Claude", resets: nil).errorDescription ?? ""
+        XCTAssertTrue(vague.contains("for now"), vague)
     }
 }

@@ -46,9 +46,10 @@ final class AnnotationParserTests: XCTestCase {
     }
 
     func testTheMarkerIsRecognisedForSpeechSuppression() {
-        XCTAssertTrue(AnnotationParser.isMarker("MARK: 4"))
-        XCTAssertTrue(AnnotationParser.isMarker("  mark: none  "))
-        XCTAssertFalse(AnnotationParser.isMarker("The point is that it saves automatically."))
+        XCTAssertEqual(AnnotationParser.withoutMarker("MARK: 4"), "")
+        XCTAssertEqual(AnnotationParser.withoutMarker("  mark: none  "), "")
+        XCTAssertEqual(AnnotationParser.withoutMarker("The point is that it saves automatically."),
+                       "The point is that it saves automatically.")
     }
 
     func testMarksAreCappedSoTheScreenStaysReadable() {
@@ -235,5 +236,38 @@ final class AnnotationParserTests: XCTestCase {
         let answer = "The bookmarks section of the page is doing too much."
         XCTAssertFalse(AnnotationParser.inferred(from: answer, targets: furniture).isEmpty,
                        "the parser itself still matches — the pipeline is what must decline")
+    }
+}
+
+/// The marker is drawn, never narrated.
+final class AnnotationMarkerSplitTests: XCTestCase {
+    /// The bug this exists for: the model ended its answer and started the marker on the same line,
+    /// so "mark none" was read out after an otherwise perfect reply.
+    func testAMarkerSharingALineWithTheAnswerIsNotSpoken() {
+        let raw = "Good. Ready to work. What's up? MARK: none"
+        let result = AnnotationParser.parse(raw)
+        XCTAssertEqual(result.spoken, "Good. Ready to work. What's up?")
+        XCTAssertTrue(result.isEmpty)
+        XCTAssertTrue(result.declaredNothing)
+    }
+
+    func testAnInlineMarkerStillNamesItsTargets() {
+        let result = AnnotationParser.parse("Click the blue one. MARK: 12, \"Sign in\"")
+        XCTAssertEqual(result.spoken, "Click the blue one.")
+        XCTAssertEqual(result.elements, [12])
+        XCTAssertEqual(result.labels, ["Sign in"])
+    }
+
+    /// What the streamed path calls on every sentence before it is spoken.
+    func testWithoutMarkerKeepsTheProseAndDropsTheRest() {
+        XCTAssertEqual(AnnotationParser.withoutMarker("What's up? MARK: none"), "What's up?")
+        XCTAssertEqual(AnnotationParser.withoutMarker("MARK: 3"), "")
+        XCTAssertEqual(AnnotationParser.withoutMarker("Nothing to strip."), "Nothing to strip.")
+    }
+
+    func testAMarkerOnItsOwnLineStillWorks() {
+        let result = AnnotationParser.parse("Press it.\nMARK: 4")
+        XCTAssertEqual(result.spoken, "Press it.")
+        XCTAssertEqual(result.elements, [4])
     }
 }

@@ -21,6 +21,8 @@ struct Config: Codable, Equatable {
     var kokoroVoice: String
 
     var cleanupDictation: Bool
+    /// How long a pause ends a live dictation. 0 leaves it running until the hotkey is pressed again.
+    var dictationSilenceSeconds: Double
     var injectMode: InjectMode
 
     var hotkeys: Hotkeys
@@ -52,6 +54,7 @@ struct Config: Codable, Equatable {
         voiceIdentifier: nil,
         kokoroVoice: KokoroVoice.default.id,
         cleanupDictation: true,
+        dictationSilenceSeconds: 2.5,
         injectMode: .paste,
         hotkeys: .defaults,
         panelAutoHideSeconds: 20,
@@ -88,11 +91,15 @@ struct Config: Codable, Equatable {
         /// out a short dwell before firing, so that ⌃⌥ on its way to some other shortcut is not
         /// mistaken for a question (see `ModifierChordDetector`).
         ///
-        /// Dictation stays a keyed hotkey: it is a tap, not a hold, and ⌃⌘ is the quietest pair on
-        /// macOS — the system claims only ⌃⌘Space, ⌃⌘D, ⌃⌘F and ⌃⌘Q, and K is free in it.
+        /// Dictation stays a keyed hotkey: it is a tap, not a hold, and a bare chord cannot be
+        /// tapped twice in a row without the second tap looking like the first still being held.
+        ///
+        /// Its modifiers must not be the ask chord's. ⌃⌥D was tried and both hotkeys fired from the
+        /// one gesture: holding ⌃⌥ on the way to D is a question starting, and the D then aborted
+        /// it. ⌃⌘ shares nothing with ⌃⌥, so the two cannot be confused for each other.
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: nil, modifiers: ["control", "option"]),       // ⌃⌥ held
-            dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])    // ⌃⌘K
+            ask: HotkeyBinding(keyCode: nil, modifiers: ["control", "option"]),      // ⌃⌥ held
+            dictate: HotkeyBinding(keyCode: 2, modifiers: ["control", "command"])    // ⌃⌘D
         )
     }
 
@@ -147,6 +154,8 @@ struct Config: Codable, Equatable {
         panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
         followUpSeconds = min(max(followUpSeconds, 0), 900)
         screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
+        // Under a second, an ordinary pause mid-sentence would end the dictation.
+        dictationSilenceSeconds = dictationSilenceSeconds <= 0 ? 0 : min(max(dictationSilenceSeconds, 1), 30)
     }
 }
 
@@ -180,6 +189,7 @@ extension Config {
         voiceIdentifier = opt(.voiceIdentifier)
         kokoroVoice = v(.kokoroVoice, d.kokoroVoice)
         cleanupDictation = v(.cleanupDictation, d.cleanupDictation)
+        dictationSilenceSeconds = v(.dictationSilenceSeconds, d.dictationSilenceSeconds)
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
         panelAutoHideSeconds = v(.panelAutoHideSeconds, d.panelAutoHideSeconds)

@@ -125,6 +125,19 @@ struct SettingsPane: View {
             ToggleSetting(title: "Tidy up what I type for you",
                           note: "Punctuation, capitals, and the ums taken out.",
                           isOn: model.binding(\.cleanupDictation))
+            Setting(title: "Stop after a pause of",
+                    note: "Dictation ends itself once you have been quiet this long. Off means it "
+                        + "runs until you tap the shortcut again.") {
+                Picker("", selection: model.binding(\.dictationSilenceSeconds)) {
+                    Text("1.5s").tag(1.5)
+                    Text("2.5s").tag(2.5)
+                    Text("4s").tag(4.0)
+                    Text("Off").tag(0.0)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: SettingsPane.controlWidth)
+            }
         }
     }
 }

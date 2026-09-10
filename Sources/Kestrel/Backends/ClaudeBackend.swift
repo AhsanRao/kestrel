@@ -84,13 +84,14 @@ final class ClaudeBackend: Backend {
         // Only what the CLI reported as a failure is eligible to be read as a quota error. The
         // answer, and the usage/cost/duration JSON around it, are not diagnostics.
         let diagnostics = ClaudeBackend.diagnostics(
-            exitCode: result.exitCode, stderr: result.stderr,
+            exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr,
             envelopeError: streaming ? parser.errorMessage : ClaudeBackend.errorEnvelope(result.stdout))
         if let diagnostics, BackendSupport.isQuotaError(diagnostics) {
-            throw KestrelError.quotaExhausted("Claude")
+            throw KestrelError.quotaExhausted("Claude", resets: BackendSupport.quotaReset(in: diagnostics))
         }
         guard result.exitCode == 0 else {
-            throw KestrelError.backendFailed(name: "claude", stderr: result.stderr.isEmpty ? result.stdout : result.stderr)
+            throw KestrelError.backendFailed(
+                name: "claude", stderr: BackendSupport.readableFailure(diagnostics ?? "") ?? "")
         }
 
         var text = streaming ? parser.answer : ClaudeBackend.parse(result.stdout)
@@ -103,13 +104,21 @@ final class ClaudeBackend: Backend {
         return Answer(text: text, raw: result.stdout, durationMs: result.durationMs)
     }
 
-    /// The text a failure is judged on: stderr when the process actually failed, plus the message
-    /// from an error envelope. Nil when the run reported no failure at all, which is the common
-    /// case and the one that must never reach `isQuotaError`.
-    static func diagnostics(exitCode: Int32, stderr: String, envelopeError: String?) -> String? {
+    /// The text a failure is judged on: what the process printed when it actually failed, plus the
+    /// message from an error envelope. Nil when the run reported no failure at all, which is the
+    /// common case and the one that must never reach `isQuotaError`.
+    ///
+    /// A run that dies on the plan's usage limit exits non-zero with an empty stderr and says so
+    /// somewhere in a stdout full of stream-json, so stdout counts as a diagnostic too — but only
+    /// on a failed run, never on the successful ones whose token counts and answers used to be
+    /// read as quota errors.
+    static func diagnostics(exitCode: Int32, stdout: String = "", stderr: String,
+                            envelopeError: String?) -> String? {
         var parts: [String] = []
-        if exitCode != 0, !stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            parts.append(stderr)
+        if exitCode != 0 {
+            for stream in [stderr, stdout] where !stream.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                parts.append(stream)
+            }
         }
         if let envelopeError, !envelopeError.isEmpty { parts.append(envelopeError) }
         return parts.isEmpty ? nil : parts.joined(separator: "\n")

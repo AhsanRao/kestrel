@@ -13,7 +13,7 @@ enum KestrelError: LocalizedError, Equatable {
     case backendMissing(String)
     case backendFailed(name: String, stderr: String)
     case backendTimedOut(name: String, seconds: Int)
-    case quotaExhausted(String)
+    case quotaExhausted(String, resets: Date?)
     case accessibilityDenied
     case hotkeyRegistrationFailed(String)
     case hotkeyNeedsAccessibility(String)
@@ -46,8 +46,9 @@ enum KestrelError: LocalizedError, Equatable {
             return "\(name) stopped short — \(trimmed.isEmpty ? "it said nothing at all" : String(trimmed.prefix(400)))"
         case .backendTimedOut(let name, let seconds):
             return "\(name) is taking too long — I gave up after \(seconds)s. Ask me again"
-        case .quotaExhausted(let name):
-            return "You're out of \(name) for now. Switch brains from the menu bar, or add an API key in Settings ▸ Advanced"
+        case .quotaExhausted(let name, let resets):
+            let when = resets.map { "until \(KestrelError.clockTime($0))" } ?? "for now"
+            return "You're out of \(name) \(when). Switch brains from the menu bar, or add an API key in Settings ▸ Advanced"
         case .accessibilityDenied:
             return "I need Accessibility to type and click for you. System Settings ▸ Privacy & Security ▸ Accessibility, then switch me on"
         case .hotkeyRegistrationFailed(let combo):
@@ -61,6 +62,16 @@ enum KestrelError: LocalizedError, Equatable {
         case .hotkeyNeedsAccessibility(let combo):
             return "I can't see \(combo) without Accessibility. System Settings ▸ Privacy & Security ▸ Accessibility, then switch me on"
         }
+    }
+
+    /// "4:15 pm", or "Fri, 4:15 pm" when the wait runs past tonight. A limit that resets in six
+    /// hours is worth waiting for; one that resets on Friday is worth switching brains over, and
+    /// the user can only tell which if the day is there.
+    static func clockTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = date.timeIntervalSinceNow > 12 * 3600 ? .medium : .none
+        return formatter.string(from: date)
     }
 
     /// Privacy pane to deep-link to from the panel, when the error is a permission problem.

@@ -139,3 +139,42 @@ final class SpeechAndInjectionTests: XCTestCase {
         XCTAssertEqual(Query(text: "x", mode: .dictationCleanup).timeout, 30)
     }
 }
+
+/// The pause that ends a live dictation. Pure timing, so none of it waits for real seconds.
+final class SilenceWatchTests: XCTestCase {
+    private let now = Date()
+
+    func testATakeThatHasHeardNothingNeverEndsItself() {
+        // Both clocks sit in the distant future until the first sound: the user may still be
+        // gathering their thoughts, and ending the take under them is worse than waiting.
+        XCTAssertFalse(SilenceWatch.isQuiet(sound: .distantFuture, words: .distantFuture,
+                                            now: now, seconds: 2.5))
+    }
+
+    func testAQuietRoomEndsTheTakeOnceTheTranscriberHasCaughtUp() {
+        XCTAssertTrue(SilenceWatch.isQuiet(sound: now.addingTimeInterval(-3),
+                                           words: now.addingTimeInterval(-1),
+                                           now: now, seconds: 2.5))
+    }
+
+    /// The failure this rule exists for: recognition trails the voice by up to two seconds, and a
+    /// take ended on the room alone cut the start of the next sentence off.
+    func testItWaitsForWordsStillArriving() {
+        XCTAssertFalse(SilenceWatch.isQuiet(sound: now.addingTimeInterval(-3),
+                                            words: now.addingTimeInterval(-0.3),
+                                            now: now, seconds: 2.5))
+    }
+
+    /// A fan, a café, a Mac with its own noise: the room never falls quiet, so the take has to end
+    /// on the transcriber going quiet instead.
+    func testANoisyRoomStillEnds() {
+        XCTAssertTrue(SilenceWatch.isQuiet(sound: now, words: now.addingTimeInterval(-6),
+                                           now: now, seconds: 2.5))
+    }
+
+    func testTurningThePauseOffMeansItNeverEnds() {
+        XCTAssertFalse(SilenceWatch.isQuiet(sound: now.addingTimeInterval(-600),
+                                            words: now.addingTimeInterval(-600),
+                                            now: now, seconds: 0))
+    }
+}

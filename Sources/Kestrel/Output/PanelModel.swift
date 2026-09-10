@@ -7,7 +7,7 @@ final class PanelModel: ObservableObject {
     @Published var answer: String = ""
     @Published var backend: BackendKind = .claude
     @Published var askHint: String = "⌃⌥"
-    @Published var dictateHint: String = "⌃⌘K"
+    @Published var dictateHint: String = "⌃⌘D"
     @Published var permissionURL: URL?
     /// A piece of writing the user asked for — an email, a reply, a paragraph. Shown with a copy
     /// button instead of being read out, because the only thing anyone does with a draft is take it
@@ -37,10 +37,17 @@ final class PanelModel: ObservableObject {
     }
 
     /// The island's width in each of its two sizes. Always wider than the housing, so the housing
-    /// has no corner poking out from behind it.
+    /// has no corner poking out from behind it, and no wider than the words in it need: this sits
+    /// over the user's own screen, and every point of it covers something they were looking at.
+    ///
+    /// The floor is set by the longest state label. Each shoulder gets half of whatever is left
+    /// once the housing is taken out, and of that, 29 points go to the inset and 24 to the
+    /// indicator and its gap — so a shoulder of 130 leaves 77 for the word, which is "Transcribing"
+    /// at a hair under full size and "Listening" and "Dictating" whole. Taking 30 points off this
+    /// is what cut them to "Listenin…".
     var width: CGFloat {
-        let clearance = notch.notchSize.width + 280
-        return isExpanded ? max(clearance, 470) : max(clearance, 330)
+        let clearance = notch.notchSize.width + 260
+        return isExpanded ? max(clearance, 420) : max(clearance, 300)
     }
 
     /// What the notch row says. Short by construction: it shares a notch-tall strip with the camera

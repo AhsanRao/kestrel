@@ -52,10 +52,13 @@ final class CodexBackend: Backend {
         if result.exitCode != 0 || text.isEmpty {
             let detail = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? result.stdout : result.stderr
-            if BackendSupport.isQuotaError(detail) { throw KestrelError.quotaExhausted("Codex") }
+            if BackendSupport.isQuotaError(detail) {
+                throw KestrelError.quotaExhausted("Codex", resets: BackendSupport.quotaReset(in: detail))
+            }
         }
         guard result.exitCode == 0 || !text.isEmpty else {
-            throw KestrelError.backendFailed(name: "codex", stderr: result.stderr.isEmpty ? result.stdout : result.stderr)
+            let printed = result.stderr.isEmpty ? result.stdout : result.stderr
+            throw KestrelError.backendFailed(name: "codex", stderr: BackendSupport.readableFailure(printed) ?? "")
         }
         guard !text.isEmpty else {
             throw KestrelError.backendFailed(name: "codex", stderr: "empty response")

@@ -28,6 +28,35 @@ final class HotkeyRegistrationTests: XCTestCase {
         XCTAssertEqual(failures.count, 1)
     }
 
+    /// The dictation toggle acts on presses alone, so a press must never depend on having seen the
+    /// release of the one before it — Carbon drops that release whenever the modifiers come up
+    /// first, which used to leave dictation stuck on with no way to end it.
+    func testASecondPressCountsEvenWhenTheReleaseWasNeverDelivered() {
+        var filter = HotkeyPressFilter()
+        let start = Date()
+        XCTAssertTrue(filter.allows(.dictate, .pressed, at: start))
+        // No .released here: that is the event Carbon threw away.
+        XCTAssertTrue(filter.allows(.dictate, .pressed, at: start.addingTimeInterval(5)))
+    }
+
+    func testKeyRepeatIsSwallowed() {
+        var filter = HotkeyPressFilter()
+        let start = Date()
+        XCTAssertTrue(filter.allows(.ask, .pressed, at: start))
+        XCTAssertFalse(filter.allows(.ask, .pressed, at: start.addingTimeInterval(0.05)))
+        XCTAssertTrue(filter.allows(.ask, .pressed, at: start.addingTimeInterval(0.4)))
+    }
+
+    /// Push-to-talk still needs the pairing: a release with nothing behind it must not end a
+    /// session Kestrel never started.
+    func testAReleaseWithoutAPressIsIgnored() {
+        var filter = HotkeyPressFilter()
+        XCTAssertFalse(filter.allows(.ask, .released))
+        XCTAssertTrue(filter.allows(.ask, .pressed))
+        XCTAssertTrue(filter.allows(.ask, .released))
+        XCTAssertFalse(filter.allows(.ask, .released))
+    }
+
     func testKeyNamesMatchTheShippedDefaults() {
         XCTAssertEqual(HotkeyBinding.keyName(0), "A")
         XCTAssertEqual(HotkeyBinding.keyName(40), "K")

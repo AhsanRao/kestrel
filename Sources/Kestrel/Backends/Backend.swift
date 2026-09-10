@@ -54,6 +54,41 @@ enum BackendSupport {
             .contains { lowered.contains($0) }
     }
 
+    /// The reset time a CLI names when it refuses on quota. Claude Code reports the limit as
+    /// `Claude AI usage limit reached|<epoch seconds>`; nothing else in the output carries one.
+    static func quotaReset(in text: String) -> Date? {
+        guard let range = text.range(of: "usage limit reached|", options: .caseInsensitive) else { return nil }
+        let digits = text[range.upperBound...].prefix(while: \.isNumber)
+        guard let seconds = TimeInterval(digits), seconds > 0 else { return nil }
+        return Date(timeIntervalSince1970: seconds)
+    }
+
+    /// What a failed run should say to a person.
+    ///
+    /// A CLI's output is a mix of JSON stream events, hook chatter and the odd plain line. Handed
+    /// to the panel raw it read `claude stopped short — {"type":"system","subtype":"hook_started"…`,
+    /// which is 400 characters that name neither the failure nor anything to do about it. Only the
+    /// human-readable fields of each object survive; the machinery around them does not.
+    static func readableFailure(_ text: String) -> String? {
+        var parts: [String] = []
+        for line in text.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+            guard trimmed.hasPrefix("{") else { parts.append(trimmed); continue }
+            guard let data = trimmed.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            for key in ["error", "result", "message"] {
+                if let value = object[key] as? String, !value.isEmpty { parts.append(value); break }
+            }
+        }
+        var seen = Set<String>()
+        let joined = parts.filter { seen.insert($0).inserted }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? nil : String(joined.prefix(300))
+    }
+
     /// Strips the wrapper models sometimes add despite being told not to.
     static func cleanAnswer(_ text: String) -> String {
         var out = text.trimmingCharacters(in: .whitespacesAndNewlines)

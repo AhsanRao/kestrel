@@ -85,14 +85,14 @@ final class BackendOutputParsingTests: XCTestCase {
         // produces no diagnostics for the needle to be run against in the first place.
         XCTAssertFalse(BackendSupport.isQuotaError(envelope))
         XCTAssertNil(ClaudeBackend.errorEnvelope(envelope))
-        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
+        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stdout: envelope, stderr: "",
                                                envelopeError: ClaudeBackend.errorEnvelope(envelope)))
     }
 
     /// An answer that discusses quotas is still just an answer.
     func testAnswerAboutUsageLimitsIsNotAQuotaError() {
         let stdout = #"{"type":"result","is_error":false,"result":"Your usage limit resets at 3pm."}"#
-        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
+        XCTAssertNil(ClaudeBackend.diagnostics(exitCode: 0, stdout: stdout, stderr: "",
                                                envelopeError: ClaudeBackend.errorEnvelope(stdout)))
     }
 
@@ -109,6 +109,33 @@ final class BackendOutputParsingTests: XCTestCase {
         let detail = ClaudeBackend.diagnostics(exitCode: 0, stderr: "",
                                                envelopeError: ClaudeBackend.errorEnvelope(stdout))
         XCTAssertTrue(BackendSupport.isQuotaError(detail ?? ""))
+    }
+
+    /// The run that started this: `claude` hit the plan's usage limit, exited 1 with an empty
+    /// stderr, and said so somewhere inside a stdout full of hook events. Reading only stderr, the
+    /// panel showed 400 characters of `{"type":"system","subtype":"hook_started"…`.
+    func testUsageLimitOnStdoutIsCaughtAndReadable() {
+        let stdout = """
+        {"type":"system","subtype":"hook_started","hook_name":"SessionStart:startup"}
+        {"type":"result","is_error":true,"result":"Claude AI usage limit reached|1757520000"}
+        """
+        let detail = ClaudeBackend.diagnostics(exitCode: 1, stdout: stdout, stderr: "", envelopeError: nil)
+        XCTAssertNotNil(detail)
+        XCTAssertTrue(BackendSupport.isQuotaError(detail ?? ""))
+        XCTAssertEqual(BackendSupport.quotaReset(in: detail ?? ""), Date(timeIntervalSince1970: 1_757_520_000))
+    }
+
+    func testAFailureReadsAsProseRatherThanJSON() {
+        let stdout = """
+        {"type":"system","subtype":"hook_started","hook_name":"SessionStart:startup"}
+        {"type":"result","is_error":true,"result":"Credit balance is too low"}
+        """
+        XCTAssertEqual(BackendSupport.readableFailure(stdout), "Credit balance is too low")
+        XCTAssertNil(BackendSupport.readableFailure("""
+        {"type":"system","subtype":"hook_started","hook_name":"SessionStart:startup"}
+        """))
+        // Plain stderr is already prose and survives untouched.
+        XCTAssertEqual(BackendSupport.readableFailure("boom: bad flag"), "boom: bad flag")
     }
 
     func testStreamParserExposesOnlyRealErrors() {

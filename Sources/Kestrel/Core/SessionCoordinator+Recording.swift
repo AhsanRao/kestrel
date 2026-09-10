@@ -25,6 +25,9 @@ extension SessionCoordinator {
         AudioCapture.requestPermission { [weak self] granted in
             guard let self else { return }
             guard granted else { self.fail(KestrelError.microphoneDenied); return }
+            // Dictation types as it hears, where the engine can: nothing is worth waiting for the
+            // end of a sentence to see. Anything that cannot stream records a take instead.
+            if intent == .dictation, self.beginLiveDictation() { return }
             do {
                 try self.audio.start(maxDuration: intent == .ask ? 60 : 600)
             } catch AudioCapture.Failure.permissionDenied {
@@ -36,6 +39,7 @@ extension SessionCoordinator {
     }
 
     func finishRecording(intent: SessionIntent) {
+        if intent == .dictation, finishLiveDictation() { return }
         focusRegion = dragTracker.end()
         selection.settle(focusRegion)
         sounds.play(.heard, config: config)

@@ -96,7 +96,7 @@ enum PanelPreview {
                 + "between targets, and the search box filters every setting by name."
         }
         panel.model.askHint = "⌃⌥"
-        panel.model.dictateHint = "⌃⌘K"
+        panel.model.dictateHint = "⌃⌘D"
         // Lifted before the window is composited: flipping it moments before the shot is too late,
         // the exclusion is baked into how the window server has already drawn it.
         panel.show()

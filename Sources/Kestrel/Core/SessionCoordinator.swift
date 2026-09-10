@@ -52,6 +52,11 @@ final class SessionCoordinator {
     var focusRegion: CGRect?
     var pendingCrop: URL?
     var listeningStartedAt: Date?
+    /// The live engine, while a dictation is being typed as it is spoken. Nil for a recorded take.
+    var live: LiveDictating?
+    /// Everything this take has already put into the app. Empty also means nothing has been typed
+    /// yet, which is what decides whether the next phrase needs a space in front of it.
+    var liveText = ""
     private var accessibilityRetry: Timer?
 
     var config: Config { ConfigStore.shared.current }
@@ -82,6 +87,7 @@ final class SessionCoordinator {
     }
 
     func stop() {
+        cancelLiveDictation()
         sounds.stop()
         annotations.hide()
         escapeWatcher.stop()
@@ -160,6 +166,7 @@ final class SessionCoordinator {
             annotations.hide()
             return
         }
+        cancelLiveDictation()
         audio.stop()
         panel.hideImmediately()
         apply(.cancelled)
