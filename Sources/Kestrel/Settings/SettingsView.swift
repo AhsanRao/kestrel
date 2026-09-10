@@ -29,6 +29,7 @@ struct SettingsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { BrandFooter().padding(.top, 10) }
         .frame(width: 470, height: 596)
         .background(GlassBackground().ignoresSafeArea())
+        .tint(KestrelPalette.accent)
         // A settling arrival, matching the panel and onboarding rather than the flat pop of a
         // stock window.
         .opacity(appeared ? 1 : 0)

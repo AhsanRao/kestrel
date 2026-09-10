@@ -414,7 +414,14 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   glass at that size.
 
 ### 8.12 StatusMenu
-- Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers (toggle), Cleanup dictation (toggle), Open memory file, Open settings, Check dependencies, Quit.
+- Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers
+  (toggle), Clean up dictation (toggle), Open what I remember, Open per-app notes, Setup &
+  permissions, Check what's installed, Settings, Quit.
+- Every row carries a template SF Symbol, the backend rows included: an item without an image
+  indents its title differently, so a menu with icons on only some rows starts its titles in two
+  different columns.
+- "Open per-app notes" opens `~/.kestrel/skills/` (§16). The folder is still called `skills` on
+  disk; the menu says what is in it.
 
 ### 8.13 Config
 - JSON schema (all keys optional, defaults applied):

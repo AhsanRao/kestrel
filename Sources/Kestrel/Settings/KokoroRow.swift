@@ -21,15 +21,12 @@ struct KokoroRowAction: View {
                     .frame(width: 168, alignment: .trailing)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Try again") { downloader.start() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(KestrelPrimaryButton(size: 11))
             default:
                 Button("Download") { downloader.start() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(KestrelPrimaryButton(size: 11))
                 Button("Use macOS voice") { model.skipKokoro() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(KestrelSecondaryButton(size: 11))
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: downloader.phase)

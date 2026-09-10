@@ -9,6 +9,31 @@ code, the reason for it is given here.
 
 ---
 
+## [1.5.2] — 2026-09-10 — Kestrel's own blue
+
+### The buttons were never Kestrel's colour
+
+Every prominent button took whatever accent colour the Mac happens to be set to, which is why they
+were a blue with nothing to do with the logo. Tinting them with the logo's blue only made them a
+duller version of the same thing, so the primary action is the mark's actual accent: cyan, with the
+logo's navy on top of it, which reads at 11:1 in either theme where white on cyan does not. It is
+the pairing the draft card's Copy button has always used. Buttons also respond on the press now
+rather than on the release.
+
+### Icons in the menu
+
+Every row in the menu bar dropdown carries one, the two backend rows included — an item without an
+image indents its title differently, and a menu that starts half its titles in one column and half
+in another reads as a mistake.
+
+### "Open skills folder" said nothing about what it opens
+
+It opens the folder of per-app notes: a file per app that Kestrel reads whenever that app is in
+front, plus a default one it always reads. It is called "Open per-app notes" now. "Check
+dependencies" is "Check what's installed".
+
+---
+
 ## [1.5.1] — 2026-09-10 — Colour with a job, and a name at the bottom
 
 ### One palette, named by what each colour is for

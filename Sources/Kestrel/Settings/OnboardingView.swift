@@ -38,6 +38,9 @@ struct OnboardingView: View {
         .frame(width: 540, height: 580)
         .ignoresSafeArea(edges: .top)
         .background(GlassBackground().ignoresSafeArea())
+        // Buttons, toggles and pickers default to whatever accent colour the Mac is set to, which
+        // is why they were a blue that has nothing to do with Kestrel. This is the logo's own.
+        .tint(KestrelPalette.accent)
         .animation(OnboardingMotion.honoring(reduceMotion, OnboardingMotion.settle), value: model.step)
     }
 
@@ -74,8 +77,7 @@ struct OnboardingView: View {
         HStack(spacing: 10) {
             if model.step.previous != nil {
                 Button("Back") { model.goBack() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .buttonStyle(KestrelSecondaryButton())
             }
             Spacer()
             Text(aside)
@@ -83,8 +85,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .contentTransition(.opacity)
             Button(primaryTitle) { primaryAction() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(KestrelPrimaryButton())
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 26)

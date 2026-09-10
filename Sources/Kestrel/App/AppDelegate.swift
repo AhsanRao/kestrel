@@ -32,6 +32,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         log.info("Kestrel ready")
 
 
+        if MenuPreview.isRequested {
+            MenuPreview.run(on: menu)
+            return
+        }
+
         if OverlayPreview.isRequested {
             OverlayPreview.run(on: coordinator)
             return

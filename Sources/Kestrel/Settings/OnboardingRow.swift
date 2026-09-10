@@ -74,15 +74,13 @@ struct OnboardingRow: View {
     private var permissionOrCommand: some View {
         VStack(spacing: 5) {
             Button(actionTitle) { press() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .buttonStyle(KestrelPrimaryButton(size: 11))
             // macOS puts up its own prompt the first time and never again, so the pane is the way
             // in from then on — but offering both at once asks the user to choose between two
             // buttons for one thing before either has been tried.
             if isPermission, model.asked.contains(item.requirement) {
                 Button("Open Settings") { model.openSettings(for: item.requirement) }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(KestrelSecondaryButton(size: 11))
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }

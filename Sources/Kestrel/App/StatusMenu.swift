@@ -25,6 +25,15 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) { rebuild() }
 
+    /// For `MenuPreview` only: drops the menu open where it normally appears. Tracking blocks the
+    /// main thread until it is dismissed, which is why the preview photographs it from another one.
+    func popUpForPreview() {
+        guard let button = statusItem?.button else { return }
+        rebuild()
+        menu.popUp(positioning: nil,
+                   at: NSPoint(x: 0, y: button.bounds.minY - 6), in: button)
+    }
+
     /// Called as the session moves, so the menu bar shows what Kestrel is doing even when the
     /// panel is hidden behind a full-screen window.
     func show(state: SessionState) {
@@ -56,34 +65,56 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             item.target = self
             item.representedObject = kind.rawValue
             item.state = config.backend == kind ? .on : .off
+            // Both carry one: an item without an icon indents its title differently, and a menu
+            // where half the rows start in one column and half in another reads as a mistake.
+            item.image = StatusMenu.icon(kind == .claude
+                                         ? "sparkle" : "chevron.left.forwardslash.chevron.right")
             menu.addItem(item)
         }
         menu.addItem(.separator())
 
-        addToggle("Speak answers", isOn: config.speakAnswers, action: #selector(toggleSpeak))
-        addToggle("Clean up dictation", isOn: config.cleanupDictation, action: #selector(toggleCleanup))
+        addToggle("Speak answers", isOn: config.speakAnswers, action: #selector(toggleSpeak),
+                  symbol: "speaker.wave.2")
+        addToggle("Clean up dictation", isOn: config.cleanupDictation, action: #selector(toggleCleanup),
+                  symbol: "wand.and.sparkles")
         menu.addItem(.separator())
 
-        addItem("Open memory file", #selector(openMemory))
-        addItem("Open skills folder", #selector(openSkills))
-        addItem("Setup & permissions…", #selector(openOnboarding))
-        addItem("Check dependencies…", #selector(checkDependencies))
-        addItem("Settings…", #selector(openSettings), key: ",")
+        addItem("Open what I remember", #selector(openMemory), symbol: "brain")
+        // "Skills" was the folder's name, not a description of it. What is in there is a note per
+        // app that Kestrel reads when that app is in front.
+        addItem("Open per-app notes", #selector(openSkills), symbol: "note.text")
+        addItem("Setup & permissions…", #selector(openOnboarding), symbol: "checklist")
+        addItem("Check what's installed…", #selector(checkDependencies), symbol: "stethoscope")
+        addItem("Settings…", #selector(openSettings), key: ",", symbol: "gearshape")
         menu.addItem(.separator())
-        addItem("Quit Kestrel", #selector(quit), key: "q")
+        addItem("Quit Kestrel", #selector(quit), key: "q", symbol: "power")
     }
 
-    private func addItem(_ title: String, _ action: Selector, key: String = "") {
+    private func addItem(_ title: String, _ action: Selector, key: String = "", symbol: String? = nil) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
+        item.image = StatusMenu.icon(symbol)
         menu.addItem(item)
     }
 
-    private func addToggle(_ title: String, isOn: Bool, action: Selector) {
+    private func addToggle(_ title: String, isOn: Bool, action: Selector, symbol: String? = nil) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
         item.state = isOn ? .on : .off
+        item.image = StatusMenu.icon(symbol)
         menu.addItem(item)
+    }
+
+    /// A menu item's icon, at the size AppKit expects. Template so it inverts with the menu and
+    /// stays legible when the row is highlighted — a tinted glyph on a blue row does not.
+    private static func icon(_ symbol: String?) -> NSImage? {
+        guard let symbol,
+              let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        else { return nil }
+        let configured = image.withSymbolConfiguration(
+            .init(pointSize: 13, weight: .regular)) ?? image
+        configured.isTemplate = true
+        return configured
     }
 
     // MARK: - Actions
