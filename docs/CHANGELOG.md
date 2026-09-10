@@ -9,6 +9,25 @@ code, the reason for it is given here.
 
 ---
 
+## [1.6.1] — 2026-09-10 — 300 lines that only their own tests were using
+
+`KeyChord`, `KeyEvents` and `MarkPlan` had no callers in the app. All three were left from the
+acting feature that was removed — a keystroke parser that knew which chords were irreversible, the
+code that posted them to another process, and a layout plan for a mark drawn beside a caption.
+`AnnotationView` works its own layout out; `TextInjector` does its own typing. Only their tests kept
+them compiling, which is the quietest way for dead code to look alive.
+
+`DependencyCheck.Requirement.needsRelaunch` went the same way — `OnboardingModel` decides that
+inline.
+
+`Config`'s tolerant decoder moved into an extension. A struct that declares an `init` in its own
+body loses the memberwise one Swift would otherwise write, and the hand-typed twin of it was
+twenty-five parameters passed straight through.
+
+Net: 314 lines out, no behaviour changed.
+
+---
+
 ## [1.6.0] — 2026-09-10 — Faster, and it talks like a person
 
 ### The screen is read while you are still talking

@@ -53,8 +53,6 @@ enum DependencyCheck {
             }
         }
 
-        /// A granted permission only takes effect after a relaunch.
-        var needsRelaunch: Bool { self == .screenRecording }
     }
 
     struct Item {

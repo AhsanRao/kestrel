@@ -105,11 +105,6 @@ final class OnboardingTests: XCTestCase {
         }
     }
 
-    func testOnlyScreenRecordingNeedsARelaunch() {
-        let needing = DependencyCheck.Requirement.allCases.filter(\.needsRelaunch)
-        XCTAssertEqual(needing, [.screenRecording])
-    }
-
     /// The report lists what the configured engine actually needs. Apple's engine is built into
     /// macOS, so the two whisper rows would be asking the user to install something for an engine
     /// they are not using — a checklist that cannot be completed is worse than a short one.

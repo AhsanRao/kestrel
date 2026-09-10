@@ -141,8 +141,21 @@ struct Config: Codable, Equatable {
         }
     }
 
-    // MARK: - Tolerant decoding
 
+    /// Keeps hand-edited nonsense from reaching AVSpeechSynthesizer or the screenshot scaler.
+    private mutating func clamp() {
+        panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
+        followUpSeconds = min(max(followUpSeconds, 0), 900)
+        screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
+    }
+}
+
+
+/// Tolerant decoding: every key optional, anything unreadable falls back to `defaults`.
+///
+/// In an extension, not the struct body — a struct that declares an `init` of its own loses the
+/// synthesised memberwise one, and hand-writing that twin is twenty-five parameters of nothing.
+extension Config {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = Config.defaults
@@ -179,46 +192,5 @@ struct Config: Codable, Equatable {
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
         apiKeys = v(.apiKeys, d.apiKeys)
         clamp()
-    }
-
-    init(backend: BackendKind, claudeModel: String?, codexModel: String?, autoRoute: Bool,
-         allowMCPServers: Bool,
-         transcriptionEngine: TranscriptionEngine,
-         whisperBinary: String, whisperModel: String, transcriptionHint: String?,
-         speakAnswers: Bool, sounds: Bool,
-         voiceEngine: VoiceEngine,
-         voiceIdentifier: String?,
-         kokoroVoice: String,
-         cleanupDictation: Bool, injectMode: InjectMode,
-         hotkeys: Hotkeys, panelAutoHideSeconds: Int, followUpSeconds: Int,
-         screenshotMaxEdge: Int, captureMode: CaptureMode,
-         launchAtLogin: Bool,
-         answerAnnotations: Bool, spatialContext: Bool, onboardingCompleted: Bool, apiKeys: APIKeys) {
-        self.backend = backend; self.claudeModel = claudeModel; self.codexModel = codexModel
-        self.autoRoute = autoRoute; self.allowMCPServers = allowMCPServers
-        self.transcriptionEngine = transcriptionEngine
-        self.whisperBinary = whisperBinary; self.whisperModel = whisperModel
-        self.transcriptionHint = transcriptionHint
-        self.speakAnswers = speakAnswers; self.sounds = sounds
-        self.voiceEngine = voiceEngine
-        self.voiceIdentifier = voiceIdentifier
-        self.kokoroVoice = kokoroVoice
-        self.cleanupDictation = cleanupDictation; self.injectMode = injectMode
-        self.hotkeys = hotkeys; self.panelAutoHideSeconds = panelAutoHideSeconds
-        self.followUpSeconds = followUpSeconds
-        self.screenshotMaxEdge = screenshotMaxEdge; self.captureMode = captureMode
-        self.launchAtLogin = launchAtLogin
-        self.answerAnnotations = answerAnnotations
-        self.spatialContext = spatialContext
-        self.onboardingCompleted = onboardingCompleted
-        self.apiKeys = apiKeys
-        clamp()
-    }
-
-    /// Keeps hand-edited nonsense from reaching AVSpeechSynthesizer or the screenshot scaler.
-    private mutating func clamp() {
-        panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
-        followUpSeconds = min(max(followUpSeconds, 0), 900)
-        screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
     }
 }

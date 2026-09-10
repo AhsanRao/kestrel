@@ -193,6 +193,7 @@ kestrel/
 │       │   └── *Preview.swift             # open a window, photograph it, quit
 │       ├── Core/
 │       │   ├── SessionCoordinator.swift   # state machine + orchestration
+│       │   ├── SessionCoordinator+Finishing.swift  # temp files, errors, the panel's clock
 │       │   ├── ScreenSnapshot.swift       # controls, regions and text, read as one unit
 │       │   ├── SessionState.swift
 │       │   ├── Query.swift                # Query, Answer, Step models

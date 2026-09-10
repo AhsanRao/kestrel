@@ -39,6 +39,24 @@ code that no longer exists is worse than no spec.
 - `scripts/make-signing-cert.sh` → run once; without it every rebuild silently revokes the
   Accessibility and Screen Recording grants, because an ad-hoc signature changes with the binary
 
+## Agent skills
+`skills-lock.json` records the skills this project expects, by source repo and SHA-256 of each
+`SKILL.md`. The skill bodies are not committed — `.claude/` is ignored — so a fresh clone has the
+manifest but no skills, and each has to be installed once:
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+`/ponytail` enforces the laziest working solution, `/ponytail-audit` scans the tree for
+over-engineering, `/ponytail-review` does the same for a diff. The other three collections in the
+lock file (`swiftui-expert-skill`, `ui-ux-pro-max`, `apple-design`) install the same way from the
+sources named there.
+
+Note the name collision: "skills" in `README.md` and spec §16 means Kestrel's own per-app notes in
+`~/.kestrel/skills/`, which have nothing to do with these.
+
 ## Environment notes
 - Homebrew is at `/opt/homebrew`; add it and `~/.local/bin` to PATH inside spawned processes.
 - User data lives in `~/.kestrel/` (config, memory, models, logs). Never write elsewhere.
