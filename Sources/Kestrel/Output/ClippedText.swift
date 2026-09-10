@@ -12,7 +12,7 @@ struct ClippedText: View {
     let font: NSFont
     var lineSpacing: CGFloat = 0
     let limit: Int
-    var color: Color = .white
+    var color: Color = KestrelPalette.onHousing
     /// What to say about the lines that did not fit.
     let note: (Int) -> String
 
@@ -32,7 +32,7 @@ struct ClippedText: View {
             if hidden > 0 {
                 Text(note(hidden))
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(KestrelPalette.onHousingSecondary)
             }
         }
     }

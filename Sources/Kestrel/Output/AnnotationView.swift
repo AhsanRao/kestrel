@@ -34,7 +34,7 @@ struct AnnotationView: View {
                 // A section is shaded rather than ringed: the mark has to say "this area", and a
                 // thin line around a quarter of the screen says "something is wrong with my maths".
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(KestrelPalette.cyan.opacity(0.12))
+                    .fill(KestrelPalette.accentOnDark.opacity(0.12))
                     .frame(width: max(rect.width, 14), height: max(rect.height, 14))
                     .offset(x: rect.minX, y: rect.minY)
                     .modifier(FadesIn(delay: arrival + travel.duration))
@@ -102,18 +102,18 @@ struct AnnotationView: View {
         HStack(spacing: 6) {
             Text("\(index + 1)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(KestrelPalette.navy)
+                .foregroundStyle(KestrelPalette.onAccentOnDark)
                 .frame(width: 18, height: 18)
-                .background(KestrelPalette.cyan, in: Circle())
+                .background(KestrelPalette.accentOnDark, in: Circle())
             Text(caption)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(KestrelPalette.onHousing)
                 .lineLimit(1)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .background(KestrelPalette.navy.opacity(0.92), in: Capsule())
-        .overlay(Capsule().strokeBorder(KestrelPalette.cyan.opacity(0.3), lineWidth: 1))
+        .background(KestrelPalette.onAccentOnDark.opacity(0.92), in: Capsule())
+        .overlay(Capsule().strokeBorder(KestrelPalette.accentOnDark.opacity(0.3), lineWidth: 1))
         .shadow(radius: 10, y: 3)
         .fixedSize()
         .offset(x: rect.minX, y: max(rect.minY - 32, 6))

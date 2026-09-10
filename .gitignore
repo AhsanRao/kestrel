@@ -9,3 +9,4 @@ assets/KestrelMark.png
 *.xcodeproj
 .agents/
 .claude/
+ab-*.png

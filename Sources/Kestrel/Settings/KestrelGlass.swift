@@ -62,23 +62,23 @@ extension NSWindow {
     }
 }
 
-/// Kestrel's primary action: the brand's cyan, with the logo's navy on top of it.
+/// Kestrel's primary action: the brand pair, whichever way round the theme needs it.
 ///
-/// The stock prominent button takes whatever accent colour the Mac is set to, which is why it was
-/// a blue with nothing to do with Kestrel — and tinting it with the logo's blue only made it a
-/// duller version of the same thing. Cyan is the mark's actual accent, and navy on cyan reads at
-/// 11:1 in either theme, which white on cyan does not. It is the pairing the draft card's Copy
-/// button already uses.
+/// The stock prominent button takes whatever accent the Mac is set to, which is why it was a blue
+/// with nothing to do with Kestrel. One fixed brand colour is no better: navy on dark glass is
+/// 1.18:1 and aqua on light glass is 1.09:1, so either choice disappears in one of the two themes.
+/// `primaryFill` and `onPrimaryFill` resolve themselves against the appearance they are drawn
+/// into, so the button is decided once here rather than at every call site.
 struct KestrelPrimaryButton: ButtonStyle {
     var size: CGFloat = 13
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(KestrelPalette.navy)
+            .foregroundStyle(KestrelPalette.onPrimaryFill)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(KestrelPalette.accent.opacity(configuration.isPressed ? 0.78 : 1),
+            .background(KestrelPalette.primaryFill.opacity(configuration.isPressed ? 0.78 : 1),
                         in: Capsule())
             // Feedback on the press, not on the release — anything else reads as lag.
             .scaleEffect(configuration.isPressed ? 0.97 : 1)

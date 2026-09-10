@@ -39,7 +39,7 @@ struct PanelView: View {
         .clipShape(shape)
         .overlay(rim)
         .compositingGroup()
-        .shadow(color: .black.opacity(0.38), radius: 13, y: 6)
+        .shadow(color: KestrelPalette.housingShadow, radius: 13, y: 6)
         .environment(\.colorScheme, .dark)
         .animation(spring, value: model.isExpanded)
         .animation(spring, value: model.state)
@@ -71,7 +71,7 @@ struct PanelView: View {
     @ViewBuilder private var rim: some View {
         if model.isExpanded {
             shape.stroke(
-                LinearGradient(colors: [.clear, .white.opacity(model.isRecording ? 0.18 : 0.10)],
+                LinearGradient(colors: [.clear, KestrelPalette.housingSheen(strong: model.isRecording)],
                                startPoint: .top, endPoint: .bottom),
                 lineWidth: 1)
         }
@@ -89,7 +89,7 @@ struct PanelView: View {
                 PanelIndicator(model: model, showsWaveform: false)
                 Text(model.headline)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(KestrelPalette.onHousing)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
@@ -106,7 +106,7 @@ struct PanelView: View {
                 if model.isFollowUp {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(KestrelPalette.onHousingSecondary)
                         .transition(.opacity.combined(with: .scale(scale: 0.8)))
                 }
                 trailing
@@ -126,12 +126,12 @@ struct PanelView: View {
             Text(model.backend.displayName.uppercased())
                 .font(.system(size: 9, weight: .bold))
                 .tracking(0.5)
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(KestrelPalette.onHousingSecondary)
                 .accessibilityLabel("Backend: \(model.backend.displayName)")
         } else {
             Text(model.askHint)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(KestrelPalette.onHousingFaint)
         }
     }
 
@@ -142,14 +142,14 @@ struct PanelView: View {
             if let detail = model.detail {
                 Text(detail)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(KestrelPalette.coral)
+                    .foregroundStyle(KestrelPalette.dangerOnDark)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
             }
             if !model.transcript.isEmpty {
                 Text(model.transcript)
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(KestrelPalette.onHousingSecondary)
                     .lineLimit(2)
                     .textSelection(.enabled)
             }

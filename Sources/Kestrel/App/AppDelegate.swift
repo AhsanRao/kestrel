@@ -32,6 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         log.info("Kestrel ready")
 
 
+        // `KESTREL_PREVIEW_APPEARANCE=light|dark` pins the appearance, so a preview can be
+        // photographed in the theme it is being judged for rather than the one this Mac is set to.
+        switch ProcessInfo.processInfo.environment["KESTREL_PREVIEW_APPEARANCE"] {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: break
+        }
+
         if MenuPreview.isRequested {
             MenuPreview.run(on: menu)
             return
@@ -88,8 +96,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         onboardingWindow?.show()
     }
 
+    @MainActor
     func showSettings() {
-        if settingsWindow == nil { settingsWindow = SettingsWindow() }
+        if settingsWindow == nil {
+            let settings = SettingsWindow()
+            settings.onOpenSetup = { [weak self] in self?.showOnboarding() }
+            settingsWindow = settings
+        }
         settingsWindow?.show()
     }
 

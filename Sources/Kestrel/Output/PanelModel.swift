@@ -70,12 +70,12 @@ final class PanelModel: ObservableObject {
     var accent: Color {
         switch state {
         case .idle: return KestrelPalette.idle
-        case .listening, .dictating: return KestrelPalette.cyan
+        case .listening, .dictating: return KestrelPalette.accentOnDark
         case .transcribing, .thinking, .injecting: return KestrelPalette.sky
         // The island is black, so the logo's navy-leaning blue disappears into it; the same hue
         // lifted to where it reads against black.
         case .answering: return KestrelPalette.sky
-        case .error: return KestrelPalette.coral
+        case .error: return KestrelPalette.dangerOnDark
         }
     }
 

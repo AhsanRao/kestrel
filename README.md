@@ -85,7 +85,7 @@ Privacy pane whenever something turns out to be missing mid-use.
   thing, and ask again if you want the next part. That question gets a fresh look at the new screen.
 - **Write something:** *"draft a reply to this"* gives you one spoken line and the draft in a card
   with a **Copy** button. Drafts are never read aloud.
-- Both hotkeys are rebindable in Settings ▸ General.
+- Both hotkeys are rebindable in Settings ▸ Shortcuts.
 
 **Why these keys.** Asking is held down for as long as you are talking, so it is a bare chord —
 `⌃⌥` is one shape the hand already makes, macOS claims nothing on it, and with no letter it cannot

@@ -64,7 +64,7 @@ private struct DownloadMeter: View {
                         if !reduceMotion {
                             Capsule()
                                 .fill(LinearGradient(
-                                    colors: [.clear, .white.opacity(0.55), .clear],
+                                    colors: [.clear, KestrelPalette.onAccent.opacity(0.55), .clear],
                                     startPoint: .leading, endPoint: .trailing))
                                 .frame(width: 52)
                                 .offset(x: shimmer * (168 * fraction + 52) - 26)

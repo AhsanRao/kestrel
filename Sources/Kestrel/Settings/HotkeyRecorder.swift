@@ -23,7 +23,7 @@ struct HotkeyRecorder: View {
             }
             .frame(minWidth: 130)
             .buttonStyle(.bordered)
-            .tint(isRecording ? .accentColor : nil)
+            .tint(isRecording ? KestrelPalette.accent : nil)
         }
         .onDisappear(perform: stop)
     }

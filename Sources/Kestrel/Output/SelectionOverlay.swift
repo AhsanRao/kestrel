@@ -73,16 +73,16 @@ private struct SelectionView: View {
                 var path = Path()
                 path.addLines(local)
                 context.addFilter(.blur(radius: 9))
-                context.stroke(path, with: .color(KestrelPalette.cyan.opacity(0.5)),
+                context.stroke(path, with: .color(KestrelPalette.accentOnDark.opacity(0.5)),
                                style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
                 context.addFilter(.blur(radius: 0))
-                context.stroke(path, with: .color(KestrelPalette.cyan.opacity(0.95)),
+                context.stroke(path, with: .color(KestrelPalette.accentOnDark.opacity(0.95)),
                                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             }
             if let box = settledInView {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(KestrelPalette.cyan, style: StrokeStyle(lineWidth: 2.5, dash: [7, 5]))
-                    .background(KestrelPalette.cyan.opacity(0.10))
+                    .strokeBorder(KestrelPalette.accentOnDark, style: StrokeStyle(lineWidth: 2.5, dash: [7, 5]))
+                    .background(KestrelPalette.accentOnDark.opacity(0.10))
                     .frame(width: box.width, height: box.height)
                     .offset(x: box.minX, y: box.minY)
                     .transition(.scale(scale: 1.06).combined(with: .opacity))

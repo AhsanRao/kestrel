@@ -7,7 +7,7 @@ import SwiftUI
 /// identity is what makes the next mark draw itself rather than snap into place.
 struct DrawsOn<S: Shape>: View {
     let shape: S
-    var color: Color = KestrelPalette.cyan
+    var color: Color = KestrelPalette.accentOnDark
     var lineWidth: CGFloat = 1.5
     var duration: Double = 0.5
     var delay: Double = 0

@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import SwiftUI
 
@@ -43,6 +44,23 @@ final class SettingsModel: ObservableObject {
     }
 
     var voices: [AVSpeechSynthesisVoice] { SystemSpeaker.rankedVoices() }
+
+    /// Back to the shipped values, after a confirmation. The memory file and the downloaded voice
+    /// are deliberately left alone: they are the user's own work and the slow part of setup, and
+    /// neither is a setting.
+    func resetToDefaults() {
+        let alert = NSAlert()
+        alert.messageText = "Put every setting back?"
+        alert.informativeText = "Your shortcuts, voice and preferences go back to the way Kestrel "
+            + "shipped. What I remember about you, and the voice you downloaded, stay where they are."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        ConfigStore.shared.update { $0 = Config.defaults }
+        config = ConfigStore.shared.current
+        LaunchAtLogin.sync(with: config.launchAtLogin)
+    }
 
     /// Opens System Settings ▸ Accessibility ▸ Spoken Content, the only place macOS lets you
     /// install the neural voices. It opens the pane; the download itself is Apple's "Manage

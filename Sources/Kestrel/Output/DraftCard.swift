@@ -20,12 +20,12 @@ struct DraftCard: View {
                 if let subject = draft.subject, !subject.isEmpty {
                     Text(subject)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(KestrelPalette.onHousing)
                         .lineLimit(1)
                 } else {
                     Text("Draft")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(KestrelPalette.onHousingMuted)
                 }
                 Spacer(minLength: 8)
                 copyButton
@@ -38,16 +38,16 @@ struct DraftCard: View {
             // running off the bottom of the display.
             ClippedText(text: draft.body, font: .monospacedSystemFont(ofSize: 12, weight: .regular),
                         lineSpacing: 3, limit: DraftCard.bodyLines,
-                        color: .white.opacity(0.92)) { hidden in
+                        color: KestrelPalette.onHousingBody) { hidden in
                 "+\(hidden) more line\(hidden == 1 ? "" : "s") — Copy takes all of it"
             }
         }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(KestrelPalette.surfaceOnHousing)
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+                    .strokeBorder(KestrelPalette.surfaceOnHousingBorder, lineWidth: 1))
         )
     }
 
@@ -69,10 +69,10 @@ struct DraftCard: View {
                 Text(copied ? "Copied" : "Copy")
                     .font(.system(size: 10, weight: .semibold))
             }
-            .foregroundStyle(copied ? KestrelPalette.navy : .white.opacity(0.9))
+            .foregroundStyle(copied ? KestrelPalette.onAccentOnDark : KestrelPalette.onHousingBody)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(copied ? KestrelPalette.cyan : Color.white.opacity(0.12), in: Capsule())
+            .background(copied ? KestrelPalette.accentOnDark : KestrelPalette.controlOnHousing, in: Capsule())
         }
         .buttonStyle(.plain)
     }

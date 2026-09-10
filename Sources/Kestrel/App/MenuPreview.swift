@@ -1,7 +1,4 @@
 import AppKit
-import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
 
 /// Photographs the menu bar dropdown. `KESTREL_PREVIEW_MENU=1`.
 ///
@@ -15,22 +12,12 @@ enum MenuPreview {
 
     @MainActor
     static func run(on menu: StatusMenu) {
-        guard let path = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] else {
-            return menu.popUpForPreview()
-        }
+        guard PreviewCapture.destination != nil else { return menu.popUpForPreview() }
+        // Off the main queue, and so not `PreviewCapture.shoot`, which schedules on it.
         DispatchQueue.global().asyncAfter(deadline: .now() + 1.2) {
-            capture(to: URL(fileURLWithPath: path))
+            PreviewCapture.now(PreviewCapture.wholeScreen())
             DispatchQueue.main.async { NSApp.terminate(nil) }
         }
         menu.popUpForPreview()
-    }
-
-    private static func capture(to url: URL) {
-        guard let image = CGWindowListCreateImage(
-            .infinite, .optionAll, kCGNullWindowID, [.bestResolution]),
-              let destination = CGImageDestinationCreateWithURL(
-                url as CFURL, UTType.png.identifier as CFString, 1, nil) else { return }
-        CGImageDestinationAddImage(destination, image, nil)
-        CGImageDestinationFinalize(destination)
     }
 }

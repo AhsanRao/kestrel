@@ -9,16 +9,80 @@ code, the reason for it is given here.
 
 ---
 
+## [1.5.5] — 2026-09-10 — The colours the logo actually has, and a settings window with a spine
+
+### Two brand colours, measured rather than remembered
+
+The palette's brand values had been read off the artwork by eye, and two of the six were not in the
+artwork at all — a cream and a coral, both invented, both documented as though the logo contained
+them. A pixel histogram of `AppIconMaster.png` and `KestrelMark.png` says the logo has exactly two:
+navy `#021D3D` for the bird and aqua `#02F8E6` for the waveform, plus the near-white of the icon's
+plate. Where the two meet, the antialiasing makes real intermediate teals, and `#02586F` is one of
+them — which matters, because the aqua on its own is unusable on a light window.
+
+### Neither brand colour works in both themes, so no role uses one
+
+Aqua on light glass is 1.09:1. Navy on dark glass is 1.18:1. Both are invisible, which is why the
+setup window's Continue button had been swapped back and forth between them: whichever was chosen
+disappeared in one of the two themes, and the fix always broke the other.
+
+Every role that has to survive both themes is now a dynamic colour — one value that resolves itself
+against the appearance it is drawn into, via `NSColor(name:dynamicProvider:)`. The accent is aqua on
+dark and `#02586F` on light. The primary button is navy under white on light (16.9:1) and aqua under
+navy on dark (12.5:1). Nothing plumbs a `ColorScheme` through to a call site any more, and `.tint()`
+— which has no `ColorScheme` to plumb — picks up the right one for free.
+
+Navy was tried as the light accent and rejected on the screenshots: it has the contrast, but a step
+rail drawn in it is indistinguishable from a plain dark underline, so the light window ended up with
+no brand colour in it at all.
+
+### One place for the colours, including the island's
+
+The island is pure black and never follows the system theme, so the white text on it cannot be
+dynamic. Those values were nine different opacities of `.white` scattered across five files. They
+are a named ladder now — `onHousing`, `onHousingBody`, `onHousingSecondary`, `onHousingMuted`,
+`onHousingFaint`, plus `surfaceOnHousing` and `controlOnHousing` — at exactly the opacities they
+already were, so nothing moved. The last two strays went with them: a `.orange` warning triangle and
+a `.accentColor` on the hotkey recorder, both of which were the Mac's colour rather than Kestrel's.
+
+### Settings is a sidebar and eight short pages
+
+It was three tabs, and every one of them was a scroll, because each explanatory sentence took a
+whole `Form` row of its own — a separator and two lots of padding to say one thing about the control
+above it. Eight controls filled the window and still ran off the bottom.
+
+The explanations now sit inside the row they are about, under their own control. That is most of the
+density back, and it also puts the words next to the thing they describe rather than under the thing
+after it. The pages are named down the left — Brain, Shortcuts, Seeing, Typing, My voice, Hearing
+you, Memory, Advanced — so the window is its own index: you read the list until you find the word
+you had in mind, and the setting is on screen with nothing to scroll.
+
+The two columns are a plain `HStack`, not a `NavigationSplitView`. The split view brings a sidebar
+material that sits opaque in front of the glass and a selection highlight in the Mac's accent colour
+rather than Kestrel's, and SwiftUI offers no way to turn off either.
+
+The three macOS grants are pinned at the foot of the sidebar as three dots. They are not a setting —
+you cannot flip them from in here — but a revoked one is exactly what a window full of switches
+otherwise hides. Pressing them opens setup. Advanced also gained a reset, which puts the settings
+back but deliberately leaves the memory file and the downloaded voice alone.
+
+### The screenshot probes were four copies of the same function
+
+`PreviewCapture` is the one of them, and it frames its shot on the window rather than on the whole
+desktop, so a picture of a 540-point panel is no longer mostly wallpaper. `KESTREL_PREVIEW_SETTINGS`
+now takes a page name instead of a tab index.
+
+---
+
 ## [1.5.2] — 2026-09-10 — Kestrel's own blue
 
 ### The buttons were never Kestrel's colour
 
 Every prominent button took whatever accent colour the Mac happens to be set to, which is why they
 were a blue with nothing to do with the logo. Tinting them with the logo's blue only made them a
-duller version of the same thing, so the primary action is the mark's actual accent: cyan, with the
-logo's navy on top of it, which reads at 11:1 in either theme where white on cyan does not. It is
-the pairing the draft card's Copy button has always used. Buttons also respond on the press now
-rather than on the release.
+duller version of the same thing, so the primary action became the mark's own colours instead —
+which of them, and which way round, took until 1.5.5 to get right. Buttons also respond on the press
+now rather than on the release.
 
 ### Icons in the menu
 

@@ -6,7 +6,8 @@ import SwiftUI
 @MainActor
 final class OnboardingWindow: NSObject, NSWindowDelegate {
     let model = OnboardingModel()
-    private var window: NSWindow?
+    /// Exposed for `OnboardingPreview`, which frames its screenshot on the window.
+    private(set) var window: NSWindow?
     private var didFinish = false
 
     var onFinish: (() -> Void)?

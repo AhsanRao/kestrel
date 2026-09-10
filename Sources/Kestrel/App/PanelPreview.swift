@@ -1,7 +1,5 @@
 import AppKit
 import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
 
 /// Shows the panel with sample content, and optionally photographs it.
 ///
@@ -36,7 +34,7 @@ enum PanelPreview {
         let view = NSView(frame: screen.frame)
         view.wantsLayer = true
         view.layer?.backgroundColor = kind == "grid"
-            ? NSColor.systemTeal.withAlphaComponent(0.85).cgColor
+            ? NSColor(hex: 0x02_58_6F).withAlphaComponent(0.85).cgColor
             : NSColor.white.cgColor
         window.contentView = view
         window.orderFrontRegardless()
@@ -105,35 +103,13 @@ enum PanelPreview {
         panel.setExcludedFromCapture(false)
 
         FileHandle.standardError.write(Data("preview: panel \(panel.screenFrame.map(String.init(describing:)) ?? "nil") visible=\(panel.isVisible) screens=\(NSScreen.screens.map(\.frame))\n".utf8))
-        guard let path = outputPath else { return }
-        // After the entrance animation has settled.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            capture(panel, to: URL(fileURLWithPath: path))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { NSApp.terminate(nil) }
+        // After the entrance animation has settled. The whole screen rather than the panel's own
+        // frame: the island's background is a vibrancy material, which samples what is behind it
+        // and comes back blank in isolation, and the surrounding desktop is the context the
+        // picture is being taken for.
+        PreviewCapture.shoot(after: PreviewCapture.delay(default: 1.0)) {
+            panel.screenFrame == nil ? .null : PreviewCapture.wholeScreen()
         }
     }
 
-    /// Photographs the screen where the panel sits, rather than the window on its own.
-    ///
-    /// A window captured in isolation comes back blank: the panel's background is a vibrancy
-    /// material, which samples whatever is behind it, and in isolation there is nothing to sample.
-    /// The composited screen is also the only thing that shows the shadow and the edges — which is
-    /// the whole reason for taking the picture.
-    private static func capture(_ panel: PanelWindow, to url: URL) {
-        guard panel.screenFrame != nil else { return }
-        // The whole screen: cropping to the panel's frame proved fiddly to get right in flipped
-        // coordinates, and the surrounding desktop is useful context for judging the edges anyway.
-        //
-        // Deprecated in macOS 14, and kept anyway. The replacement, ScreenCaptureKit, is async and
-        // wants the main run loop — which this blocks. `/usr/sbin/screencapture`, which ScreenGrabber
-        // uses for real captures, is worse here: as a subprocess its Screen Recording grant is
-        // judged against whatever launched Kestrel, so it fails from a terminal, which is precisely
-        // where this tool is run from. One warning in debug-only code is the cheaper trade.
-        guard let image = CGWindowListCreateImage(
-            .infinite, .optionAll, kCGNullWindowID, [.bestResolution]) else { return }
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.png.identifier as CFString, 1, nil) else { return }
-        CGImageDestinationAddImage(destination, image, nil)
-        CGImageDestinationFinalize(destination)
-    }
 }

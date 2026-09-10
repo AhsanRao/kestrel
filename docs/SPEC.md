@@ -188,7 +188,9 @@ kestrel/
 │       ├── App/
 │       │   ├── main.swift
 │       │   ├── AppDelegate.swift
-│       │   └── StatusMenu.swift
+│       │   ├── StatusMenu.swift
+│       │   ├── PreviewCapture.swift       # the probes' one screenshot routine
+│       │   └── *Preview.swift             # open a window, photograph it, quit
 │       ├── Core/
 │       │   ├── SessionCoordinator.swift   # state machine + orchestration
 │       │   ├── SessionState.swift
@@ -232,7 +234,11 @@ kestrel/
 │       │   └── Paths.swift                # ~/.kestrel/* constants
 │       └── Settings/
 │           ├── SettingsWindow.swift
-│           ├── SettingsView.swift
+│           ├── SettingsView.swift         # the shell: sidebar, page heading, footer
+│           ├── SettingsSection.swift      # the eight pages, their names and symbols
+│           ├── SettingsPanes.swift        # brain, shortcuts, seeing, typing
+│           ├── SettingsPanes+Voice.swift  # voice, hearing, memory, advanced
+│           ├── SettingsControls.swift     # a setting and its explanation, in one row
 │           ├── KestrelGlass.swift        # the menu's material, for Kestrel's own windows
 │           ├── BrandMark.swift           # the logo, the version, the notice
 │           ├── ModelPicker.swift          # choose a model, never type one
@@ -404,14 +410,42 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
   anything translucent there puts a seam around the notch.
 - A step's content is centred in the room left between the rail and the footer, and scrolls only
   once it needs more than that.
-- `KestrelPalette` is the single source of colour. Views name a role — `accent`, `success`,
-  `danger`, `surface`, `track` — never a hue; the six brand values under them come from the logo.
-  Two nearly-identical greens in adjacent windows is what naming by role prevents.
+- `KestrelPalette` is the single source of colour. Views name a role — `accent`, `primaryFill`,
+  `success`, `danger`, `surface`, `track` — never a hue; the brand values under them are measured
+  off the shipped artwork. Two nearly-identical greens in adjacent windows is what naming by role
+  prevents.
+- Every role that must survive both themes is a *dynamic* colour, built with
+  `NSColor(name:dynamicProvider:)` and resolved against whatever appearance it is drawn into. This
+  is not a nicety: aqua on light glass is 1.09:1 and navy on dark glass is 1.18:1, so one fixed
+  accent is invisible in one theme whichever of the two is picked. It also means `.tint()`, which
+  has no `ColorScheme` to hand, gets the right colour without one being plumbed to it.
+- The island is the exception again. Its fill never follows the system theme, so nothing drawn on it
+  may either: `accentOnDark`, `dangerOnDark` and the `onHousing*` ladder are fixed values.
 - Both windows carry `BrandFooter`: the mark, the version from `CFBundleShortVersionString`, and
   the notice. `build.sh` copies `assets/KestrelMark.png` in as `Logo.png` — the artwork with its
   alpha, not the plated icon, which `make icon` extracts alongside the icon masters. The welcome
   step uses the app icon itself, because most of the bare mark is a navy that disappears on dark
   glass at that size.
+
+### 8.11b Settings window
+- A sidebar of eight short pages — Brain, Shortcuts, Seeing, Typing, My voice, Hearing you, Memory,
+  Advanced — and a page on the right. Three tabs meant every page was a scroll, and a scroll is
+  where a setting goes to be lost; a named page each makes the window its own index.
+- The two columns are an `HStack`, not a `NavigationSplitView`. The split view brings its own
+  sidebar material, which sits opaque in front of the glass, and its own selection highlight, which
+  is the Mac's accent colour and not Kestrel's. Neither can be turned off from SwiftUI.
+- A setting and the sentence explaining it are one `Form` row, not two: `Setting`, `ToggleSetting`
+  and `SettingNote` in `SettingsControls.swift`. A separate row per explanation cost a separator and
+  two lots of padding each, which is what made eight controls overflow a 596-point window.
+- `SettingsPane.controlWidth` is the one width for every control in the right-hand column, so the
+  pages line up with each other.
+- The three macOS grants are pinned at the foot of the sidebar as `PermissionStrip`. They are not
+  settings — they cannot be flipped from here — but a revoked one is what a window of switches
+  otherwise hides. Pressing it opens the setup window, which the delegate hands in as `onOpenSetup`.
+- The window has `titleVisibility = .hidden`: the page heading already says where you are, and
+  `fullSizeContentView` would otherwise draw the titlebar string on top of it.
+- Reset puts the config back to `Config.defaults` behind a confirmation, and deliberately leaves the
+  memory file and the downloaded voice alone — neither is a setting.
 
 ### 8.12 StatusMenu
 - Menu bar item using the monochrome template icon. Items: backend picker (radio), Speak answers
@@ -574,9 +608,13 @@ Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG
 |---|---|
 | Name | **Kestrel** — a bird that hovers in place, watching the ground below. Kestrel hovers over your screen, sees, and acts. |
 | Tagline | "Hover. Ask. Do." |
-| App icon | `assets/kestrel-logo.svg`: cream kestrel silhouette hovering above a blue focus ring with an amber center point, on deep navy squircle |
+| App icon | `assets/kestrel-logo.svg`: a navy kestrel in flight, its wing drawn as an aqua waveform |
 | Menu bar icon | `assets/kestrel-menubar-template.svg`, monochrome template so it adapts to light/dark menu bars |
-| Palette | Navy `#0F1B2D` (background) · Ring blue `#2E5C8A` · Cream `#F5F1E8` (bird, primary text on navy) · Amber `#F2B233` (focus/accent, listening indicator) |
-| Panel states | idle gray · listening amber pulse · thinking blue · answering cream · error coral `#D85A30` |
+| Brand | Navy `#021D3D` (the bird) · Aqua `#02F8E6` (the waveform). The only two colours in the artwork, measured off it by pixel histogram; everything else in `KestrelPalette` is derived from them |
+| Derived | Teal `#02586F` — the tone the artwork already makes where the waveform crosses the body, and what the aqua has to become to sit on white (7.99:1 there, against the aqua's 1.09:1) · Sky `#67AAF2`, the same family lifted for the island's black |
+| Accent | Aqua on dark, teal on light. Dynamic, so `.tint()` and every icon, rail and meter resolve it themselves |
+| Primary action | Navy fill with a white label on light (16.9:1); aqua fill with a navy label on dark (12.5:1). Each brand colour on the ground it works on — `primaryFill` / `onPrimaryFill` |
+| Semantic | Success `#0E8A63` light / `#34CA98` dark · Warning `#A86A08` / `#F2AD40` · Danger `#B33F1C` / `#E86E43` |
+| Panel states | idle gray · listening aqua · transcribing/thinking/answering sky · error `#E86E43`. Fixed, not dynamic: the island is pure black whatever the system theme is |
 | Typography | SF Pro (system). Panel: 13 pt body, 11 pt secondary. Never below 10 pt |
 | Voice | Concise, friendly, no filler. Answers sound like a colleague looking over your shoulder |

@@ -16,15 +16,15 @@ struct KestrelCursor: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Pencil(part: .body)
-                .fill(KestrelPalette.cyan)
+                .fill(KestrelPalette.accentOnDark)
             Pencil(part: .nib)
-                .fill(KestrelPalette.navy)
+                .fill(KestrelPalette.onAccentOnDark)
             Pencil(part: .body)
-                .stroke(Color.black.opacity(0.30), lineWidth: 0.75)
+                .stroke(KestrelPalette.markKeyline, lineWidth: 0.75)
         }
         .frame(width: KestrelCursor.size.width, height: KestrelCursor.size.height,
                alignment: .topLeading)
-        .shadow(color: KestrelPalette.cyan.opacity(0.7), radius: isDrawing ? 8 : 4)
+        .shadow(color: KestrelPalette.accentOnDark.opacity(0.7), radius: isDrawing ? 8 : 4)
         .opacity(isDrawing ? 1 : 0.85)
         .scaleEffect(isDrawing ? 1 : 0.92, anchor: .topLeading)
         .allowsHitTesting(false)
@@ -91,7 +91,7 @@ struct CursorHalo: View {
     var body: some View {
         Circle()
             .fill(
-                RadialGradient(colors: [KestrelPalette.cyan.opacity(0.35), .clear],
+                RadialGradient(colors: [KestrelPalette.accentOnDark.opacity(0.35), .clear],
                                center: .center, startRadius: 0, endRadius: 16)
             )
             .frame(width: 32, height: 32)

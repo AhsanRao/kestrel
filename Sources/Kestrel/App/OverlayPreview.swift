@@ -119,24 +119,8 @@ enum OverlayPreview {
         // Lifted before the windows are composited, exactly as the panel preview must do it.
         coordinator.annotations.setExcludedFromCapture(false)
 
-        guard let path = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_OUT"] else { return }
         // Long enough for the strokes to finish by default; `KESTREL_PREVIEW_DELAY` catches the
         // cursor mid-draw, which is the only way to see whether it is riding the stroke at all.
-        let delay = ProcessInfo.processInfo.environment["KESTREL_PREVIEW_DELAY"].flatMap(Double.init) ?? 3.0
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            capture(to: URL(fileURLWithPath: path))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { NSApp.terminate(nil) }
-        }
-    }
-
-    /// Same trade as `PanelPreview`: the deprecated call is the one that works from a terminal,
-    /// where this is run from.
-    private static func capture(to url: URL) {
-        guard let image = CGWindowListCreateImage(
-            .infinite, .optionAll, kCGNullWindowID, [.bestResolution]),
-              let destination = CGImageDestinationCreateWithURL(
-                url as CFURL, UTType.png.identifier as CFString, 1, nil) else { return }
-        CGImageDestinationAddImage(destination, image, nil)
-        CGImageDestinationFinalize(destination)
+        PreviewCapture.shoot(after: PreviewCapture.delay(default: 3.0), PreviewCapture.wholeScreen)
     }
 }
