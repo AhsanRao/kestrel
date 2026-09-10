@@ -153,6 +153,12 @@ struct PanelView: View {
                     .lineLimit(2)
                     .textSelection(.enabled)
             }
+            if let aside = model.aside, model.answer.isEmpty {
+                Text(aside)
+                    .font(.system(size: 13))
+                    .foregroundStyle(KestrelPalette.onHousingBody)
+                    .transition(.opacity)
+            }
             if !model.answer.isEmpty {
                 // Laid out at its full height rather than inside a scroller. A ScrollView takes
                 // whatever space it is offered, and here the space it is offered is the window —

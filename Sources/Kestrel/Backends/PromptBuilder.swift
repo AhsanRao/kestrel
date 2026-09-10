@@ -3,11 +3,14 @@ import Foundation
 /// Assembles the single prompt string handed to a CLI. Framing text lives in `Resources/Prompts`
 /// so it can be edited without a rebuild (spec §9).
 enum PromptBuilder {
-    /// One question, one framing. There used to be two more — a walkthrough asking for a numbered
-    /// route as JSON, in either the Accessibility list or a grid drawn on the screenshot — and the
-    /// route is gone, so they are too.
+    /// The core framing, plus only the blocks this question actually needs. The draft rules are a
+    /// quarter of the whole thing and apply to a small fraction of questions; the browser note
+    /// applies only when macOS handed over nothing but chrome.
     static func framing(for query: Query) -> String {
-        BundleResources.prompt(.ask)
+        var parts = [BundleResources.prompt(.ask)]
+        if AskIntent.wantsDraft(query.text) { parts.append(BundleResources.prompt(.askDraft)) }
+        if query.screenText?.isEmpty ?? true { parts.append(BundleResources.prompt(.askBrowser)) }
+        return parts.joined(separator: "\n\n")
     }
 
     /// - Parameter mentionScreenshotPath: Claude reads the PNG itself via its Read tool, so it

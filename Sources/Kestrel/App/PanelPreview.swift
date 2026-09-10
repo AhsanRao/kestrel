@@ -42,8 +42,13 @@ enum PanelPreview {
         case "listening":
             panel.model.state = .listening
             panel.model.level = 0.78
+        case "thinking":
+            // The gap the acknowledgement fills: the question is heard, the answer is not here yet.
+            panel.model.state = .thinking
+            panel.model.transcript = "What's going on with this build error?"
+            panel.model.aside = Acknowledgement.line(for: "what's wrong with this build")
         case "error":
-            panel.model.state = .error("whisper-cli not found — run: brew install whisper-cpp")
+            panel.model.state = .error("I can't find whisper-cli. Run: brew install whisper-cpp")
         case "draft":
             panel.model.state = .answering
             panel.model.transcript = "Write a reply saying I can't make Thursday."

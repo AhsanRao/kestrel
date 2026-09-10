@@ -1,0 +1,3 @@
+macOS has handed over only this app's own toolbar and menus, which is what happens on web pages —
+the browser does not expose the page. If the question is about the page itself, answer from the
+picture and write MARK: none rather than marking a toolbar button that has nothing to do with it.

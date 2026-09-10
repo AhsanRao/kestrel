@@ -5,11 +5,25 @@ import Foundation
 enum BundleResources {
     enum Prompt: String {
         case ask = "ask"
+        /// Appended only when the question asks for words to paste somewhere else.
+        case askDraft = "ask-draft"
+        /// Appended only when macOS handed over nothing but the app's own chrome.
+        case askBrowser = "ask-browser"
         case dictationCleanup = "dictation-cleanup"
     }
 
+    /// Read once. The files do not change between questions, and reading three of them off disk on
+    /// the way to every answer is time the user is waiting.
+    private static var promptCache: [Prompt: String] = [:]
+    private static let promptLock = NSLock()
+
     static func prompt(_ prompt: Prompt) -> String {
-        string(at: "Prompts/\(prompt.rawValue).txt") ?? ""
+        promptLock.lock()
+        defer { promptLock.unlock() }
+        if let cached = promptCache[prompt] { return cached }
+        let text = string(at: "Prompts/\(prompt.rawValue).txt") ?? ""
+        promptCache[prompt] = text
+        return text
     }
 
     static var defaultMemory: String {

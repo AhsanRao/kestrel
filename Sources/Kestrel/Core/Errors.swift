@@ -1,7 +1,7 @@
 import Foundation
 
-/// Every error the user can see. Messages are written to be actionable in a 420 pt panel:
-/// what went wrong, and the exact command that fixes it.
+/// Every error the user can see. Written the way Kestrel talks — a person telling you what
+/// happened and what to do about it, in a 420 pt panel. Never a status code, never "unable to".
 enum KestrelError: LocalizedError, Equatable {
     case whisperBinaryMissing(String)
     case whisperModelMissing(String)
@@ -24,42 +24,42 @@ enum KestrelError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .whisperBinaryMissing(let path):
-            return "whisper-cli not found at \(path) — run: brew install whisper-cpp"
+            return "I can't find whisper-cli at \(path). Run: brew install whisper-cpp"
         case .whisperModelMissing(let path):
-            return "Whisper model missing at \(path) — run: scripts/download-whisper-model.sh"
+            return "The speech model isn't at \(path) yet. Run: scripts/download-whisper-model.sh"
         case .transcriptionFailed(let detail):
-            return "Transcription failed: \(detail)"
+            return "I couldn't make that out — \(detail)"
         case .emptyTranscript:
-            return "Didn't catch that — try again, closer to the mic"
+            return "Didn't catch that. Have another go, a bit closer to the mic"
         case .microphoneDenied:
-            return "Microphone access denied — System Settings ▸ Privacy & Security ▸ Microphone"
+            return "I need the microphone to hear you. System Settings ▸ Privacy & Security ▸ Microphone"
         case .screenRecordingDenied:
-            return "Screen Recording permission needed — System Settings ▸ Privacy & Security ▸ Screen Recording, then relaunch Kestrel"
+            return "I can't see your screen yet. System Settings ▸ Privacy & Security ▸ Screen Recording, then start me again"
         case .screenshotFailed(let detail):
-            return "Could not capture the screen: \(detail)"
+            return "The screenshot didn't come through — \(detail)"
         case .backendMissing(let name):
             return name == "codex"
-                ? "codex not found — run: npm i -g @openai/codex && codex login"
-                : "claude not found — install Claude Code, then run: claude auth"
+                ? "Codex isn't installed. Run: npm i -g @openai/codex && codex login"
+                : "Claude Code isn't installed. Install it, then run: claude auth"
         case .backendFailed(let name, let stderr):
             let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "\(name) failed: \(trimmed.isEmpty ? "no output" : String(trimmed.prefix(400)))"
+            return "\(name) stopped short — \(trimmed.isEmpty ? "it said nothing at all" : String(trimmed.prefix(400)))"
         case .backendTimedOut(let name, let seconds):
-            return "\(name) timed out after \(seconds)s"
+            return "\(name) is taking too long — I gave up after \(seconds)s. Ask me again"
         case .quotaExhausted(let name):
-            return "\(name) usage limit reached — switch backend from the menu bar, or set an API key in ~/.kestrel/config.json"
+            return "You're out of \(name) for now. Switch brains from the menu bar, or add an API key in Settings ▸ Advanced"
         case .accessibilityDenied:
-            return "Accessibility permission needed to type, click, or open apps for you — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
+            return "I need Accessibility to type and click for you. System Settings ▸ Privacy & Security ▸ Accessibility, then switch me on"
         case .hotkeyRegistrationFailed(let combo):
-            return "Hotkey \(combo) is already taken by another app — pick a different one in Settings"
+            return "Something else already owns \(combo). Pick another in Settings ▸ Shortcuts"
         case .actionDenied(let what):
-            return "Kestrel is not allowed to \(what) — edit ~/.kestrel/policy.json to permit it"
+            return "I'm not allowed to \(what). Edit ~/.kestrel/policy.json if you want me to"
         case .actionFailed(let what):
-            return "Could not \(what) — the control did not respond"
+            return "I tried to \(what), but it didn't respond"
         case .speech(let detail):
             return detail
         case .hotkeyNeedsAccessibility(let combo):
-            return "The \(combo) hotkey needs Accessibility to be seen — System Settings ▸ Privacy & Security ▸ Accessibility, then switch Kestrel on"
+            return "I can't see \(combo) without Accessibility. System Settings ▸ Privacy & Security ▸ Accessibility, then switch me on"
         }
     }
 

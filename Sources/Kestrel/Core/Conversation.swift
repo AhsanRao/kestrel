@@ -12,6 +12,9 @@ struct Conversation: Equatable {
         var askedAt: Date
         /// Bundle id of the app that was frontmost when it was asked.
         var appBundleID: String?
+        /// What was circled on screen. Carried so "the other one" and "that one" have something
+        /// concrete to resolve against, rather than only the words of the answer.
+        var marked: [String] = []
     }
 
     /// At most this many earlier turns are carried; beyond that the prompt costs more than it helps.
@@ -34,9 +37,11 @@ struct Conversation: Equatable {
         return Array(turns.suffix(Conversation.maximumTurns))
     }
 
-    mutating func record(question: String, answer: String, at date: Date, appBundleID: String?) {
+    mutating func record(question: String, answer: String, at date: Date, appBundleID: String?,
+                         marked: [String] = []) {
         guard !question.isEmpty, !answer.isEmpty else { return }
-        turns.append(Exchange(question: question, answer: answer, askedAt: date, appBundleID: appBundleID))
+        turns.append(Exchange(question: question, answer: answer, askedAt: date,
+                              appBundleID: appBundleID, marked: marked))
         if turns.count > Conversation.maximumTurns { turns.removeFirst(turns.count - Conversation.maximumTurns) }
     }
 
@@ -48,7 +53,13 @@ struct Conversation: Equatable {
     /// transcript.
     static func brief(_ turns: [Exchange]) -> String? {
         guard !turns.isEmpty else { return nil }
-        let lines = turns.map { "You were asked: \($0.question)\nYou answered: \($0.answer)" }
+        let lines = turns.map { turn -> String in
+            var line = "You were asked: \(turn.question)\nYou answered: \(turn.answer)"
+            if !turn.marked.isEmpty {
+                line += "\nYou pointed at: " + turn.marked.joined(separator: ", ")
+            }
+            return line
+        }
         return "Earlier in this conversation:\n\n" + lines.joined(separator: "\n\n")
             + "\n\nThe next question continues it. Resolve \"it\", \"that one\" and \"the other\" "
             + "against what is above and what is on screen now."

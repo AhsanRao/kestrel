@@ -9,6 +9,66 @@ code, the reason for it is given here.
 
 ---
 
+## [1.6.0] — 2026-09-10 — Faster, and it talks like a person
+
+### The screen is read while you are still talking
+
+Releasing the hotkey used to start three things in sequence: transcribe, then scan the Accessibility
+tree, then ask. The scan does not need the transcript and the transcript does not need the scan —
+both describe the moment the key came up — so all three now run at once, alongside the screenshot
+that already did. On a dense window that is the whole cost of the scan taken off the wait.
+
+`ScreenSnapshot` is that scan as one value: controls, content regions, page text and URL, read
+together on their own queue. It also caps the screen text at 6,000 characters on a line boundary. A
+dense page could previously put tens of thousands of characters into the prompt, every one of them
+read before the first word of the answer.
+
+### It says something while it thinks
+
+A question that takes a moment now gets a short spoken line first — "let me have a look", "right,
+checking" — chosen from what was actually asked rather than a fixed phrase, and never the same one
+twice running. It is written locally, not asked of the model: a first line that costs a round trip
+is not an acknowledgement, it is the answer arriving late.
+
+It is scheduled 450 ms out and cancelled if the answer beats it, so a fast reply is not made slower
+by filler in front of it. If it has already started speaking, the real first sentence queues behind
+it instead of cutting it off mid-word.
+
+### The prompt is assembled per question
+
+The framing was one block sent for every question, a quarter of it about writing drafts. It is now a
+core plus the blocks that apply: the draft rules only when the question asks for words to paste
+somewhere, the browser note only when macOS handed over nothing but chrome. A typical question's
+framing went from 6,789 characters to 4,211. The files are read once and cached rather than off disk
+on the way to every answer.
+
+### The voice
+
+Rewritten. Warmer and more certain, with a little pleasure in the work, and shorter — solve it, do
+not describe it; give the next move, not an inventory of the screen. Talking about itself is banned
+by name: "I couldn't find a screenshot", "I don't have enough information", "I'm unable to
+determine", "as an AI". Thin context is no longer a reason to stall — say the most useful thing
+about what is in front of you and stop.
+
+Every error message went the same way. "Screen Recording permission needed" is now "I can't see your
+screen yet", and "claude not found" is "Claude Code isn't installed".
+
+### Dictation does not wait for a model
+
+Punctuation, capitals, fillers and spoken commands — "comma", "full stop", "new line" — are fixed by
+`DictationTidy` in microseconds. Only dictation over eighteen words goes on to the model, which is
+where real speech-to-text errors and run-on sentences appear and where the wait is proportionally
+invisible. Short dictation is pasted the moment it is heard.
+
+### Follow-ups know what was circled
+
+A carried turn now includes what Kestrel pointed at, so "the other one" resolves against the marks
+as well as the words.
+
+The ask timeout is 75 seconds, down from 120.
+
+---
+
 ## [1.5.6] — 2026-09-10 — An About page, a red Quit, and a clear-out
 
 ### Where the version lives

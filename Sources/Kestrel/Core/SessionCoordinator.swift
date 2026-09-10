@@ -10,6 +10,9 @@ final class SessionCoordinator {
     let log = Logger(subsystem: "dev.0xash.kestrel", category: "session")
     let work = DispatchQueue(label: "dev.0xash.kestrel.session", qos: .userInitiated)
     let captureQueue = DispatchQueue(label: "dev.0xash.kestrel.capture", qos: .userInitiated)
+    /// Separate from `captureQueue`: the screenshot is a subprocess and the scan is Accessibility
+    /// traffic, so putting them on one queue would make each wait for the other.
+    let scanQueue = DispatchQueue(label: "dev.0xash.kestrel.scan", qos: .userInitiated)
 
     private let hotkeys = HotkeyService()
     let audio = AudioCapture()
@@ -29,8 +32,15 @@ final class SessionCoordinator {
     var pendingCapture: ScreenCapture?
     /// True once part of the answer has been read out while it streamed.
     var streamedSpeech = false
+    /// The "let me look" line, waiting to see whether the answer beats it.
+    var pendingAcknowledgement: DispatchWorkItem?
+    /// True once it has been said, so the first real sentence queues behind it instead of cutting
+    /// it off mid-word.
+    var spokeAcknowledgement = false
     /// True once a streamed answer has reached its `DRAFT:` line: nothing after it is spoken.
     var streamingDraft = false
+    /// The screen as it was when the hotkey was released, read alongside the transcript.
+    var pendingScreen: ScreenSnapshot?
     /// Controls read out of the frontmost app for the answer currently being planned.
     var scannedElements: [AXElementScanner.Element] = []
     /// How much of the control list an answer is offered — enough to point at what it is talking

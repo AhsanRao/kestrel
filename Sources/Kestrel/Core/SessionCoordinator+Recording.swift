@@ -49,14 +49,15 @@ extension SessionCoordinator {
         let maxEdge = config.screenshotMaxEdge
         let captureMode = config.captureMode
 
-        // The screenshot and the transcript do not depend on each other, so they are taken at the
-        // same time. On a busy screen that is a few hundred milliseconds the user does not wait.
+        // The transcript, the screenshot and the Accessibility scan all describe the same moment
+        // and none of them needs the others, so all three run at once. Reading the screen after the
+        // transcript landed used to add its whole cost to the wait; now it is free.
         var captureError: Error?
-        let capturing = DispatchGroup()
+        let gathering = DispatchGroup()
         if intent == .ask {
-            capturing.enter()
+            gathering.enter()
             captureQueue.async { [weak self] in
-                defer { capturing.leave() }
+                defer { gathering.leave() }
                 do {
                     let capture = try ScreenGrabber.capture(maxEdge: maxEdge, mode: captureMode)
                     self?.pendingCapture = capture
@@ -67,12 +68,18 @@ extension SessionCoordinator {
                     captureError = error
                 }
             }
+            let bundleID = TextInjector.frontmostBundleID()
+            gathering.enter()
+            scanQueue.async { [weak self] in
+                defer { gathering.leave() }
+                self?.pendingScreen = ScreenSnapshot.read(bundleID: bundleID)
+            }
         }
 
         work.async { [weak self] in
             guard let self else { return }
             self.transcribe(wav, intent: intent) {
-                capturing.wait()
+                gathering.wait()
                 if let captureError { throw captureError }
             }
         }

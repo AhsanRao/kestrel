@@ -108,9 +108,9 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
 
 1. User presses and holds `⌃⌥Space`. `HotkeyService` emits `pressed(.ask)`.
 2. `SessionCoordinator` moves `idle → listening`, starts `AudioCapture`, shows `PanelWindow` at top-center.
-3. User releases. Coordinator immediately calls `ScreenGrabber.capture()` (before the panel can change what's on screen), stops audio, moves to `transcribing`.
+3. User releases. Three jobs start at once, because all three describe that one moment and none needs the others: `ScreenGrabber.capture()` on `captureQueue`, `ScreenSnapshot.read()` on `scanQueue`, and the transcription on `work`. Coordinator moves to `transcribing`.
 4. `Transcriber` transcribes the WAV on-device. Empty result → `error("Didn't catch that")`.
-5. Coordinator moves to `thinking`, builds a `Query { text, screenshotURL, focusRegion? }`, calls `BackendRouter.ask(query)`.
+5. Coordinator moves to `thinking` and schedules an `Acknowledgement` — a short spoken line, said only if the answer has not begun within 450 ms. Builds a `Query` from the transcript and the snapshot that is already waiting, calls `BackendRouter.ask(query)`.
 6. Selected backend spawns its CLI with cwd `~/.kestrel` (so memory files are loaded), passes the screenshot, waits for the result.
 7. Coordinator moves to `answering`: panel shows text, `SpeechOutput` speaks it (if enabled). Temp files deleted.
 8. Panel auto-hides after a configurable delay. Another hotkey press interrupts speech.
@@ -119,7 +119,7 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
 
 1. `⌃⌥D` toggles `dictating`. Panel shows a red indicator.
 2. Second `⌃⌥D` stops capture, transcribes.
-3. If `cleanupDictation` is on: backend is asked to fix punctuation/grammar with a strict "return only the text" prompt. If it fails or times out, fall back to the raw transcript.
+3. If `cleanupDictation` is on: `DictationTidy` fixes punctuation, capitals, fillers and spoken commands ("comma", "new line") locally, in microseconds. Only text over `DictationTidy.wordsWorthAModel` words then goes to the backend, with the tidied version as the fallback if that fails or times out.
 4. `TextInjector` writes to the pasteboard, sends ⌘V to the focused app, restores the previous pasteboard after ~400 ms. Falls back to typing via CGEvent key events if paste is rejected (terminals, some Electron apps).
 
 ### 5.4 State machine
@@ -193,6 +193,7 @@ kestrel/
 │       │   └── *Preview.swift             # open a window, photograph it, quit
 │       ├── Core/
 │       │   ├── SessionCoordinator.swift   # state machine + orchestration
+│       │   ├── ScreenSnapshot.swift       # controls, regions and text, read as one unit
 │       │   ├── SessionState.swift
 │       │   ├── Query.swift                # Query, Answer, Step models
 │       │   └── Errors.swift
@@ -219,6 +220,7 @@ kestrel/
 │       │   └── CLIRunner.swift            # Process wrapper, PATH, timeouts, cancellation
 │       ├── Output/
 │       │   ├── TextInjector.swift
+│       │   ├── DictationTidy.swift        # punctuation and capitals, without a model
 │       │   ├── PanelWindow.swift
 │       │   ├── KestrelPalette.swift       # the colours, by the job they do
 │       │   ├── PanelFrameAnimator.swift   # the window frame, sprung and display-synced
@@ -322,7 +324,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 ### 8.5 Backend protocol
 - Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup`), `maxTokens` hint.
 - Output `Answer`: `text`, `raw` (full CLI output for debugging), `durationMs`, optional `steps` (v2).
-- Requirements: cancellable (kill the subprocess), timeouts (ask 120 s, cleanup 30 s), never throws on non-zero exit without including stderr in the error.
+- Requirements: cancellable (kill the subprocess), timeouts (ask 75 s, cleanup 20 s — a question still unanswered past that has gone wrong, and a dead island for two minutes is worse than being asked to try again), never throws on non-zero exit without including stderr in the error.
 
 ### 8.6 ClaudeBackend
 - Command contract (verify against `claude --help` at build time; flags drift):
@@ -545,11 +547,29 @@ answer, marks that stay put.
 
 ## 9. Prompts (content, not code)
 
-**ask.txt** — Kestrel's voice: someone sitting next to the user who points while they talk. Two
-sentences is the normal length. No preamble, no markdown, no describing where things are — name the
-thing and mark it. Ends with the `MARK:` contract of §8.15, and the `DRAFT:` contract of §8.17.
+The framing is assembled per question by `PromptBuilder.framing(for:)`: the core, plus only the
+blocks that question needs. Every token is read before the first word of the answer, so a block that
+does not apply is latency spent on nothing.
 
-**dictation-cleanup.txt** — "Return only the cleaned version of the dictated text: fix punctuation, capitalization, and obvious speech-to-text errors; keep the speaker's words, tone, and language; no em dashes; no additions; no quotes around the output."
+**ask.txt** — the core, sent always. Kestrel's voice: the friend who knows this stuff, sitting next
+to the user and pointing while they talk. Two sentences is the normal length. Answer first, no
+preamble, no markdown, no describing where things are — name the thing and mark it. Solve it rather
+than describe it. Never talks about itself, its context or its machinery: "I couldn't find a
+screenshot" and "I don't have enough information" are banned by name. Carries the `MARK:` contract
+of §8.15.
+
+**ask-draft.txt** — appended only when `AskIntent.wantsDraft` matches. The `DRAFT:` contract of
+§8.17, a quarter of the old prompt, on the fraction of questions that want it. The matcher is
+deliberately generous: a missed draft is worse than the tokens. When it does miss,
+`DraftParser.suggestion(forQuestion:in:)` still catches a reply left in quotes.
+
+**ask-browser.txt** — appended only when the content reader came back empty, which is the browser
+case: answer from the picture and mark nothing, rather than marking a toolbar button.
+
+**dictation-cleanup.txt** — "Return only the cleaned version of the dictated text: fix punctuation, capitalization, and obvious speech-to-text errors; keep the speaker's words, tone, and language; no em dashes; no additions; no quotes around the output." Reached only for long dictation; §5.3.
+
+Prompt files are read once and cached — three disk reads on the way to every answer is time the
+user is waiting.
 
 ---
 

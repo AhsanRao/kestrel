@@ -17,6 +17,9 @@ final class PanelModel: ObservableObject {
     @Published var isHovering: Bool = false
     /// This question continues the previous one rather than starting fresh.
     @Published var isFollowUp: Bool = false
+    /// "Let me have a look" — said and shown while the model is still thinking, replaced by the
+    /// answer the moment the first sentence of it arrives.
+    @Published var aside: String?
     /// Live input level, 0…1, while recording.
     @Published var level: Double = 0
     @Published var levelPhase: Double = 0
@@ -30,7 +33,7 @@ final class PanelModel: ObservableObject {
     /// Collapsed, the island is a bar around the notch; it opens only once there is something to
     /// read. A transcript alone counts: that is the question being heard back.
     var isExpanded: Bool {
-        !answer.isEmpty || !transcript.isEmpty || isError || draft != nil
+        !answer.isEmpty || !transcript.isEmpty || isError || draft != nil || aside != nil
     }
 
     /// The island's width in each of its two sizes. Always wider than the housing, so the housing

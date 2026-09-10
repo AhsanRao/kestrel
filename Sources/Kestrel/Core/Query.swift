@@ -62,8 +62,8 @@ struct Query {
     /// Timeouts per spec §8.5.
     var timeout: TimeInterval {
         switch mode {
-        case .ask: return 120
-        case .dictationCleanup: return 30
+        case .ask: return 75
+        case .dictationCleanup: return 20
         }
     }
 }
