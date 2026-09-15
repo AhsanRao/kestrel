@@ -15,7 +15,7 @@ only while you are holding the key.
 | **Show** | Kestrel draws on the real screen while it talks — a pencil rings the thing the answer is about, one mark after another. Ask *"how do I upload a file?"* and the button gets circled while the sentence is spoken. Esc clears it. |
 | **Write** | Ask for a reply, an email or a paragraph and you get it as text with a **Copy** button, not read aloud. |
 | **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
-| **Open** | Say "open Spotify" and it opens. That is the only thing Kestrel does *to* your Mac. |
+| **Do** | Ask it to open an app, run a search, close some tabs — it acts, checks the result, and asks before anything it can't undo. |
 | **Follow up** | Ask again within 90 seconds and it continues the same thread. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
@@ -85,6 +85,8 @@ Privacy pane whenever something turns out to be missing mid-use.
   thing, and ask again if you want the next part. That question gets a fresh look at the new screen.
 - **Write something:** *"draft a reply to this"* gives you one spoken line and the draft in a card
   with a **Copy** button. Drafts are never read aloud.
+- **Do something:** *"open Safari and search for kestrels"*, *"close these tabs"* — Kestrel carries
+  it out, taking a fresh look after each step, and asks before anything it can't undo. See below.
 - Both hotkeys are rebindable in Settings ▸ Shortcuts.
 
 **Why these keys.** Asking is held down for as long as you are talking, so it is a bare chord —
@@ -124,6 +126,10 @@ you save. The Settings window writes the same file.
 | `sounds` | `true` | short cues for each state change |
 | `spatialContext` | `true` | circle a region while holding the ask key |
 | `captureMode` | `"window"` | `"display"` to send the whole screen instead |
+| `agentTools` | `true` | let Kestrel act on the Mac, not just answer; `false` leaves only "open an app" |
+| `maxAgentSteps` | `10` | tool calls one request may make before it gives up |
+| `shellAllowlist` | read-only tools | executables `run_shell` may start; extend it here |
+| `sensitivePatterns` | delete, send, pay… | words that make an action ask you first |
 | `acknowledgeWhileThinking` | `true` | say "one sec" while the model reads the screen |
 | `allowMCPServers` | `false` | leave off: MCP discovery added ~10 s to every question |
 | `voicePitch` | `0.98` | |
@@ -184,17 +190,24 @@ make deps      # scripts/check-deps.sh
   `Sources/Kestrel/Backends/ClaudeBackend.swift` and `CodexBackend.swift`, with the verified flags
   in a comment above it. `scripts/check-deps.sh` re-checks them against `--help` and warns on drift.
 
-## What Kestrel does *not* do
+## Doing things
 
-It does not drive your apps. Pressing buttons, filling fields and planning multi-step tasks were
-removed: every plan went stale the moment anything moved, every step needed a confirmation, and the
-confirmations became something to click through rather than read. What made Kestrel worth having was
-never that it could press Send — it was that it could look at the screen with you and point.
+Ask it to *do* something and it does it: "open Safari and search for kestrels", "reply to this email",
+"close these tabs". It has six tools — open an app, run an AppleScript, run a shell command, click,
+type, press a key — and after each step it takes a fresh look at the screen and decides the next one,
+until the job is done or it runs out of steps (ten by default). It prefers AppleScript and named apps
+over clicking pixels, because names do not move when a window does.
 
-The one exception is **opening an app**: say "open Spotify" and it opens. One verb, nothing to undo,
-no permission theatre. Anything after that — "and play something" — is not done, and Kestrel says so
-rather than half-doing it.
+**It asks before anything it can't take back.** Deleting a file, sending a message, paying for
+something, anything typed into a terminal — Kestrel says what it is about to do and waits. Tap the
+hotkey to go ahead, or hold it and say "no". A shell command has to be on a short allowlist of
+read-only tools, and nothing is ever run as administrator. Every action it takes is written to
+`~/.kestrel/logs/actions.jsonl` — menu bar ▸ Open the action log — so you can see afterwards exactly
+what happened while you were looking somewhere else.
 
+Turn it off with menu bar ▸ **Act on the Mac**, or `agentTools: false` in the config. With it off,
+"open Spotify" still opens Spotify — one verb, nothing to undo — and anything more is described
+rather than done. A plain question about the screen is answered the same either way.
 
 ## Teaching it your own vocabulary
 

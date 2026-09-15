@@ -40,6 +40,15 @@ enum AppLauncher {
         return installedApp(named: name)
     }
 
+    /// "Open Spotify and play something" asks for more than an app. The words after the name are
+    /// the part that needs the model, which is the branch that should get the whole request.
+    static func asksForMore(_ text: String) -> Bool {
+        let lowered = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let verb = openers.first(where: { lowered.hasPrefix("\($0) ") }) else { return false }
+        let rest = lowered.dropFirst(verb.count + 1)
+        return [" and ", " then ", " to ", " for "].contains { rest.contains($0) }
+    }
+
     /// Matches the spoken name against what is installed, by display name.
     static func installedApp(named name: String) -> (bundleID: String, name: String)? {
         let wanted = name.lowercased()

@@ -66,8 +66,10 @@ extension SessionCoordinator {
                                            window: TimeInterval(config.followUpSeconds),
                                            frontmostBundleID: bundleID)
         DispatchQueue.main.async { self.panel.model.isFollowUp = !history.isEmpty }
-        // "Open Spotify" is the one thing Kestrel still does rather than describes.
-        if !forceAnswer, let app = AppLauncher.requestedApp(in: text) {
+        // "Open Spotify" needs no model at all. "Open Spotify and play something" does, when the
+        // model has hands; without them the app is opened and the rest is left, as before.
+        if !forceAnswer, let app = AppLauncher.requestedApp(in: text),
+           !(config.agentTools && AppLauncher.asksForMore(text)) {
             return openApp(app, asked: text)
         }
         let elements = screen.elements
@@ -76,6 +78,7 @@ extension SessionCoordinator {
             self.resetStreaming()
             self.scannedElements = elements
         }
+        let acting = config.agentTools ? beginActing(with: pendingCapture) : nil
         let query = Query(text: text, screenshot: pendingCapture?.url,
                           focusCrop: pendingCrop,
                           mode: .ask,
@@ -85,13 +88,18 @@ extension SessionCoordinator {
                           history: history,
                           skills: SkillLibrary.notes(forBundleID: bundleID),
                           desktop: DesktopContextDetector.needsDesktopContext(text)
-                              ? DesktopSurvey.summary() : nil)
+                              ? DesktopSurvey.summary() : nil,
+                          tools: acting != nil, maximumSteps: config.maxAgentSteps)
         do {
             let onDelta: ((String) -> Void)? = { [weak self] sentence in
                 DispatchQueue.main.async { self?.speakStreamed(sentence) }
             }
             let answer = try router.ask(query, config: config, onDelta: onDelta)
             DispatchQueue.main.async {
+                // Marks are numbered off the screen the question was asked about. Once something
+                // has been done to it, that list describes a screen that is gone.
+                let acted = (acting?.steps ?? 0) > 0
+                self.endActing()
                 self.discardCapture()
                 // The marker line is machine-readable and belongs on the screen, not in the
                 // sentence: it is stripped before the answer is recorded, shown or spoken.
@@ -106,8 +114,8 @@ extension SessionCoordinator {
                     ?? DraftParser.suggestion(forQuestion: text, in: written.spoken)
                 var spoken = answer
                 spoken.text = written.spoken
-                let marked = self.showAnnotations(pointed, targets: targets,
-                                                  readContent: screen.readContent)
+                let marked = acted ? [] : self.showAnnotations(pointed, targets: targets,
+                                                               readContent: screen.readContent)
                 self.conversation.record(question: text, answer: written.spoken,
                                          at: Date(), appBundleID: bundleID, marked: marked)
                 // "I'm working on the billing rewrite" is worth keeping; the rest of what was on
@@ -116,8 +124,10 @@ extension SessionCoordinator {
                 self.present(spoken, alreadySpoken: self.streamedSpeech)
             }
         } catch is CancellationError {
+            DispatchQueue.main.async { self.endActing() }
             discardCapture()
         } catch {
+            DispatchQueue.main.async { self.endActing() }
             discardCapture()
             finish(with: error)
         }

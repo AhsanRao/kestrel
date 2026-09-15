@@ -70,6 +70,7 @@ final class PanelModel: ObservableObject {
         case .dictating: return "Dictating"
         case .transcribing: return "Transcribing"
         case .thinking: return "Thinking"
+        case .confirming: return "Your call"
         case .answering: return "Answer"
         case .injecting: return "Pasting"
         case .error(let message): return message
@@ -81,6 +82,8 @@ final class PanelModel: ObservableObject {
         case .idle: return KestrelPalette.idle
         case .listening, .dictating: return KestrelPalette.accentOnDark
         case .transcribing, .thinking, .injecting: return KestrelPalette.sky
+        // A question back to the user, in the colour that means "talk to me".
+        case .confirming: return KestrelPalette.accentOnDark
         // The island is black, so the logo's navy-leaning blue disappears into it; the same hue
         // lifted to where it reads against black.
         case .answering: return KestrelPalette.sky

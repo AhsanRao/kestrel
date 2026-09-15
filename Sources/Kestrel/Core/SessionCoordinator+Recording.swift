@@ -91,6 +91,8 @@ extension SessionCoordinator {
 
     /// The engine stopped by itself: max duration hit, or the input device went away.
     func audioStoppedOnItsOwn(_ url: URL?) {
+        // A yes held for ten seconds is still a yes; decide on what was heard.
+        if case .confirming = machine.state { return apply(.askReleased) }
         guard machine.state == .listening || machine.state == .dictating else { return }
         let intent: SessionIntent = machine.state == .dictating ? .dictation : .ask
         guard url != nil else { apply(.cancelled); panel.hideImmediately(); return }

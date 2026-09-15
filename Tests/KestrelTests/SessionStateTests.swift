@@ -38,6 +38,32 @@ final class SessionStateTests: XCTestCase {
         XCTAssertEqual(machine.state, .listening)
     }
 
+    func testAConfirmationIsAskedAndAnsweredWithinTheModelsTurn() {
+        var machine = SessionMachine()
+        machine.apply(.askPressed)
+        machine.apply(.askReleased)
+        machine.apply(.transcribed(.ask))            // thinking: the model has the question
+        XCTAssertEqual(machine.apply(.confirmationNeeded("delete a file")), [])
+        XCTAssertEqual(machine.state, .confirming("delete a file"))
+        // The ask hotkey now means "yes": a press starts recording it, release decides.
+        XCTAssertEqual(machine.apply(.askPressed), [.startConfirming])
+        XCTAssertEqual(machine.apply(.askReleased), [.finishConfirming])
+        XCTAssertEqual(machine.apply(.confirmed), [])
+        XCTAssertEqual(machine.state, .thinking, "back to the model's turn, whatever the answer")
+    }
+
+    func testADeclineReturnsToThinkingToo() {
+        var machine = SessionMachine(state: .confirming("send an email"))
+        XCTAssertEqual(machine.apply(.declined), [])
+        XCTAssertEqual(machine.state, .thinking)
+    }
+
+    func testDictationCannotInterruptAConfirmation() {
+        var machine = SessionMachine(state: .confirming("delete a file"))
+        XCTAssertEqual(machine.apply(.dictateToggled), [.pulse])
+        XCTAssertEqual(machine.state, .confirming("delete a file"))
+    }
+
     func testHotkeyWhileBusyIsRefusedWithAPulse() {
         var machine = SessionMachine()
         machine.apply(.askPressed)

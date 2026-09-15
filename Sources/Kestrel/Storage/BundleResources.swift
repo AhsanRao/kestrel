@@ -9,6 +9,8 @@ enum BundleResources {
         case askDraft = "ask-draft"
         /// Appended only when macOS handed over nothing but the app's own chrome.
         case askBrowser = "ask-browser"
+        /// Appended when the model has hands: how and when to use the six tools.
+        case askTools = "ask-tools"
         case dictationCleanup = "dictation-cleanup"
     }
 

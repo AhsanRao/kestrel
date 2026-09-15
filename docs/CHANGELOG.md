@@ -9,6 +9,39 @@ code, the reason for it is given here.
 
 ---
 
+## [1.8.0] — 2026-09-15 — it does things now, not just says them
+
+Ask Kestrel to *do* something — "open Safari and search for kestrels", "reply to this", "close these
+tabs" — and it does it. Six tools reach the Mac: open an app, run an AppleScript, run a shell
+command, click, type, press a key. After each step it takes a fresh screenshot and looks before
+deciding the next, so nothing is planned against a screen it has not just seen; it keeps going until
+the job is done or it runs out of steps (ten by default), and says "I couldn't complete that" if it
+does. A plain question about the screen is answered exactly as before, with marks and no tool call.
+
+The tools live inside the app, not in a child process, because they need Kestrel's own Accessibility
+grant. `claude -p` is handed one MCP server whose command is `nc -U ~/.kestrel/mcp.sock` — a bare
+relay — and every call it forwards is answered on a Unix socket only this user can open. No TCP port.
+`--strict-mcp-config` keeps your own connectors out of it, so the tools add no discovery latency.
+
+**It asks before anything it can't take back.** Deleting, sending, paying, anything typed into a
+terminal: Kestrel speaks what it is about to do and waits. Tap the hotkey for yes, hold it and say
+"no" for no; thirty seconds of silence is a no. `run_shell` runs only a short allowlist of read-only
+commands — every segment of a pipeline is checked, and `$()`, backticks, redirection and `find -exec`
+are refused — and elevation is denied outright, never merely confirmed. AppleScript and named apps
+are the primary path because names survive a window moving where pixel coordinates do not; click and
+type are the fallback, and use the coordinates listed against the screenshot the model was shown.
+
+Every tool call lands in `~/.kestrel/logs/actions.jsonl` — tool, arguments, whether you were asked,
+whether it worked — one JSON object per line, openable from the menu, so what happened while you were
+looking elsewhere is reviewable after. Turn the whole thing off with menu bar ▸ **Act on the Mac**;
+with it off, "open Spotify" still opens Spotify and anything more is described rather than half-done.
+
+Why this and not the plans of before: the earlier attempt asked the model for a whole numbered route
+up front, and every route went stale the moment anything on screen moved. Looking after each step,
+instead of planning against a snapshot, is what makes acting worth having.
+
+---
+
 ## [1.7.1] — 2026-09-10 — a shortcut macOS was not already using
 
 Dictation is on `⌃⌘K`. `⌃⌘D` is Look Up, one of the four `⌃⌘` combinations macOS keeps for itself

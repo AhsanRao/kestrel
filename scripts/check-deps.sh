@@ -73,6 +73,17 @@ else
 fi
 
 echo
+echo "Acting on the Mac"
+# claude reaches the in-app tools through `nc -U`, which ships with macOS, and MCP support.
+[ -x /usr/bin/nc ] && ok "nc — /usr/bin/nc (relays claude to the tool socket)" \
+                   || bad "/usr/bin/nc missing — acting on the Mac needs it"
+if command -v claude >/dev/null 2>&1; then
+  grep -q -- "--mcp-config" <<<"$(claude --help 2>&1)" \
+    && ok "claude --mcp-config present" \
+    || warn "claude --help no longer mentions --mcp-config (see Sources/Kestrel/Backends/ClaudeBackend.swift)"
+fi
+
+echo
 echo "User data"
 [ -d "$HOME/.kestrel" ] && ok "~/.kestrel exists" || warn "~/.kestrel will be created on first launch"
 [ -f "$HOME/.kestrel/KESTREL.md" ] && ok "memory file present" || warn "memory file seeded on first launch"

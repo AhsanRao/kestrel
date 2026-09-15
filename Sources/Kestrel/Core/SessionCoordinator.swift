@@ -57,6 +57,14 @@ final class SessionCoordinator {
     /// Everything this take has already put into the app. Empty also means nothing has been typed
     /// yet, which is what decides whether the next phrase needs a space in front of it.
     var liveText = ""
+    /// The tools `claude -p` is offered, served from inside the app (spec §8.18).
+    let toolServer = MCPSocketServer(path: Paths.mcpSocket)
+    /// The hands behind the question in flight, if it was allowed any.
+    var acting: ActionSession?
+    /// Whoever is blocked waiting for the user's yes or no.
+    var pendingDecision: ((Bool) -> Void)?
+    /// Steps the last question took, kept for the probe's report after the session is gone.
+    var lastActingSteps = 0
     private var accessibilityRetry: Timer?
 
     var config: Config { ConfigStore.shared.current }
@@ -79,6 +87,7 @@ final class SessionCoordinator {
         hotkeys.accessibilityMissing = { [weak self] in self?.chordNeedsAccessibility() }
         hotkeys.start(with: config.hotkeys)
         applyConfigToPanel(config)
+        startToolServer()
 
         ConfigStore.shared.addObserver { [weak self] config in
             self?.hotkeys.apply(config.hotkeys)
@@ -87,6 +96,8 @@ final class SessionCoordinator {
     }
 
     func stop() {
+        abandonActing()
+        toolServer.stop()
         cancelLiveDictation()
         sounds.stop()
         annotations.hide()
@@ -166,6 +177,7 @@ final class SessionCoordinator {
             return
         }
         cancelLiveDictation()
+        abandonActing()
         audio.stop()
         panel.hideImmediately()
         apply(.cancelled)
@@ -188,6 +200,8 @@ final class SessionCoordinator {
         case .startDictating: beginRecording(intent: .dictation)
         case .finishListening: finishRecording(intent: .ask)
         case .finishDictating: finishRecording(intent: .dictation)
+        case .startConfirming: beginConfirmRecording()
+        case .finishConfirming: finishConfirmRecording()
         case .interruptSpeech: speech.stop()
         case .pulse: panel.pulse()
         case .clearOverlay: annotations.hide()

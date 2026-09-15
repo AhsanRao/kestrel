@@ -6,6 +6,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 CONFIG="${CONFIG:-release}"
+# Command Line Tools 27.0 point MacOSX.sdk at the 27 SDK, whose SwiftUI needs a macro plugin the
+# tools do not ship ("plugin for module 'SwiftUIMacros' not found"). The 26 SDK builds; use it
+# while the tools, not Xcode, are selected. Set SDKROOT yourself to override.
+SDK26=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+if [ -z "${SDKROOT:-}" ] && [ -d "$SDK26" ] && [ "$(xcode-select -p)" = /Library/Developer/CommandLineTools ]; then
+  export SDKROOT="$SDK26"
+fi
 VERSION="$(sed -n 's/^## \[\([0-9][^]]*\)\].*/\1/p' docs/CHANGELOG.md 2>/dev/null | head -1)"
 VERSION="${VERSION:-0.0.0}"
 APP="Kestrel.app"

@@ -1,5 +1,16 @@
 .PHONY: build run test clean icon deps debug
 
+# Same SDK pin as build.sh, for `swift test`: the 27 SDK the Command Line Tools select cannot
+# build SwiftUI without a macro plugin the tools do not ship.
+SDK26 := /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+ifeq ($(origin SDKROOT), undefined)
+ifneq ($(wildcard $(SDK26)),)
+ifeq ($(shell xcode-select -p),/Library/Developer/CommandLineTools)
+export SDKROOT := $(SDK26)
+endif
+endif
+endif
+
 build:
 	./build.sh
 

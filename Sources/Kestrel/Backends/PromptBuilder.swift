@@ -10,6 +10,10 @@ enum PromptBuilder {
         var parts = [BundleResources.prompt(.ask)]
         if AskIntent.wantsDraft(query.text) { parts.append(BundleResources.prompt(.askDraft)) }
         if query.screenText?.isEmpty ?? true { parts.append(BundleResources.prompt(.askBrowser)) }
+        if query.tools {
+            parts.append(BundleResources.prompt(.askTools)
+                .replacingOccurrences(of: "{steps}", with: String(query.maximumSteps)))
+        }
         return parts.joined(separator: "\n\n")
     }
 

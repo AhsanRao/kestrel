@@ -10,6 +10,9 @@ enum SessionState: Equatable {
     case dictating
     case transcribing(SessionIntent)
     case thinking
+    /// The model wants to do something irreversible and Kestrel has asked. The hotkey now means
+    /// "yes" — a tap, or a hold with the word in it — and stays live until the answer comes.
+    case confirming(String)
     case answering
     case injecting
     case error(String)
@@ -30,6 +33,9 @@ enum SessionEvent: Equatable {
     case transcriptionEmpty
     case answered
     case injected
+    case confirmationNeeded(String)
+    case confirmed
+    case declined
     case failed(String)
     case autoHideElapsed
     case cancelled
@@ -42,6 +48,8 @@ enum SessionEffect: Equatable {
     case finishListening      // screenshot first, then stop audio and transcribe
     case startDictating
     case finishDictating
+    case startConfirming      // record the yes or no
+    case finishConfirming     // stop recording and decide
     case interruptSpeech
     case pulse                // busy: refuse the input, nudge the panel
     case clearOverlay
@@ -50,6 +58,9 @@ enum SessionEffect: Equatable {
 
 struct SessionMachine {
     private(set) var state: SessionState = .idle
+
+    /// Starts wherever it is told. For the probe that asks a typed question without a microphone.
+    init(state: SessionState = .idle) { self.state = state }
 
     @discardableResult
     mutating func apply(_ event: SessionEvent) -> [SessionEffect] {
@@ -106,6 +117,21 @@ struct SessionMachine {
             state = .answering
             return []
 
+        // A confirmation is asked from inside the model's turn, and answered with the ask hotkey.
+        case (.thinking, .confirmationNeeded(let what)):
+            state = .confirming(what)
+            return []
+
+        case (.confirming, .askPressed):
+            return [.startConfirming]
+
+        case (.confirming, .askReleased):
+            return [.finishConfirming]
+
+        case (.confirming, .confirmed), (.confirming, .declined):
+            state = .thinking
+            return []
+
         case (.injecting, .injected):
             state = .idle
             return [.reset]
@@ -115,7 +141,7 @@ struct SessionMachine {
             return [.reset]
 
         // A press that arrives mid-flight, or the wrong hotkey for the running session.
-        case (.listening, .dictateToggled), (.dictating, .askPressed),
+        case (.listening, .dictateToggled), (.dictating, .askPressed), (.confirming, .dictateToggled),
              (.transcribing, _), (.thinking, _), (.injecting, _):
             return [.pulse]
 

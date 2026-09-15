@@ -18,6 +18,7 @@ extension SessionCoordinator {
 
     func fail(_ error: Error) {
         cancelAcknowledgement()
+        abandonActing()
         panel.model.aside = nil
         sounds.play(.failed, config: config)
         discardCapture()

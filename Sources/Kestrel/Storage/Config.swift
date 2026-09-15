@@ -36,6 +36,15 @@ struct Config: Codable, Equatable {
     var spatialContext: Bool
     var onboardingCompleted: Bool
 
+    /// Let the model act on the Mac — open apps, run scripts, click and type — not just answer.
+    var agentTools: Bool
+    /// Tool calls one question may make before Kestrel says it couldn't finish.
+    var maxAgentSteps: Int
+    /// Executables `run_shell` may start; anything else is refused.
+    var shellAllowlist: [String]
+    /// Words that make an action worth checking with the user first.
+    var sensitivePatterns: [String]
+
     var apiKeys: APIKeys
 
     static let defaults = Config(
@@ -65,8 +74,16 @@ struct Config: Codable, Equatable {
         answerAnnotations: true,
         spatialContext: true,
         onboardingCompleted: false,
+        agentTools: true,
+        maxAgentSteps: 10,
+        shellAllowlist: ActionPolicy.defaultShellAllowlist,
+        sensitivePatterns: ActionPolicy.defaultSensitivePatterns,
         apiKeys: APIKeys(anthropic: nil, openai: nil)
     )
+
+    var actionPolicy: ActionPolicy {
+        ActionPolicy(sensitivePatterns: sensitivePatterns, shellAllowlist: shellAllowlist)
+    }
 
     // Expanded, absolute paths for the two whisper settings, which may be written as `~/...`.
     var whisperBinaryURL: URL { URL(fileURLWithPath: (whisperBinary as NSString).expandingTildeInPath) }
@@ -158,6 +175,7 @@ struct Config: Codable, Equatable {
         panelAutoHideSeconds = min(max(panelAutoHideSeconds, 2), 600)
         followUpSeconds = min(max(followUpSeconds, 0), 900)
         screenshotMaxEdge = min(max(screenshotMaxEdge, 512), 4096)
+        maxAgentSteps = min(max(maxAgentSteps, 1), 50)
         // Under a second, an ordinary pause mid-sentence would end the dictation.
         dictationSilenceSeconds = dictationSilenceSeconds <= 0 ? 0 : min(max(dictationSilenceSeconds, 1), 30)
     }
@@ -204,6 +222,10 @@ extension Config {
         answerAnnotations = v(.answerAnnotations, d.answerAnnotations)
         spatialContext = v(.spatialContext, d.spatialContext)
         onboardingCompleted = v(.onboardingCompleted, d.onboardingCompleted)
+        agentTools = v(.agentTools, d.agentTools)
+        maxAgentSteps = v(.maxAgentSteps, d.maxAgentSteps)
+        shellAllowlist = v(.shellAllowlist, d.shellAllowlist)
+        sensitivePatterns = v(.sensitivePatterns, d.sensitivePatterns)
         apiKeys = v(.apiKeys, d.apiKeys)
         clamp()
     }

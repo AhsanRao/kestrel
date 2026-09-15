@@ -89,9 +89,12 @@ enum ScreenGrabber {
 
     /// CoreGraphics measures down from the top-left of the primary display; AppKit measures up.
     static func appKitFrame(fromCoreGraphics rect: CGRect) -> CGRect {
-        let primary = NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.main
-        let height = primary?.frame.height ?? 0
+        let height = primaryDisplayHeight
         return CGRect(x: rect.minX, y: height - rect.maxY, width: rect.width, height: rect.height)
+    }
+
+    static var primaryDisplayHeight: CGFloat {
+        (NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.main)?.frame.height ?? 0
     }
 
     /// 1-based index into the active display list, which is what `screencapture -D` expects.

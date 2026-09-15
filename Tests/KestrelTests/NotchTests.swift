@@ -76,7 +76,8 @@ final class PanelSizingTests: XCTestCase {
 
         let states: [SessionState] = [
             .idle, .listening, .dictating, .transcribing(.ask), .transcribing(.dictation),
-            .thinking, .answering, .injecting, .error("whisper-cli not found"),
+            .thinking, .confirming("run an AppleScript"), .answering, .injecting,
+            .error("whisper-cli not found"),
         ]
         for state in states {
             model.state = state

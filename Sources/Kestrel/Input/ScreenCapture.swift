@@ -28,4 +28,22 @@ struct ScreenCapture: Equatable {
                       height: clipped.height * scaleY)
     }
 
+    /// The inverse: where a pixel in the PNG is on the screen, in CoreGraphics coordinates (down
+    /// from the top-left of the primary display), which is what a synthetic click is posted in.
+    /// The model only ever sees the screenshot, so that is the space its coordinates come in.
+    func screenPoint(forPixel pixel: CGPoint,
+                     primaryHeight: CGFloat = ScreenGrabber.primaryDisplayHeight) -> CGPoint? {
+        guard captureFrame.width > 0, captureFrame.height > 0,
+              pixelSize.width > 0, pixelSize.height > 0 else { return nil }
+        let x = captureFrame.minX + pixel.x * (captureFrame.width / pixelSize.width)
+        let appKitY = captureFrame.maxY - pixel.y * (captureFrame.height / pixelSize.height)
+        return CGPoint(x: x, y: primaryHeight - appKitY)
+    }
+
+    /// The pixel in the PNG for a global AppKit point, for listing controls in the model's terms.
+    func pixel(forScreenPoint point: CGPoint) -> CGPoint? {
+        guard captureFrame.width > 0, captureFrame.height > 0, pixelSize.width > 0 else { return nil }
+        return CGPoint(x: (point.x - captureFrame.minX) * (pixelSize.width / captureFrame.width),
+                       y: (captureFrame.maxY - point.y) * (pixelSize.height / captureFrame.height))
+    }
 }

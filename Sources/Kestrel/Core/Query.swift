@@ -26,13 +26,18 @@ struct Query {
     /// Where the CLI should run. Agent tasks get their own project folder; everything else runs
     /// in `~/.kestrel`.
     var workingDirectory: URL?
+    /// Offer the six system tools (spec §8.18). The socket they are served on is `Paths.mcpSocket`.
+    var tools: Bool
+    /// The step budget, quoted to the model so it can plan inside it.
+    var maximumSteps: Int
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
          targets: [ScreenTarget] = [],
          screenText: String? = nil, pageURL: String? = nil, document: String? = nil,
          history: [Conversation.Exchange] = [], skills: String? = nil,
-         desktop: String? = nil, workingDirectory: URL? = nil) {
+         desktop: String? = nil, workingDirectory: URL? = nil,
+         tools: Bool = false, maximumSteps: Int = 10) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
@@ -46,6 +51,8 @@ struct Query {
         self.skills = skills
         self.desktop = desktop
         self.workingDirectory = workingDirectory
+        self.tools = tools
+        self.maximumSteps = maximumSteps
     }
 
     /// The page or document in front of the user, named for the model.
@@ -59,10 +66,11 @@ struct Query {
         return lines.isEmpty ? nil : lines.joined(separator: "\n")
     }
 
-    /// Timeouts per spec §8.5.
+    /// Timeouts per spec §8.5. A question that may act takes as long as its steps do — a Safari
+    /// cold start and a confirmation the user has to hear are both on this clock.
     var timeout: TimeInterval {
         switch mode {
-        case .ask: return 75
+        case .ask: return tools ? 300 : 75
         case .dictationCleanup: return 20
         }
     }

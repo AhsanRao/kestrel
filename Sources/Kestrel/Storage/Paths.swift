@@ -17,6 +17,9 @@ enum Paths {
     static let skills = root.appendingPathComponent("skills", isDirectory: true)
     static let logs = root.appendingPathComponent("logs", isDirectory: true)
     static let tmp = root.appendingPathComponent("tmp", isDirectory: true)
+    /// Where `claude -p` reaches the tools inside the app (spec §8.18). Kept short: a Unix socket
+    /// path has 104 bytes to fit in.
+    static let mcpSocket = root.appendingPathComponent("mcp.sock")
 
     static let defaultWhisperModel = models.appendingPathComponent("ggml-base.en.bin")
     static let defaultWhisperBinary = "/opt/homebrew/bin/whisper-cli"

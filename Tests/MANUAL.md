@@ -115,6 +115,30 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 - [ ] "Open Spotify and play something" opens Spotify and says the rest was not done
 - [ ] "Switch to the Finder app" works — the trailing "app" is a filler, not part of the name
 - [ ] "Open Thingamajig Pro" is treated as a question, not a launch
+- [ ] With "Act on the Mac" off, "Open Spotify and play something" opens Spotify and says the rest
+      was not done (the old behaviour)
+
+## 5g. Acting (M6) — with "Act on the Mac" on (the default)
+
+- [ ] "Open Safari and search for X" opens Safari and the search actually happens; Kestrel confirms
+      it by voice, and draws no marks (the screen it saw first is gone)
+- [ ] A plain screen question ("what is this window for?") answers with marks and makes no tool call
+      — check the action log has no new line for it
+- [ ] "Delete this file" (about a real file) speaks what it is about to do and waits; the file is
+      still there until you confirm
+- [ ] Tapping the ask hotkey once confirms it — the file is then deleted
+- [ ] Saying "no" while holding the ask hotkey declines it — the file stays, and Kestrel says so
+- [ ] Leaving a confirmation unanswered for 30 s declines it
+- [ ] A request that needs more than `maxAgentSteps` steps stops and speaks "I couldn't complete
+      that", naming what was and was not done
+- [ ] `run_shell` with something off the allowlist (e.g. asking it to `rm` a file) is refused, and
+      Kestrel tries AppleScript or says it can't
+- [ ] Anything with `sudo` is refused outright, not offered as a confirmation
+- [ ] Dictating/typing into Terminal via a tool is confirmed first (never silent)
+- [ ] `~/.kestrel/logs/actions.jsonl` has one line per call with tool, arguments, verdict, confirmed,
+      ok and a timestamp; menu bar ▸ Open the action log opens it
+- [ ] Menu bar ▸ Act on the Mac toggles the whole thing off and back on without a relaunch
+- [ ] Esc mid-task stops it; no further tool calls run
 
 ## 6. Settings and config
 

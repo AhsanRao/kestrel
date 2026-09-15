@@ -4,19 +4,21 @@ import os
 /// Claude Pro/Max via headless Claude Code. Never touches `~/.claude` credentials and never calls
 /// api.anthropic.com directly — the CLI owns auth entirely (spec §3).
 ///
-/// Flags verified against `claude --help`, Claude Code 2.1.69 (2026-09-06):
+/// Flags verified against `claude --help`, Claude Code 2.1.118 (2026-09-15):
 ///   -p, --print                        print response and exit
 ///   --output-format <format>           "text" | "json" | "stream-json"
 ///   --include-partial-messages         emit text deltas (needs --print and stream-json)
 ///   --verbose                          required alongside stream-json in print mode
 ///   --tools <tools...>                 restrict the built-in tool set    (we allow only Read)
-///   --allowedTools <tools...>          auto-approve those tools, no prompt
+///   --allowedTools <tools...>          auto-approve those tools, no prompt; comma-separated.
+///     MCP tools are named mcp__<server>__<tool>, and are not covered by --tools.
+///   --mcp-config <configs...>          MCP servers, as JSON files or JSON strings
 ///   --model <model>                    alias ("sonnet") or full id
 ///   --no-session-persistence           do not write a resumable session (only works with --print)
-///   --strict-mcp-config                use only MCP servers passed on the command line — none.
-///     Measured here: 16.9 s per question while the user's claude.ai connectors are discovered,
-///     5.2 s without. `allowMCPServers` in config.json turns them back on.
-/// There is no --max-turns in this release; Read-only single answers finish in one turn anyway.
+///   --strict-mcp-config                use only MCP servers passed on the command line — which
+///     is Kestrel's own and nothing else. Measured here: 16.9 s per question while the user's
+///     claude.ai connectors are discovered, 5.2 s without. `allowMCPServers` turns them back on.
+/// There is no --max-turns in this release, so the step budget is enforced by `ActionSession`.
 final class ClaudeBackend: Backend {
     let kind: BackendKind = .claude
 
@@ -40,15 +42,31 @@ final class ClaudeBackend: Backend {
             ? ["--output-format", "stream-json", "--include-partial-messages", "--verbose"]
             : ["--output-format", "json"]
 
+        var allowed: [String] = []
         if query.screenshot != nil || query.focusCrop != nil {
-            arguments += ["--tools", "Read", "--allowedTools", "Read"]
+            arguments += ["--tools", "Read"]
+            allowed.append("Read")
         } else {
             arguments += ["--tools", ""]          // pure text turn: no tools at all, lowest latency
         }
+        if query.tools {
+            arguments += ["--mcp-config", mcpConfig(socket: Paths.mcpSocket)]
+            allowed += ActionTool.allCases.map(\.qualifiedName)
+        }
+        if !allowed.isEmpty { arguments += ["--allowedTools", allowed.joined(separator: ",")] }
         if let model = config.claudeModel, !model.isEmpty {
             arguments += ["--model", model]
         }
         return arguments
+    }
+
+    /// The one MCP server: `nc -U` relaying stdio to the socket inside the app (spec §8.18).
+    /// Passed as a JSON string so nothing has to be written to disk per question.
+    static func mcpConfig(socket: URL) -> String {
+        let object: [String: Any] = ["mcpServers": [ActionTool.serverName: [
+            "command": "/usr/bin/nc", "args": ["-U", socket.path]]]]
+        let data = (try? JSONSerialization.data(withJSONObject: object, options: [.withoutEscapingSlashes])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? "{}"
     }
 
     func ask(_ query: Query, config: Config, onDelta: ((String) -> Void)? = nil) throws -> Answer {

@@ -54,14 +54,22 @@ Kestrel is a single-user tool. Everything a commercial assistant needs in order 
 - Drawing on screen: the answer names what it is talking about and a pencil marks it, one mark after another
 - Spatial context: user draws a circle on screen before asking; region is cropped and sent as focus
 
-### v3 — "Do it" — built, then removed
-Agent tasks via MCP connectors, an agent HUD, a permission policy and confirmations on destructive
-actions were all built and then deleted. Every plan went stale the moment anything on screen moved,
-every step needed a confirmation, and the confirmations became something to click through rather
-than read. What made Kestrel worth having was never that it could press Send.
+### v3 (M6) — "Do it"
+Kestrel carries out instructions, not just explains them: "open Safari and search for X", "reply to
+this", "close these tabs". Six tools reach the Mac — `open_app`, `run_applescript`, `run_shell`,
+`click`, `type_text`, `press_key` — served to `claude -p` over MCP (§8.18). The model takes an
+action, sees a fresh screenshot of the result, and decides the next step, up to a step budget.
 
-Opening an app survives, because it is different in kind: one verb, nothing to undo, no permission
-theatre. Anything after that is not done, and Kestrel says so rather than half-doing it.
+An earlier v3 built plans instead: the model returned a whole numbered route up front, which went
+stale the moment anything on screen moved. The observe-after-each-step loop replaces it — nothing is
+planned against a screen the model has not just seen. AppleScript and `open_app` name apps and
+elements, so they survive layout changes where pixel coordinates do not, and are the primary path;
+`click`/`type_text` are the fallback for apps without scripting.
+
+Safety is confirm-by-default for anything irreversible (delete, send, pay, anything in a terminal),
+spoken aloud and answered with the hotkey; a `run_shell` allowlist instead of an open shell; and no
+elevation, ever. Every tool call is logged to `~/.kestrel/logs/actions.jsonl`. A plain screen
+question that needs no action is answered exactly as before, with marks and no tool calls.
 
 ### Explicitly out of scope
 - Realtime streaming voice, wake word, always-on listening
@@ -101,7 +109,7 @@ theatre. Anything after that is not done, and Kestrel says so rather than half-d
              claude -p                       codex exec
           (Claude Pro/Max)                (ChatGPT Plus/Pro)
                     │                              │
-                    └──────── MCP servers (v3) ────┘
+                    └──────── MCP: 6 tools over ~/.kestrel/mcp.sock (v3, §8.18) ──┘
 ```
 
 ### 5.2 Request flow — screen question (v1)
@@ -238,6 +246,16 @@ kestrel/
 │       │   ├── ClaudeBackend.swift
 │       │   ├── CodexBackend.swift
 │       │   └── CLIRunner.swift            # Process wrapper, PATH, timeouts, cancellation
+│       ├── Actuation/                     # v3 — acting on the Mac (§8.18)
+│       │   ├── ActionTools.swift          # the six tools, their schemas, ToolCall/ToolResult
+│       │   ├── MCPProtocol.swift          # JSON-RPC: initialize/list/call, pure
+│       │   ├── MCPSocketServer.swift      # the Unix socket claude reaches the tools on
+│       │   ├── ActionSession.swift        # one question's act-observe loop and step budget
+│       │   ├── ActionPolicy.swift         # allow / confirm / deny; the shell allowlist
+│       │   ├── Confirmation.swift         # what a spoken yes or no sounds like
+│       │   ├── Actuator.swift             # the hands: CGEvents, osascript, /bin/sh
+│       │   ├── KeyCodes.swift             # press_key names → virtual key codes
+│       │   └── ActionLog.swift            # every call, to actions.jsonl
 │       ├── Output/
 │       │   ├── TextInjector.swift
 │       │   ├── DictationTidy.swift        # punctuation and capitals, without a model
@@ -294,7 +312,8 @@ User data directory (created on first launch):
 ├── models/ggml-base.en.bin
 ├── kokoro/                 # optional neural voice: bin/, lib/, model/
 ├── skills/                 # v2: per-app markdown snippets injected by bundle id
-└── logs/
+├── mcp.sock                # v3: the socket claude reaches the tools on
+└── logs/                   # actions.jsonl — every tool call, one JSON object per line
 ```
 
 ---
@@ -574,6 +593,60 @@ answer, marks that stay put.
   It is never spoken: the split is made as the answer streams, so speech stops at the marker rather
   than reading an email aloud.
 
+### 8.18 Actuation (v3)
+The layer that lets Kestrel act, not just answer. Lives in `Sources/Kestrel/Actuation/`.
+
+**Tools** (`ActionTools.swift`). Six, exposed to the model by name:
+
+| Tool | Parameters | Does |
+|---|---|---|
+| `open_app` | `name` | Launch/activate an app (`NSWorkspace`, via `AppLauncher`) |
+| `run_applescript` | `script` | Run an AppleScript (`osascript`), return its output |
+| `run_shell` | `command` | Run a shell command from an allowlist (`/bin/sh -c`), return stdout/stderr/exit |
+| `click` | `x`, `y` | Click at a point **in the last screenshot's pixels** (`CGEvent`) |
+| `type_text` | `text` | Type into the focused field (`CGEvent`, via `TextInjector`) |
+| `press_key` | `key`, `modifiers?` | A key combo (`CGEvent`, key table in `KeyCodes.swift`) |
+
+`run_applescript` and `open_app` are the primary path — they target named apps and elements, which
+survive layout changes; `click`/`type_text` are the fallback for apps without scripting.
+
+**Transport** (`MCPSocketServer.swift`, `MCPProtocol.swift`). The tools need Kestrel's own
+Accessibility grant, so they cannot live in a child process. Instead the app listens on a Unix
+socket at `~/.kestrel/mcp.sock` (0600, this user only, no TCP port), and `claude -p` is handed one
+MCP server whose command is `nc -U <socket>` — a bare relay. `MCPProtocol` answers `initialize`,
+`tools/list`, `tools/call`, `ping` as newline-delimited JSON-RPC; it is pure, so the exchange is
+unit-tested with strings. `ClaudeBackend` adds `--mcp-config` (a JSON string, nothing written to
+disk) and the six `mcp__kestrel__*` names to `--allowedTools` only when `Query.tools` is set;
+`--strict-mcp-config` keeps the user's own connectors out, so the tools cost no discovery latency.
+
+**Loop** (`ActionSession.swift`). One per question. `handle(call)` runs a tool under the policy,
+then takes a fresh screenshot and hands it back to the model as an image block alongside the
+controls now on screen and their coordinates — so the next step is decided against what the last one
+actually did. There is no `--max-turns`; the budget (`maxAgentSteps`, default 10) is enforced here,
+and the cap speaks "I couldn't complete that". Every dependency is a closure, so the decide-loop is
+tested without a Mac to act on. Screenshots taken mid-task are cleaned up when the answer lands.
+
+**Policy** (`ActionPolicy.swift`, `Confirmation.swift`). Three verdicts: allow, confirm, deny.
+Confirm-by-default for anything irreversible — a `sensitivePatterns` list (delete, send, pay, post,
+`rm`, `git push`…) matched on whole words and their inflections, plus anything typed or pressed into
+a terminal. A confirmation is spoken (`SessionCoordinator+Acting.swift`) and answered with the ask
+hotkey: a tap is yes, a hold with "no" in it is no, and a 30 s silence is no. `run_shell` is refused
+unless every pipeline segment's executable is on `shellAllowlist`, and `$()`, backticks, redirection
+and `find -exec`/`-delete` are refused outright. Elevation (`sudo`, `with administrator privileges`)
+is always denied — never merely confirmed.
+
+**Log** (`ActionLog.swift`). Every call appended to `~/.kestrel/logs/actions.jsonl`: tool,
+arguments, verdict, whether confirmed, whether it worked, result, timestamp — one JSON object per
+line, openable from the menu, so actions taken while the user was not looking are reviewable after.
+
+**Prompt** (`Resources/Prompts/ask-tools.txt`). Appended only when tools are offered: when to act
+versus answer, prefer AppleScript, look at the screenshot after each step, the step budget, and that
+Kestrel does the confirming out loud so the model must not ask in words.
+
+**Config**: `agentTools` (default true, menu toggle "Act on the Mac"), `maxAgentSteps` (10),
+`shellAllowlist`, `sensitivePatterns`. Permission: Accessibility (already required) plus Apple
+Events, whose usage string names driving apps.
+
 ---
 
 ## 9. Prompts (content, not code)
@@ -610,7 +683,8 @@ user is waiting.
 |---|---|---|
 | Microphone | AudioCapture | first hotkey press |
 | Screen Recording | ScreenGrabber | first ask; requires relaunch after grant |
-| Accessibility | the bare-chord ask hotkey, AXElementScanner, AXContentReader, DragTracker, TextInjector | at launch, because without it the default hotkey cannot fire at all |
+| Accessibility | the bare-chord ask hotkey, AXElementScanner, AXContentReader, DragTracker, TextInjector, and the click/type/press tools (§8.18) | at launch, because without it the default hotkey cannot fire at all |
+| Apple Events | `run_applescript` and `open_app` driving other apps (§8.18) | first time a tool scripts an app |
 | Personal Voice | SpeechOutput, to speak in the user's own voice | at launch; silent when Accessibility ▸ Personal Voice already allows apps to use it |
 
 - `Info.plist`: `LSUIElement = true` (menu bar only), usage-description strings for microphone and Apple events, bundle id `dev.0xash.kestrel`.
@@ -630,7 +704,7 @@ user is waiting.
 | **M3** | Polish | Settings window, hotkey rebinding, voice picker, launch at login, config hot-reload, app icon, README | A fresh Mac can follow README and reach M1 without reading code |
 | **M4** | Marks | The answer marks what it names, drawn in sequence, Esc clears | "How do I upload a file here?" answers in a sentence and rings the right control |
 | **M5** | Spatial context | Drag-to-circle while holding the hotkey; crop sent with the query | Circling one of several buttons and asking "what does this do?" answers about the circled one |
-| **M6** | Agents | Built, then removed — see §3. Only "open an app" remains | — |
+| **M6** | Act | Six tools over MCP, act-observe loop, confirm-by-default, shell allowlist, action log | "Open Safari and search for X" opens Safari and runs the search; "delete this file" is confirmed first and does nothing without a yes; a plain screen question still answers with no tool call |
 
 Each milestone ends with: tests green, `README` updated, a short `docs/CHANGELOG.md` entry.
 

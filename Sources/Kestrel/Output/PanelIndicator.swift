@@ -41,6 +41,7 @@ struct PanelIndicator: View {
         case .listening, .dictating: return "Listening"
         case .transcribing: return "Transcribing"
         case .thinking: return "Thinking"
+        case .confirming: return "Waiting for your go-ahead"
         case .injecting: return "Pasting"
         case .answering: return "Answer ready"
         case .error: return "Error"

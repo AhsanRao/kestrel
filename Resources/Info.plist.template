@@ -16,7 +16,7 @@
   <key>NSMicrophoneUsageDescription</key>
   <string>Kestrel records your voice only while you hold the ask hotkey, and transcribes it on this Mac.</string>
   <key>NSAppleEventsUsageDescription</key>
-  <string>Kestrel pastes dictated text into the app you are using.</string>
+  <string>Kestrel drives apps with AppleScript to carry out what you ask, and pastes dictated text into the app you are using.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>Kestrel transcribes your speech on this Mac. Nothing is sent to Apple or anyone else.</string>
 </dict>

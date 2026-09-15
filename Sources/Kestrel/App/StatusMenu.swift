@@ -77,12 +77,15 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                   symbol: "speaker.wave.2")
         addToggle("Clean up dictation", isOn: config.cleanupDictation, action: #selector(toggleCleanup),
                   symbol: "wand.and.sparkles")
+        addToggle("Act on the Mac", isOn: config.agentTools, action: #selector(toggleAgentTools),
+                  symbol: "hand.tap")
         menu.addItem(.separator())
 
         addItem("Open what I remember", #selector(openMemory), symbol: "brain")
         // "Skills" was the folder's name, not a description of it. What is in there is a note per
         // app that Kestrel reads when that app is in front.
         addItem("Open per-app notes", #selector(openSkills), symbol: "note.text")
+        addItem("Open the action log", #selector(openActionLog), symbol: "list.bullet.rectangle")
         addItem("Setup & permissions…", #selector(openOnboarding), symbol: "checklist")
         addItem("Check what's installed…", #selector(checkDependencies), symbol: "stethoscope")
         addItem("Settings…", #selector(openSettings), key: ",", symbol: "gearshape")
@@ -149,8 +152,19 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         ConfigStore.shared.update { $0.cleanupDictation.toggle() }
     }
 
+    @objc private func toggleAgentTools() {
+        ConfigStore.shared.update { $0.agentTools.toggle() }
+    }
+
     @objc private func openMemory() { MemoryStore.openInEditor() }
     @objc private func openSkills() { NSWorkspace.shared.open(Paths.skills) }
+    @objc private func openActionLog() {
+        // The log is written lazily; make sure there is a file to open before the first action.
+        if !FileManager.default.fileExists(atPath: ActionLog.url.path) {
+            try? Data().write(to: ActionLog.url)
+        }
+        NSWorkspace.shared.open(ActionLog.url)
+    }
     @objc private func openSettings() { onOpenSettings?() }
     @objc private func checkDependencies() { onCheckDependencies?() }
     @objc private func openOnboarding() { onOpenOnboarding?() }

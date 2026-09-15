@@ -45,6 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        if ActionProbe.isRequested {
+            ActionProbe.run(on: coordinator)
+            return
+        }
+
         if OverlayPreview.isRequested {
             OverlayPreview.run(on: coordinator)
             return
