@@ -44,10 +44,20 @@ struct ActionPolicy: Equatable {
     static let `default` = ActionPolicy(sensitivePatterns: defaultSensitivePatterns,
                                         shellAllowlist: defaultShellAllowlist)
 
+    /// Whether an action is worth checking with the user, from something that understands it
+    /// (`ActionJudge`, spec §8.19). Nil means "no opinion", and the word list decides. The denials
+    /// — elevation, the shell allowlist — are never handed to a judge: they are rules, not calls.
+    typealias Judge = (String) -> Bool?
+
     /// - Parameter target: what the action lands on — the label of the control under a click, or
     ///   the app the keystrokes go to — when known.
-    func verdict(for call: ToolCall, frontmostBundleID: String? = nil, target: String? = nil) -> Verdict {
+    func verdict(for call: ToolCall, frontmostBundleID: String? = nil, target: String? = nil,
+                 judge: Judge? = nil) -> Verdict {
         let terminal = frontmostBundleID.map(TextInjector.terminalBundleIDs.contains) ?? false
+        // The judge is told what the action is; the list only sees the words in it.
+        func sensitive(_ text: String, _ described: String? = nil) -> Bool {
+            judge?(described ?? text) ?? isSensitive(text)
+        }
         switch call.tool {
         case .openApp:
             return .allow
@@ -55,24 +65,29 @@ struct ActionPolicy: Equatable {
         case .runShell:
             let command = call.string("command") ?? ""
             if let reason = ActionPolicy.shellRefusal(command, allowlist: shellAllowlist) { return .deny(reason) }
-            return isSensitive(command) ? .confirm(call.describe) : .allow
+            return sensitive(command, "run the command: \(command)") ? .confirm(call.describe) : .allow
 
         case .runAppleScript:
             let script = (call.string("script") ?? "").lowercased()
             if script.contains("with administrator privileges") {
                 return .deny("I never run anything with administrator privileges")
             }
-            if script.contains("do shell script") || isSensitive(script) { return .confirm(call.describe) }
+            if script.contains("do shell script") || sensitive(script, "run the AppleScript: \(script)") {
+                return .confirm(call.describe)
+            }
             return .allow
 
         case .click:
-            guard let target, isSensitive(target) else { return .allow }
+            // The judge is asked only about a label the list has flagged: it is there to let
+            // "Sort by order" through, not to second-guess "Inbox" at half a second a click.
+            guard let target, isSensitive(target),
+                  sensitive(target, "click the control labelled “\(target)”") else { return .allow }
             return .confirm("click “\(target)”")
 
         case .typeText:
             let text = call.string("text") ?? ""
             if terminal { return .confirm("type \(ToolCall.excerpt(text)) into the terminal") }
-            return isSensitive(text) ? .confirm(call.describe) : .allow
+            return sensitive(text, "type the text: \(text)") ? .confirm(call.describe) : .allow
 
         case .pressKey:
             // The key names themselves ("delete", "return") are not intent; only where they land is.

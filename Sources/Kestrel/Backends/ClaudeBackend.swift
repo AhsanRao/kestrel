@@ -54,7 +54,7 @@ final class ClaudeBackend: Backend {
             allowed += ActionTool.allCases.map(\.qualifiedName)
         }
         if !allowed.isEmpty { arguments += ["--allowedTools", allowed.joined(separator: ",")] }
-        if let model = config.claudeModel, !model.isEmpty {
+        if let model = (query.tools ? config.claudeActModel : nil) ?? config.claudeModel, !model.isEmpty {
             arguments += ["--model", model]
         }
         return arguments

@@ -159,6 +159,13 @@ struct PanelView: View {
                     .foregroundStyle(KestrelPalette.onHousingBody)
                     .transition(.opacity)
             }
+            // The last few steps, oldest first; the one in progress is the aside above.
+            ForEach(Array(model.steps.suffix(4).enumerated()), id: \.offset) { _, step in
+                Text("✓ " + step)
+                    .font(.system(size: 11))
+                    .foregroundStyle(KestrelPalette.onHousingSecondary)
+                    .lineLimit(1)
+            }
             if !model.answer.isEmpty {
                 // Laid out at its full height rather than inside a scroller. A ScrollView takes
                 // whatever space it is offered, and here the space it is offered is the window —

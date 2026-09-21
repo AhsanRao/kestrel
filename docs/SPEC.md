@@ -19,7 +19,7 @@ Kestrel is a single-user tool. Everything a commercial assistant needs in order 
 | Principle | Consequence |
 |---|---|
 | **Subscription-native, policy-safe** | Never touch OAuth tokens. Never call vendor REST APIs with subscription credentials. Only spawn the official CLIs as subprocesses. |
-| **Local by default** | Audio never leaves the Mac. Only the transcribed question and a screenshot go to the chosen provider, only when the user presses the hotkey. |
+| **Local by default** | Audio never leaves the Mac. Only the transcribed question and a screenshot go to the chosen provider, only when the user presses the hotkey. With Jev configured (§8.19), the question and what the screen *says* — never a screenshot — also go to it, for the routing decisions. |
 | **Hotkey-triggered, never watching** | No always-on screen capture, no accessibility scraping, no activity logging. Kestrel is inert until a key is pressed. |
 | **Native and light** | Swift + AppKit/SwiftUI, no Electron, no Node runtime in the app. Idle CPU near zero. |
 | **Provider-agnostic** | A `Backend` protocol isolates vendor differences. Switching Claude ↔ Codex is one menu click. |
@@ -114,11 +114,11 @@ question that needs no action is answered exactly as before, with marks and no t
 
 ### 5.2 Request flow — screen question (v1)
 
-1. User presses and holds `⌃⌥Space`. `HotkeyService` emits `pressed(.ask)`.
-2. `SessionCoordinator` moves `idle → listening`, starts `AudioCapture`, shows `PanelWindow` at top-center.
-3. User releases. Three jobs start at once, because all three describe that one moment and none needs the others: `ScreenGrabber.capture()` on `captureQueue`, `ScreenSnapshot.read()` on `scanQueue`, and the transcription on `work`. Coordinator moves to `transcribing`.
+1. User presses and holds `⌘⌥`. `HotkeyService` emits `pressed(.ask)`.
+2. `SessionCoordinator` moves `idle → listening` and shows `PanelWindow` at top-center. On macOS 26 with Apple's engine (`liveAsk`, default on) the streaming transcriber starts — the same `LiveDictating` engine dictation uses — and the question is heard as it is said; otherwise `AudioCapture` records a WAV.
+3. **Live:** the first pause of `askSilenceSeconds` (1 s) ends the phrase. `phraseHeard` moves `listening → transcribing → thinking` without waiting for the key, and step 5 begins with the phrase so far. The microphone stays open: a phrase said while that one is being answered is queued, and asked in turn once the answer has been read out; a phrase said while Kestrel is asking whether to go ahead is the answer to that. Releasing the chord sends whatever is left, and is not a "yes" to a pending confirmation. The release also ends the circle gesture, whose event tap swallows mouse buttons while armed. `KESTREL_SAY="open Finder;what is this" KESTREL_SAY_RELEASE=6` runs this flow on a scripted microphone (`ScriptedMicrophone`) and prints every state change. **Recorded:** the user releases, and three jobs start at once, because all three describe that one moment and none needs the others: `ScreenGrabber.capture()` on `captureQueue`, `ScreenSnapshot.read()` on `scanQueue`, and the transcription on `work`. Coordinator moves to `transcribing`. Live phrases take the screenshot and the scan at the pause, for the same reason.
 4. `Transcriber` transcribes the WAV on-device. Empty result → `error("Didn't catch that")`.
-5. Coordinator moves to `thinking` and schedules an `Acknowledgement` — a short spoken line, said only if the answer has not begun within 450 ms. Builds a `Query` from the transcript and the snapshot that is already waiting, calls `BackendRouter.ask(query)`.
+5. Coordinator moves to `thinking` and schedules an `Acknowledgement` — a short spoken line, said only if the answer has not begun within 450 ms. `QuestionTriage` decides what kind of request this is (§8.19): a launch is done here with no model; otherwise a `Query` is built from the transcript and the snapshot that is already waiting, with tools only when the request needs hands, and `BackendRouter.ask(query)` is called.
 6. Selected backend spawns its CLI with cwd `~/.kestrel` (so memory files are loaded), passes the screenshot, waits for the result.
 7. Coordinator moves to `answering`: panel shows text, `SpeechOutput` speaks it (if enabled). Temp files deleted.
 8. Panel auto-hides after a configurable delay. Another hotkey press interrupts speech.
@@ -149,13 +149,14 @@ Recorded, under whisper or below macOS 26:
 
 ```
 idle ──ask.press──▶ listening ──ask.release──▶ transcribing ──▶ thinking ──▶ answering ──timeout──▶ idle
- │                                                                              │
+ │                     │ phrase.heard ──▶ transcribing (mic stays open)          │
  ├──dict.press──▶ dictating ──dict.press──▶ transcribing ──▶ (cleanup) ──▶ injecting ──▶ idle
  │                                                                              │
  └──── any failure ──▶ error ──▶ idle (after 8 s)      any ask.press while answering ──▶ stop speech, listening
+                                                       phrase.heard while answering/error/idle ──▶ transcribing
 ```
 
-Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is ignored (with a subtle panel pulse); `dictating` and `listening` are mutually exclusive.
+Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is ignored (with a subtle panel pulse); `dictating` and `listening` are mutually exclusive. Every take is stamped with a `generation` number, bumped by each new take and each Esc; a result carrying an older stamp — an answer, an error, a screenshot — is dropped, never shown or acted on. Before this, an answer cancelled with Esc landed on the next question: it ended that question's action session, so every tool call after it was refused as "cancelled" and the model ground round to the step cap.
 
 ---
 
@@ -171,6 +172,7 @@ Rules: only one session at a time; a hotkey during `transcribing`/`thinking` is 
 | Screenshot | `/usr/sbin/screencapture -x` | ScreenCaptureKit: more control, but more code; revisit in v2 for region crops |
 | Text-to-speech | Kokoro 82M through sherpa-onnx's CLI, downloaded on first run; `AVSpeechSynthesizer` when it is declined | Cloud TTS: not covered by subscriptions, adds latency. Siri's voices: no API exposes them. Apple's premium voices: audibly worse than Kokoro, which is the whole reason for the download. Python + kokoro-onnx: works, but onboarding would have to install Homebrew Python and a venv |
 | LLM access | Subprocess to `claude` / `codex` CLIs | Direct API + OAuth: prohibited. Agent SDK library: fine for Claude but Codex has no equivalent; the CLI boundary keeps both symmetrical |
+| Decisions before the LLM | Jev (TypeSafe AI) over HTTPS via Vercel AI Gateway, `URLSession`, opt-in by key (§8.19) | Word lists: what it replaces; kept as the fallback. The LLM itself: 20–50× slower for a yes/no. A local classifier: nothing off the shelf answers arbitrary typed questions yet; the endpoint is configurable for when one does |
 | Config | JSON at `~/.kestrel/config.json` | `UserDefaults`: hard to hand-edit and version |
 | Memory | Markdown `~/.kestrel/KESTREL.md`, symlinked as `CLAUDE.md` and `AGENTS.md` | Both CLIs auto-load their file from cwd, so one file serves both |
 | Logging | `os.Logger` with subsystem `dev.0xash.kestrel`; optional file log at `~/.kestrel/logs/` | |
@@ -324,13 +326,14 @@ Each module lists responsibility, interface (described, not coded), and edge cas
 
 ### 8.1 HotkeyService
 - Registers two global hotkeys with Carbon; delivers `pressed`/`released` events on the main thread.
-- Defaults: `⌃⌥` held = ask, `⌃⌘K` = dictation (toggle). The two must not share modifiers: with dictation on `⌃⌥D` the one gesture fired both, the chord starting a question that the letter then aborted. The letter is K, not D, because macOS reserves `⌃⌘Space`, `⌃⌘D`, `⌃⌘F` and `⌃⌘Q` — `⌃⌘D` is Look Up. Configurable via `config.json` (key code + modifiers). Settings UI in M3.
+- Defaults: `⌘⌥` held = ask, `⌃⌘K` = dictation (toggle). The dictation shortcut must not contain the ask chord: with ask on `⌃⌥` and dictation on `⌃⌥D`, the one gesture fired both, the chord starting a question that the letter then aborted. `⌃⌘` is not `⌘⌥`, so the two cannot be confused. The letter is K, not D, because macOS reserves `⌃⌘Space`, `⌃⌘D`, `⌃⌘F` and `⌃⌘Q` — `⌃⌘D` is Look Up. Configurable via `config.json` (key code + modifiers). Settings UI in M3.
 - Edge cases: re-register on config change; ignore auto-repeat; Caps Lock must not break modifiers; if registration fails (conflict), surface a panel error naming the conflicting combo.
 - `HotkeyPressFilter` decides what counts. Auto-repeat is suppressed by time (0.3 s), never by a remembered "still down" flag: Carbon drops the release when the modifiers are let up first, and a flag left stuck down swallows every press after it — which is exactly how dictation used to turn on and refuse to turn off. A release is still paired against a press, so push-to-talk cannot be ended by one it never saw start.
 
 ### 8.2 AudioCapture
 - Starts/stops recording from the default input to a temp 16 kHz mono Int16 WAV.
 - Edge cases: input device disappears mid-record (AirPods dropping) → stop gracefully and keep what was captured; sample-rate mismatch (pro interfaces at 44.1/96 kHz) → converter handles; zero-length recording (< 300 ms) → treat as accidental press, do nothing; max duration 10 min for dictation, 60 s for ask.
+- The tap is installed with no format and the converter built from the first buffer that arrives. After the engine has been stopped and the microphone used by something else — the live engine, AirPods coming and going — `inputNode.outputFormat` lags the hardware, and naming it raised an uncatchable "Failed to create tap due to format mismatch" that took the app down on the next take after an Esc. Same rule in `AppleLiveDictation`.
 
 ### 8.3 ScreenGrabber
 - Captures the display containing the mouse cursor (not all displays) as PNG. Downscale to max 2048 px on the long edge before sending to keep tokens and latency down.
@@ -364,7 +367,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 ### 8.5 Backend protocol
 - Input `Query`: `text`, optional `screenshot` path, optional `focusCrop` path, `mode` (`ask` | `dictationCleanup`), `maxTokens` hint.
 - Output `Answer`: `text`, `raw` (full CLI output for debugging), `durationMs`, optional `steps` (v2).
-- Requirements: cancellable (kill the subprocess), timeouts (ask 75 s, cleanup 20 s — a question still unanswered past that has gone wrong, and a dead island for two minutes is worse than being asked to try again), never throws on non-zero exit without saying what the CLI printed.
+- Requirements: cancellable (kill the subprocess; the cancellation belongs to that run only — it once stuck, so that after one Esc every later run threw before spawning anything, and Kestrel sat in "thinking" until relaunched; a killed CLI's `nc` child can hold the pipe open, so the drain after a cancel waits a second and no longer), timeouts (ask 75 s, cleanup 20 s — a question still unanswered past that has gone wrong, and a dead island for two minutes is worse than being asked to try again), never throws on non-zero exit without saying what the CLI printed.
 - What a failed run says is judged on everything it printed — stderr *and* stdout — because a run that dies on the plan's usage limit exits non-zero with an empty stderr and buries the reason in stream-json. That widening applies to failures only: on a successful run the answer and its token counts are not diagnostics, and reading them as such is what once ended good answers in "usage limit reached".
 - Nothing raw reaches the panel. `BackendSupport.readableFailure` keeps the human fields of each JSON object and drops the machinery, so a failure reads as a sentence rather than as `{"type":"system","subtype":"hook_started"…`. A quota refusal carries the reset time the CLI names (`usage limit reached|<epoch>`), because the user's next move depends on whether the wait is twenty minutes or two days.
 
@@ -412,7 +415,7 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 ### 8.10 TextInjector
 - Pasteboard + synthetic ⌘V, restore previous pasteboard contents after the target app consumes the paste.
 - `spaced:` puts a space in front of the payload. Live dictation types a phrase at a time and something has to keep the words apart, which cannot be a leading space in the text itself — `sanitize` trims that off.
-- Fallback: per-character CGEvent typing when paste is rejected or when config `injectMode = type`.
+- Fallback: per-character CGEvent typing when paste is rejected or when config `injectMode = type`. Exactly one character per key event — twenty at a time was dropped whole by Chrome's address bar — and every event's flags cleared, because the source carries whatever is physically held and the ask chord is held for as long as the user talks. Clicks (`Actuator.click`) clear their flags for the same reason: ⌥-click in a browser downloads instead of following.
 - Safety: collapse newlines when the frontmost app is a terminal (Terminal, iTerm2, Warp, Ghostty bundle ids) so dictated text can never execute as commands.
 - Requires Accessibility permission; prompt once and explain why.
 
@@ -533,7 +536,10 @@ a config edit applies without a relaunch, and silently uses whisper when Apple's
 | `cleanupDictation` | bool | true | |
 | `dictationSilenceSeconds` | float | 2.5 | how long a pause ends a live take; `0` means only the hotkey does. Clamped to 1–30 |
 | `injectMode` | `"paste" \| "type"` | `"paste"` | |
-| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌃⌥ held / ⌃⌘K | |
+| `hotkeys.ask` / `hotkeys.dictate` | `{keyCode, modifiers}` | ⌘⌥ held / ⌃⌘K | |
+| `liveAsk` | bool | true | hear the question as it is said, send at the first pause (§5.2) |
+| `claudeActModel` | string? | null | model for questions that act, if different from `claudeModel` |
+| `askSilenceSeconds` | number | 1.0 | the pause that ends a phrase; 0.5–10 |
 | `panelAutoHideSeconds` | int | 20 | |
 | `screenshotMaxEdge` | int | 2048 | |
 | `apiKeys.anthropic` / `apiKeys.openai` | string or null | null | optional pay-as-you-go override |
@@ -603,7 +609,7 @@ The layer that lets Kestrel act, not just answer. Lives in `Sources/Kestrel/Actu
 | `open_app` | `name` | Launch/activate an app (`NSWorkspace`, via `AppLauncher`) |
 | `run_applescript` | `script` | Run an AppleScript (`osascript`), return its output |
 | `run_shell` | `command` | Run a shell command from an allowlist (`/bin/sh -c`), return stdout/stderr/exit |
-| `click` | `x`, `y` | Click at a point **in the last screenshot's pixels** (`CGEvent`) |
+| `click` | `control` or `x`, `y` | Click a control by its number in the last list — its frame read live off the Accessibility tree, so it lands wherever the control is now — or, for something not listed, at a point in the last screenshot's pixels (`CGEvent`). The number is the primary path: coordinates estimated from a picture were the reason clicks missed. |
 | `type_text` | `text` | Type into the focused field (`CGEvent`, via `TextInjector`) |
 | `press_key` | `key`, `modifiers?` | A key combo (`CGEvent`, key table in `KeyCodes.swift`) |
 
@@ -620,16 +626,24 @@ disk) and the six `mcp__kestrel__*` names to `--allowedTools` only when `Query.t
 `--strict-mcp-config` keeps the user's own connectors out, so the tools cost no discovery latency.
 
 **Loop** (`ActionSession.swift`). One per question. `handle(call)` runs a tool under the policy,
-then takes a fresh screenshot and hands it back to the model as an image block alongside the
-controls now on screen and their coordinates — so the next step is decided against what the last one
-actually did. There is no `--max-turns`; the budget (`maxAgentSteps`, default 10) is enforced here,
+then takes a fresh screenshot and hands it back to the model as an image block — its pixel size
+stated — alongside the front window's title and the controls now on screen, numbered, with their
+coordinates — so the next step is decided against what the last one actually did. Each step done
+is added to the island's trail (`PanelModel.steps`), so what is being done to the screen can be
+seen as it happens and not only in the log after. The pause before that screenshot is 0.6 s after
+a click or typed text and 1.5 s after anything else: a return key, typed text or a script sets something longer
+in motion, and a screenshot taken too soon showed the old screen, which the model read as "nothing
+happened" and did again. While a session acts the island is click-through (`setClickThrough`): it
+sits top-centre, exactly where a browser keeps its address bar, and a click posted there landed on
+the island. With Jev on, the same result says when the job looks finished (§8.19). There is no `--max-turns`; the budget (`maxAgentSteps`, default 10) is enforced here,
 and the cap speaks "I couldn't complete that". Every dependency is a closure, so the decide-loop is
 tested without a Mac to act on. Screenshots taken mid-task are cleaned up when the answer lands.
 
 **Policy** (`ActionPolicy.swift`, `Confirmation.swift`). Three verdicts: allow, confirm, deny.
 Confirm-by-default for anything irreversible — a `sensitivePatterns` list (delete, send, pay, post,
 `rm`, `git push`…) matched on whole words and their inflections, plus anything typed or pressed into
-a terminal. A confirmation is spoken (`SessionCoordinator+Acting.swift`) and answered with the ask
+a terminal. With Jev on, the list's call on what is irreversible, and on whether a spoken reply was
+a yes, is made by `ActionJudge` instead when it is sure (§8.19); the list stays for when it is not. A confirmation is spoken (`SessionCoordinator+Acting.swift`) and answered with the ask
 hotkey: a tap is yes, a hold with "no" in it is no, and a 30 s silence is no. `run_shell` is refused
 unless every pipeline segment's executable is on `shellAllowlist`, and `$()`, backticks, redirection
 and `find -exec`/`-delete` are refused outright. Elevation (`sudo`, `with administrator privileges`)
@@ -646,6 +660,88 @@ Kestrel does the confirming out loud so the model must not ask in words.
 **Config**: `agentTools` (default true, menu toggle "Act on the Mac"), `maxAgentSteps` (10),
 `shellAllowlist`, `sensitivePatterns`. Permission: Accessibility (already required) plus Apple
 Events, whose usage string names driving apps.
+
+### 8.19 Jev — decisions before the model
+Jev is TypeSafe AI's decision model: it is handed a piece of text and typed questions about it
+and returns a probability for each — yes/no (`noul`), one of a list (`choice`, up to 255), a place
+on a scale (`score`) — in a few hundred milliseconds, for about a hundredth of a cent. It is not a
+language model. It cannot write, cannot see a screenshot and cannot pick a coordinate; it judges.
+It is reached over HTTPS through Vercel's AI Gateway (`POST /typesafe/v1/systemone`, model
+`typesafe-ai/jev`), which is the first thing Kestrel calls that is not a subprocess. The endpoint
+and model are config so the same client can point at TypeSafe directly, or at a local model, later.
+
+**Client** (`Backends/JevClient.swift`). `Jev.ask(state, questions, config:)` — blocking, on a
+background queue, one warm `URLSession`, 2.5 s timeout, nil on any failure. Every caller keeps
+what Kestrel did before Jev as its fallback, so a missing key, a slow network or a refused call
+can only cost the improvement, never the feature. A throwaway question at launch warms the
+connection: the TLS handshake is most of a cold call.
+
+**Triage** (`Core/QuestionTriage.swift`). Before a model is spawned, one call decides what a
+question is — `open_app`, `act`, or `answer` — plus which installed app it names, whether it wants
+a draft, whether it is about the desktop, and whether it continues the warm conversation. Four
+word lists made these calls before (`AppLauncher.requestedApp`, `AskIntent.wantsDraft`,
+`DesktopContextDetector`, the follow-up window); they are the fallback, and are what runs when
+`jev.apiKey` is unset. The consequential change is `act` vs `answer`: tools used to be offered to
+every question, so a plain "what does this button do" paid for the tool prompt and the MCP
+handshake and could act by mistake; now only a request that needs hands gets them. A pick below
+0.6 confidence is not trusted over the lists. `KESTREL_TRIAGE="open Finder;what is this"` prints
+the decision and timing per phrase.
+
+**Opens first.** "Open Chrome and search for owls" is `act`, and the same call asks whether the
+request *begins* by opening a named app. When it does, Kestrel launches the app itself — one
+verb, a second or two — reads the screen again, since it is a different screen now, and hands
+the model the request with `Query.alreadyDone` ("Google Chrome is open and in front"). One step
+and one round-trip fewer; measured, the search went from ten steps and 62 s to four and 33 s.
+
+**Macros** (`Core/SessionCoordinator+Quick.swift`, `Core/PhraseText.swift`). The same call also
+asks what *shape* the request is on the screen as it stands — one click on a listed control, or
+words typed into one field with or without return — plus which control, which words, and whether
+the request names anything beyond that (a site to go to first, something to do after). The words
+are cut from the sentence by `PhraseText` ("search for barn owls in Chrome" → "barn owls", "barn
+owls in Chrome"…) and Jev picks the exact one; it can choose from a list but cannot write one.
+At 0.6 on the shape, 0.8 on the control, 0.55 on the words and under 0.5 on "more", the steps run
+through an ordinary `ActionSession` — policy, spoken confirmation, action log, the trail on the
+island — with the screenshot taken only after the last, then the done-review; if the review puts
+"done" at 0.3 or under, one more look two seconds later, and if still not, the model picks up with
+`alreadyDone` saying what was tried. A menu item is chosen by its Accessibility press, since a
+closed menu's item is nowhere to click. In a browser, words for the address bar go into a new tab
+(⌘T) rather than over the page open. Measured: "search for snowy owl" in Chrome, 4.6 s and no model,
+where the act loop took 33 s; "go to Wikipedia and search" is refused as a macro at "more" 54%.
+
+**Recipes** (`SkillLibrary.remember`). When the model finishes a job of two or more steps under
+the cap, the steps — a click by its label, never by coordinates; a route with a pixel click in it
+is not kept — are appended under `## Recipes` in `~/.kestrel/skills/<bundle>.md`, the file the
+model already reads with every question in that app. Twenty at most, oldest dropped.
+
+**Judgement** (`Actuation/ActionJudge.swift`). Two calls the word lists made in §8.18 are put to
+Jev when it is on. *Is this worth asking about?* — `ActionPolicy.verdict` takes a `judge` and
+hands it the action in words ("click the control labelled “Sort by order”"); at or above 0.6 the
+action is confirmed, at or below 0.25 it is allowed, and between, the list decides as before. So
+"Sort by order" and "Clear search" no longer stop for the words *order* and *clear*, while Send,
+Delete, Post, Publish and Sign out still do. The rules — elevation, the shell allowlist, anything
+typed into a terminal — are never put to the judge. *Was that a yes?* — a spoken reply to a
+confirmation is read by Jev at or above 0.75 as yes and at or below 0.35 as no; between, the list,
+which treats anything not plainly a yes as a no. "Yes but not the second one" and "ok but change
+the subject first" are now a no; "go for it" is a yes. `KESTREL_JUDGE="…;…"` and
+`KESTREL_CONSENT="…;…"` print the verdicts.
+
+**Review** (`ActionJudge.review`). After each step in the act loop, Jev is shown the request,
+the steps taken so far with their outcomes, the frontmost app and window title, and the controls
+now on screen — words only — and asked two things. Whether the request has been carried out: at
+0.85 or above the tool result carries one line — the request looks complete; if the screen agrees,
+stop and say what was done — and the model, which can see the screenshot, still decides. And
+whether the next step could be chosen from the words alone: at 0.8 or above the screenshot is left
+out of the tool result, a thousand-odd tokens a step, and the result says so. A failed or absent
+Jev claims nothing and sends the picture.
+
+**Config** for acting: `claudeActModel` — a model for questions that act, when it should differ
+from `claudeModel`; nil by default, since "sonnet" measured no quicker per step.
+
+**Sent**: the transcript, the frontmost app's name, the labels of the controls on screen, the
+previous exchange when there is one, and — when acting — each action in words, the user's spoken
+reply to a confirmation, and the progress so far after each step. Never a screenshot.
+
+**Config**: `jev.apiKey` (a Vercel AI Gateway key; nil = off), `jev.endpoint`, `jev.model`.
 
 ---
 

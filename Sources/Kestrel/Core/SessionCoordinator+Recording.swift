@@ -28,6 +28,8 @@ extension SessionCoordinator {
             // Dictation types as it hears, where the engine can: nothing is worth waiting for the
             // end of a sentence to see. Anything that cannot stream records a take instead.
             if intent == .dictation, self.beginLiveDictation() { return }
+            // A question is heard the same way, and sent at the first pause rather than the release.
+            if intent == .ask, self.beginLiveAsk() { return }
             do {
                 try self.audio.start(maxDuration: intent == .ask ? 60 : 600)
             } catch AudioCapture.Failure.permissionDenied {
@@ -40,6 +42,7 @@ extension SessionCoordinator {
 
     func finishRecording(intent: SessionIntent) {
         if intent == .dictation, finishLiveDictation() { return }
+        if intent == .ask, finishLiveAsk() { return }
         focusRegion = dragTracker.end()
         selection.settle(focusRegion)
         sounds.play(.heard, config: config)
@@ -50,42 +53,51 @@ extension SessionCoordinator {
             panel.hideImmediately()
             return
         }
+        let stamp = beginGeneration()
+        let awaitScreen = intent == .ask ? gatherScreen(stamp: stamp) : nil
+        work.async { [weak self] in
+            self?.transcribe(wav, intent: intent, stamp: stamp, awaitCapture: awaitScreen)
+        }
+    }
+
+    /// Starts the screenshot and the Accessibility scan, and returns what blocks until both have
+    /// landed. Main thread.
+    ///
+    /// The transcript, the screenshot and the scan all describe the same moment and none of them
+    /// needs the others, so all three run at once. Reading the screen after the transcript landed
+    /// used to add its whole cost to the wait; now it is free.
+    func gatherScreen(stamp: Int) -> () throws -> Void {
         let maxEdge = config.screenshotMaxEdge
         let captureMode = config.captureMode
-
-        // The transcript, the screenshot and the Accessibility scan all describe the same moment
-        // and none of them needs the others, so all three run at once. Reading the screen after the
-        // transcript landed used to add its whole cost to the wait; now it is free.
         var captureError: Error?
         let gathering = DispatchGroup()
-        if intent == .ask {
-            gathering.enter()
-            captureQueue.async { [weak self] in
-                defer { gathering.leave() }
-                do {
-                    let capture = try ScreenGrabber.capture(maxEdge: maxEdge, mode: captureMode)
-                    self?.pendingCapture = capture
-                    if let region = self?.focusRegion {
-                        self?.pendingCrop = ScreenGrabber.crop(capture, to: region)
-                    }
-                } catch {
-                    captureError = error
+        gathering.enter()
+        captureQueue.async { [weak self] in
+            defer { gathering.leave() }
+            do {
+                let capture = try ScreenGrabber.capture(maxEdge: maxEdge, mode: captureMode)
+                // Esc while the screenshot was being taken: it is nobody's now.
+                guard self?.stillCurrent(stamp) == true else {
+                    try? FileManager.default.removeItem(at: capture.url)
+                    return
                 }
-            }
-            let bundleID = TextInjector.frontmostBundleID()
-            gathering.enter()
-            scanQueue.async { [weak self] in
-                defer { gathering.leave() }
-                self?.pendingScreen = ScreenSnapshot.read(bundleID: bundleID)
+                self?.pendingCapture = capture
+                if let region = self?.focusRegion {
+                    self?.pendingCrop = ScreenGrabber.crop(capture, to: region)
+                }
+            } catch {
+                captureError = error
             }
         }
-
-        work.async { [weak self] in
-            guard let self else { return }
-            self.transcribe(wav, intent: intent) {
-                gathering.wait()
-                if let captureError { throw captureError }
-            }
+        let bundleID = TextInjector.frontmostBundleID()
+        gathering.enter()
+        scanQueue.async { [weak self] in
+            defer { gathering.leave() }
+            self?.pendingScreen = ScreenSnapshot.read(bundleID: bundleID)
+        }
+        return {
+            gathering.wait()
+            if let captureError { throw captureError }
         }
     }
 

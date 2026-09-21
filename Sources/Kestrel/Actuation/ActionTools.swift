@@ -24,7 +24,7 @@ enum ActionTool: String, CaseIterable {
         case .runShell:
             return "Run a shell command from a short allowlist (ls, cat, grep, find, open, mdfind, date and the like) and return stdout, stderr and the exit code. Pipes and && are fine; sudo, redirection and $() are refused."
         case .click:
-            return "Click at a point in the most recent screenshot, in that screenshot's own pixel coordinates. Every tool result lists the controls on screen with their coordinates; use those. A fallback for apps that AppleScript cannot reach."
+            return "Click a control by its number from the list of things you can click — always prefer this; it lands exactly. Or, only for something not in the list, click at x, y in the most recent screenshot's own pixel coordinates (its size is stated with it). A fallback for apps that AppleScript cannot reach."
         case .typeText:
             return "Type text into whatever has keyboard focus. Newlines are collapsed to spaces in terminals."
         case .pressKey:
@@ -46,7 +46,8 @@ enum ActionTool: String, CaseIterable {
         case .runShell:
             return schema(["command": ["type": "string"]], required: ["command"])
         case .click:
-            return schema(["x": ["type": "number"], "y": ["type": "number"]], required: ["x", "y"])
+            return schema(["control": ["type": "integer", "description": "The number of a listed control. Preferred."],
+                           "x": ["type": "number"], "y": ["type": "number"]], required: [])
         case .typeText:
             return schema(["text": ["type": "string"]], required: ["text"])
         case .pressKey:
@@ -84,7 +85,9 @@ struct ToolCall: Equatable {
         case .openApp: return "open \(string("name") ?? "an app")"
         case .runAppleScript: return "run an AppleScript: \(ToolCall.excerpt(string("script")))"
         case .runShell: return "run \(ToolCall.excerpt(string("command")))"
-        case .click: return "click at \(Int(number("x") ?? 0)), \(Int(number("y") ?? 0))"
+        case .click:
+            if let control = number("control") { return "click control \(Int(control))" }
+            return "click at \(Int(number("x") ?? 0)), \(Int(number("y") ?? 0))"
         case .typeText: return "type \(ToolCall.excerpt(string("text")))"
         case .pressKey:
             let combo = (modifiers + [string("key") ?? "?"]).joined(separator: "+")

@@ -100,6 +100,13 @@ final class PanelWindow: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
+    /// While Kestrel is clicking on the user's behalf the island must not catch the click: it
+    /// sits top-centre, exactly where a browser keeps its address bar, and a click posted there
+    /// landed on the island — "typed" text went nowhere, and the model tried again and again.
+    func setClickThrough(_ on: Bool) {
+        panel?.ignoresMouseEvents = on
+    }
+
     /// For `PanelPreview` only: the window's number, and a way to lift the capture exclusion for
     /// long enough to photograph it.
     var windowNumber: Int? { panel?.windowNumber }

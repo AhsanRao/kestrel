@@ -104,32 +104,25 @@ enum TextInjector {
     // MARK: - Typing fallback
 
     /// Posts the text as unicode key events. Slower, but survives apps that reject synthetic ⌘V.
+    ///
+    /// One character per key press. Twenty at a time was tried and Chrome's address bar dropped
+    /// the lot — measured: "Typed 16 characters", field unchanged. The flags are cleared on every
+    /// event because the source carries whatever is physically held, and the ask chord is held
+    /// for as long as the user is talking: without this a typed "g" arrived as ⌘⌥G.
     private static func type(_ text: String) {
         guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
-        for chunk in text.chunked(20) {
-            var utf16 = Array(chunk.utf16)
+        for character in text {
+            var utf16 = Array(String(character).utf16)
             guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
                   let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { continue }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
+            down.flags = []
+            up.flags = []
             down.post(tap: .cghidEventTap)
             up.post(tap: .cghidEventTap)
-            usleep(4000)
+            usleep(3000)
         }
         log.debug("typed \(text.count) characters")
-    }
-}
-
-private extension String {
-    /// CGEvent's unicode payload is capped in practice; send it in small pieces.
-    func chunked(_ size: Int) -> [String] {
-        var result: [String] = []
-        var current = ""
-        for character in self {
-            current.append(character)
-            if current.count >= size { result.append(current); current = "" }
-        }
-        if !current.isEmpty { result.append(current) }
-        return result
     }
 }

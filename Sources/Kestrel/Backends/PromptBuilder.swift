@@ -8,7 +8,7 @@ enum PromptBuilder {
     /// applies only when macOS handed over nothing but chrome.
     static func framing(for query: Query) -> String {
         var parts = [BundleResources.prompt(.ask)]
-        if AskIntent.wantsDraft(query.text) { parts.append(BundleResources.prompt(.askDraft)) }
+        if query.wantsDraft { parts.append(BundleResources.prompt(.askDraft)) }
         if query.screenText?.isEmpty ?? true { parts.append(BundleResources.prompt(.askBrowser)) }
         if query.tools {
             parts.append(BundleResources.prompt(.askTools)
@@ -62,6 +62,7 @@ enum PromptBuilder {
             }
             if let desktop = query.desktop, !desktop.isEmpty { parts.append(desktop) }
             if let brief = Conversation.brief(query.history) { parts.append(brief) }
+            if let done = query.alreadyDone { parts.append("Already done by Kestrel, before you: \(done) Carry on from there; do not do it again.") }
             parts.append("Question: \(query.text)")
             return parts.joined(separator: "\n\n")
         }

@@ -69,8 +69,11 @@ final class CLIRunner {
         task.standardError = errPipe
         task.standardInput = FileHandle.nullDevice
 
+        // A cancellation belongs to the run it interrupted. It used to stick: one Esc, and every
+        // run after it threw before spawning anything, so Kestrel sat in "thinking" with no model
+        // until it was relaunched.
         lock.lock()
-        if cancelled { lock.unlock(); throw CancellationError() }
+        cancelled = false
         process = task
         lock.unlock()
 
@@ -111,13 +114,18 @@ final class CLIRunner {
 
         task.waitUntilExit()
         deadline.cancel()
-        group.wait()
-
         lock.lock()
         process = nil
         let wasCancelled = cancelled
         lock.unlock()
-        if wasCancelled { throw CancellationError() }
+        // A killed CLI can leave a child — the `nc` relay it was handed as an MCP server — holding
+        // its end of the pipe; draining to the end would then wait on a process nobody is going
+        // to stop. A second is enough for the ordinary case and nothing is read afterwards anyway.
+        if wasCancelled {
+            _ = group.wait(timeout: .now() + 1)
+            throw CancellationError()
+        }
+        group.wait()
 
         let duration = Int(Date().timeIntervalSince(started) * 1000)
         CLIRunner.log.debug("\(executable.lastPathComponent, privacy: .public) exited \(task.terminationStatus) in \(duration)ms")

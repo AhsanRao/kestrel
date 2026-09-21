@@ -3,6 +3,18 @@ import Foundation
 
 /// Taking it all away again: the temp files, the error, the panel's own clock.
 extension SessionCoordinator {
+    /// Main thread. The number the take starting now is stamped with.
+    func beginGeneration() -> Int {
+        generation += 1
+        return generation
+    }
+
+    /// Whether work stamped `stamp` is still the take the user is waiting on. Main thread.
+    func isCurrent(_ stamp: Int) -> Bool { stamp == generation }
+
+    /// The same question from a background queue.
+    func stillCurrent(_ stamp: Int) -> Bool { DispatchQueue.main.sync { isCurrent(stamp) } }
+
     func discardCapture() {
         if let capture = pendingCapture { try? FileManager.default.removeItem(at: capture.url) }
         if let crop = pendingCrop { try? FileManager.default.removeItem(at: crop) }
@@ -12,11 +24,17 @@ extension SessionCoordinator {
         focusRegion = nil
     }
 
-    func finish(with error: Error) {
-        DispatchQueue.main.async { self.fail(error) }
+    /// - Parameter stamp: the take the error belongs to; an error from a take the user has
+    ///   already cancelled is not shown over whatever they are doing now.
+    func finish(with error: Error, stamp: Int? = nil) {
+        DispatchQueue.main.async {
+            if let stamp, !self.isCurrent(stamp) { return }
+            self.fail(error)
+        }
     }
 
     func fail(_ error: Error) {
+        generation += 1
         cancelAcknowledgement()
         abandonActing()
         panel.model.aside = nil
@@ -32,6 +50,7 @@ extension SessionCoordinator {
         // Errors are never read out, so this is the only way one reaches a screen reader.
         panel.announce(message)
         dismiss(after: 8)
+        askNextPhrase()
     }
 
     /// Takes a line down again once it has been read, and puts the session back to idle with it.

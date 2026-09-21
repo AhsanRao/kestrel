@@ -27,7 +27,7 @@ final class OnboardingTests: XCTestCase {
         XCTAssertFalse(missing.allGood)
     }
 
-    /// The default ask hotkey is a bare ⌃⌥ chord, which Carbon cannot register — it is watched
+    /// The default ask hotkey is a bare ⌘⌥ chord, which Carbon cannot register — it is watched
     /// through an event tap, so without Accessibility it never fires and the app cannot be used at
     /// all. Treating it as optional meant a revoked grant left Kestrel silently dead: no hotkey, and
     /// no setup window either, because nothing "required" was missing.

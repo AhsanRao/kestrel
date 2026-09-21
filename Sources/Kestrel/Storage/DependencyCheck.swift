@@ -28,7 +28,7 @@ enum DependencyCheck {
             switch self {
             case .microphone: return "So I can hear you when you hold the hotkey."
             case .screenRecording: return "So I can see the screen you're asking about."
-            case .accessibility: return "So ⌃⌥ works as a hotkey, dictation can paste, and you can circle things."
+            case .accessibility: return "So ⌘⌥ works as a hotkey, dictation can paste, and you can circle things."
             case .speech: return "Turns your voice into text, right here. Nothing gets uploaded."
             case .whisperBinary: return "The engine you told me to use instead of Apple's."
             case .whisperModel: return "The model whisper reads from. About 148 MB."
@@ -41,7 +41,7 @@ enum DependencyCheck {
         /// False for things Kestrel can run without.
         ///
         /// Accessibility depends on how the ask hotkey is bound. A bare modifier chord — the
-        /// default ⌃⌥ — cannot be registered with Carbon and is watched through an event tap, so
+        /// default ⌘⌥ — cannot be registered with Carbon and is watched through an event tap, so
         /// without the grant the hotkey cannot fire at all and the app is not reduced but unusable.
         /// Bound to an ordinary keyed shortcut it is merely recommended: dictation and circling
         /// need it, asking does not.

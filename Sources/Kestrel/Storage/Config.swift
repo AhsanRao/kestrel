@@ -5,6 +5,9 @@ import Foundation
 struct Config: Codable, Equatable {
     var backend: BackendKind
     var claudeModel: String?
+    /// The model for a question that acts, when it should differ from `claudeModel`. Measured
+    /// with "sonnet": no quicker per step than the default, so nil by default.
+    var claudeActModel: String?
     var codexModel: String?
     var autoRoute: Bool
     var allowMCPServers: Bool
@@ -23,6 +26,13 @@ struct Config: Codable, Equatable {
     var cleanupDictation: Bool
     /// How long a pause ends a live dictation. 0 leaves it running until the hotkey is pressed again.
     var dictationSilenceSeconds: Double
+    /// Hear a question as it is said, and send each phrase off at the pause after it while the
+    /// chord is still held (spec §5.2). Off, or where the engine cannot stream, the take is
+    /// recorded and transcribed on release as before.
+    var liveAsk: Bool
+    /// The pause that ends a phrase and sends it. Shorter than dictation's: a command is short,
+    /// and the point is not to wait.
+    var askSilenceSeconds: Double
     var injectMode: InjectMode
 
     var hotkeys: Hotkeys
@@ -46,10 +56,14 @@ struct Config: Codable, Equatable {
     var sensitivePatterns: [String]
 
     var apiKeys: APIKeys
+    /// Jev, the decision model that routes a question before a language model sees it (spec
+    /// §8.19). Off until the key is set.
+    var jev: Jev
 
     static let defaults = Config(
         backend: .claude,
         claudeModel: nil,
+        claudeActModel: nil,
         codexModel: nil,
         autoRoute: false,
         allowMCPServers: false,
@@ -64,6 +78,8 @@ struct Config: Codable, Equatable {
         kokoroVoice: KokoroVoice.default.id,
         cleanupDictation: true,
         dictationSilenceSeconds: 2.5,
+        liveAsk: true,
+        askSilenceSeconds: 1.0,
         injectMode: .paste,
         hotkeys: .defaults,
         panelAutoHideSeconds: 20,
@@ -78,7 +94,8 @@ struct Config: Codable, Equatable {
         maxAgentSteps: 10,
         shellAllowlist: ActionPolicy.defaultShellAllowlist,
         sensitivePatterns: ActionPolicy.defaultSensitivePatterns,
-        apiKeys: APIKeys(anthropic: nil, openai: nil)
+        apiKeys: APIKeys(anthropic: nil, openai: nil),
+        jev: Jev(apiKey: nil)
     )
 
     var actionPolicy: ActionPolicy {
@@ -94,32 +111,55 @@ struct Config: Codable, Equatable {
         var openai: String?
     }
 
+    /// Reached through Vercel's AI Gateway by default; the endpoint and model are settable so the
+    /// same client can point at TypeSafe directly, or at whatever replaces it, without a rebuild.
+    struct Jev: Codable, Equatable {
+        var apiKey: String?
+        var endpoint = "https://ai-gateway.vercel.sh/typesafe/v1/systemone"
+        var model = "typesafe-ai/jev"
+
+        var isEnabled: Bool { !(apiKey ?? "").isEmpty }
+
+        init(apiKey: String?, endpoint: String? = nil, model: String? = nil) {
+            self.apiKey = apiKey
+            if let endpoint { self.endpoint = endpoint }
+            if let model { self.model = model }
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(apiKey: (try? c.decodeIfPresent(String.self, forKey: .apiKey)) ?? nil,
+                      endpoint: (try? c.decodeIfPresent(String.self, forKey: .endpoint)) ?? nil,
+                      model: (try? c.decodeIfPresent(String.self, forKey: .model)) ?? nil)
+        }
+    }
+
     struct Hotkeys: Codable, Equatable {
         var ask: HotkeyBinding
         var dictate: HotkeyBinding
 
         /// Asking is held down for as long as you are talking, so it wants to be a chord rather
-        /// than a chord *plus* a letter — ⌃⌥ is one shape the hand already makes, and holding it is
-        /// the whole gesture. macOS claims nothing on ⌃⌥ alone, and because there is no letter it
+        /// than a chord *plus* a letter — ⌘⌥ is one shape the hand already makes, and holding it is
+        /// the whole gesture. macOS claims nothing on ⌘⌥ alone, and because there is no letter it
         /// cannot collide with an app's shortcut either.
         ///
         /// The cost is that Carbon cannot register a bare chord, so it is watched through an event
         /// tap and therefore needs Accessibility — which dictation already required. It also waits
-        /// out a short dwell before firing, so that ⌃⌥ on its way to some other shortcut is not
+        /// out a short dwell before firing, so that ⌘⌥ on its way to some other shortcut is not
         /// mistaken for a question (see `ModifierChordDetector`).
         ///
         /// Dictation stays a keyed hotkey: it is a tap, not a hold, and a bare chord cannot be
         /// tapped twice in a row without the second tap looking like the first still being held.
         ///
-        /// Its modifiers must not be the ask chord's. ⌃⌥D was tried and both hotkeys fired from the
-        /// one gesture: holding ⌃⌥ on the way to D is a question starting, and the D then aborted
-        /// it. ⌃⌘ shares nothing with ⌃⌥, so the two cannot be confused for each other.
+        /// Its modifiers must not be the ask chord's. ⌃⌥D was tried against a ⌃⌥ chord and both
+        /// hotkeys fired from the one gesture: holding the chord on the way to D is a question
+        /// starting, and the D then aborted it. ⌃⌘ is not ⌘⌥, so the two cannot be confused.
         ///
         /// The letter is K rather than D because macOS reserves four ⌃⌘ combinations — Space, D, F
         /// and Q — and ⌃⌘D is Look Up. Taking it would mean dictation and the dictionary fighting
         /// over the same press, in whichever app happened to be in front.
         static let defaults = Hotkeys(
-            ask: HotkeyBinding(keyCode: nil, modifiers: ["control", "option"]),      // ⌃⌥ held
+            ask: HotkeyBinding(keyCode: nil, modifiers: ["command", "option"]),      // ⌘⌥ held
             dictate: HotkeyBinding(keyCode: 40, modifiers: ["control", "command"])   // ⌃⌘K
         )
     }
@@ -178,6 +218,7 @@ struct Config: Codable, Equatable {
         maxAgentSteps = min(max(maxAgentSteps, 1), 50)
         // Under a second, an ordinary pause mid-sentence would end the dictation.
         dictationSilenceSeconds = dictationSilenceSeconds <= 0 ? 0 : min(max(dictationSilenceSeconds, 1), 30)
+        askSilenceSeconds = min(max(askSilenceSeconds, 0.5), 10)
     }
 }
 
@@ -198,6 +239,7 @@ extension Config {
         }
         backend = v(.backend, d.backend)
         claudeModel = opt(.claudeModel)
+        claudeActModel = opt(.claudeActModel)
         codexModel = opt(.codexModel)
         autoRoute = v(.autoRoute, d.autoRoute)
         allowMCPServers = v(.allowMCPServers, d.allowMCPServers)
@@ -212,6 +254,8 @@ extension Config {
         kokoroVoice = v(.kokoroVoice, d.kokoroVoice)
         cleanupDictation = v(.cleanupDictation, d.cleanupDictation)
         dictationSilenceSeconds = v(.dictationSilenceSeconds, d.dictationSilenceSeconds)
+        liveAsk = v(.liveAsk, d.liveAsk)
+        askSilenceSeconds = v(.askSilenceSeconds, d.askSilenceSeconds)
         injectMode = v(.injectMode, d.injectMode)
         hotkeys = v(.hotkeys, d.hotkeys)
         panelAutoHideSeconds = v(.panelAutoHideSeconds, d.panelAutoHideSeconds)
@@ -227,6 +271,7 @@ extension Config {
         shellAllowlist = v(.shellAllowlist, d.shellAllowlist)
         sensitivePatterns = v(.sensitivePatterns, d.sensitivePatterns)
         apiKeys = v(.apiKeys, d.apiKeys)
+        jev = v(.jev, d.jev)
         clamp()
     }
 }

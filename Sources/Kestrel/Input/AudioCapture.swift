@@ -58,17 +58,21 @@ final class AudioCapture {
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0 else { throw Failure.engineFailed("no input device") }
 
-        // Pro interfaces run at 44.1/48/96 kHz; the converter absorbs whatever the device reports.
-        guard let target = AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1),
-              let converter = AVAudioConverter(from: inputFormat, to: target) else {
-            throw Failure.engineFailed("unsupported input format \(inputFormat)")
+        guard let target = AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1) else {
+            throw Failure.engineFailed("cannot make a 16 kHz format")
         }
-        self.converter = converter
+        self.converter = nil
         self.target = target
         samplesLock.lock(); samples.removeAll(keepingCapacity: true); samplesLock.unlock()
         meter.reset()
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+        // No format is named for the tap, and the converter is built from the first buffer that
+        // arrives, not from what the node reports here. After the engine has been stopped and the
+        // microphone used by something else — the live dictation engine, or AirPods coming and
+        // going — `outputFormat` can lag the hardware, and naming it raises an uncatchable
+        // "Failed to create tap due to format mismatch" that took the whole app down. Pro
+        // interfaces run at 44.1/48/96 kHz; the converter absorbs whatever actually comes in.
+        input.installTap(onBus: 0, bufferSize: 4096, format: nil) { [weak self] buffer, _ in
             self?.append(buffer, target: target)
         }
 
@@ -92,7 +96,6 @@ final class AudioCapture {
         }
         maxDurationTimer = timer
         DispatchQueue.main.asyncAfter(deadline: .now() + maxDuration, execute: timer)
-        log.debug("recording at \(inputFormat.sampleRate) Hz")
     }
 
     /// Returns the WAV, or nil when the press was too short to be speech.
@@ -140,6 +143,10 @@ final class AudioCapture {
     // MARK: - Private
 
     private func append(_ buffer: AVAudioPCMBuffer, target: AVAudioFormat) {
+        if converter == nil || converter?.inputFormat != buffer.format {
+            converter = AVAudioConverter(from: buffer.format, to: target)
+            log.debug("recording at \(buffer.format.sampleRate) Hz")
+        }
         guard let converter else { return }
         let ratio = target.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024

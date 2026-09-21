@@ -94,3 +94,25 @@ final class ActuationTests: XCTestCase {
         XCTAssertGreaterThan(Query(text: "x", tools: true).timeout, 75)
     }
 }
+
+final class ClickByNumberTests: XCTestCase {
+    func testClickDescribesTheControlNumberAndSchemaNeedsNoCoordinates() {
+        XCTAssertEqual(ToolCall(tool: .click, arguments: ["control": 25]).describe, "click control 25")
+        XCTAssertEqual(ToolCall(tool: .click, arguments: ["x": 10, "y": 20]).describe, "click at 10, 20")
+        let schema = ActionTool.click.inputSchema
+        XCTAssertEqual(schema["required"] as? [String], [])
+        XCTAssertNotNil((schema["properties"] as? [String: Any])?["control"])
+    }
+
+    func testAnUnknownControlNumberFails() {
+        XCTAssertThrowsError(try Actuator.perform(ToolCall(tool: .click, arguments: ["control": 9]),
+                                                  screenshot: nil, config: .defaults, controls: []))
+    }
+
+    func testAppKitToCoreGraphicsFlipsY() {
+        let height = ScreenGrabber.primaryDisplayHeight
+        let point = Actuator.cgPoint(CGPoint(x: 100, y: 40))
+        XCTAssertEqual(point.x, 100)
+        XCTAssertEqual(point.y, height - 40)
+    }
+}

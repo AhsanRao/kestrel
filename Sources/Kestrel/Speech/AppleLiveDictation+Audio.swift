@@ -14,9 +14,12 @@ extension AppleLiveDictation {
             throw KestrelError.transcriptionFailed("no input device")
         }
         let analysed = target ?? inputFormat
-        converter = analysed == inputFormat ? nil : AVAudioConverter(from: inputFormat, to: analysed)
+        converter = nil
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+        // The tap names no format and the converter is built from the first buffer that arrives:
+        // `outputFormat` can lag the hardware after the microphone has changed hands, and naming
+        // it raises an uncatchable "format mismatch" (see `AudioCapture.start`).
+        input.installTap(onBus: 0, bufferSize: 4096, format: nil) { [weak self] buffer, _ in
             self?.feed(buffer, as: analysed)
         }
         engine.prepare()
@@ -47,7 +50,11 @@ extension AppleLiveDictation {
     }
 
     func convert(_ buffer: AVAudioPCMBuffer, to target: AVAudioFormat) -> AVAudioPCMBuffer? {
-        guard let converter else { return buffer }
+        if buffer.format == target { return buffer }
+        if converter == nil || converter?.inputFormat != buffer.format {
+            converter = AVAudioConverter(from: buffer.format, to: target)
+        }
+        guard let converter else { return nil }
         let ratio = target.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
         guard let out = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return nil }

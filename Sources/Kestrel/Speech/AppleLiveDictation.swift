@@ -49,6 +49,11 @@ final class AppleLiveDictation: LiveDictating, @unchecked Sendable {
         }
     }
 
+    func listenAgain() {
+        guard isRunning else { return }
+        silence.start(seconds: silenceSeconds)
+    }
+
     func stop(completion: @escaping () -> Void) {
         guard isRunning else { return completion() }
         isRunning = false

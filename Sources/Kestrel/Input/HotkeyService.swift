@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 import os
 
 /// Two global hotkeys. A binding with a key code goes to Carbon `RegisterEventHotKey`, which
-/// delivers press *and* release and needs no permission (spec §8.1). A bare modifier chord — ⌃⌥
+/// delivers press *and* release and needs no permission (spec §8.1). A bare modifier chord — ⌘⌥
 /// held alone — cannot be registered that way and is watched by `ModifierChordWatcher` instead,
 /// which does need Accessibility.
 final class HotkeyService {

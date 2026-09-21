@@ -12,8 +12,8 @@ final class ActionSessionTests: XCTestCase {
         var performed: [ToolCall] = []
         let hooks = ActionSession.Hooks(
             confirm: confirm,
-            perform: { call, _ in performed.append(call); return "did it" },
-            observe: { .init(capture: nil, controls: "", frontmost: "TestApp") },
+            perform: { call, _, _ in performed.append(call); return "did it" },
+            observe: { _ in .init(capture: nil, controls: "", frontmost: "TestApp") },
             frontmostBundleID: { nil },
             elementLabel: { _ in nil },
             progress: { _ in },
@@ -48,8 +48,8 @@ final class ActionSessionTests: XCTestCase {
     func testTheCapHookFiresExactlyOnce() {
         var capHits = 0
         let hooks = ActionSession.Hooks(
-            confirm: { _ in true }, perform: { _, _ in "ok" },
-            observe: { .init(capture: nil, controls: "", frontmost: nil) },
+            confirm: { _ in true }, perform: { _, _, _ in "ok" },
+            observe: { _ in .init(capture: nil, controls: "", frontmost: nil) },
             frontmostBundleID: { nil }, elementLabel: { _ in nil }, progress: { _ in },
             capHit: { capHits += 1 })
         let session = ActionSession(policy: .default, maximumSteps: 1, initialCapture: nil, hooks: hooks)

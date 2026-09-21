@@ -25,35 +25,55 @@ extension SessionCoordinator {
     }
 
     /// A fresh session for the question about to be asked. Called on `work`.
-    func beginActing(with capture: ScreenCapture?) -> ActionSession {
+    func beginActing(with capture: ScreenCapture?, request: String = "",
+                     elements: [AXElementScanner.Element] = []) -> ActionSession {
         let config = config
         let hooks = ActionSession.Hooks(
             confirm: { [weak self] what in self?.askPermission(for: what) ?? false },
-            perform: { call, capture in try Actuator.perform(call, screenshot: capture, config: config) },
-            observe: { [weak self] in self?.observe() ?? .init(controls: "") },
+            perform: { call, capture, controls in
+                try Actuator.perform(call, screenshot: capture, config: config, controls: controls)
+            },
+            observe: { [weak self] call in self?.observe(after: call) ?? .init(controls: "") },
             frontmostBundleID: { TextInjector.frontmostBundleID() },
             elementLabel: { Actuator.elementLabel(at: $0) },
             progress: { [weak self] line in
                 DispatchQueue.main.async { self?.panel.model.aside = line; self?.render() }
             },
-            capHit: { [weak self] in DispatchQueue.main.async { self?.outOfSteps() } })
+            stepDone: { [weak self] line in
+                DispatchQueue.main.async { self?.panel.model.steps.append(line); self?.panel.model.aside = nil; self?.render() }
+            },
+            capHit: { [weak self] in DispatchQueue.main.async { self?.outOfSteps() } },
+            judge: { action in
+                ActionJudge.isSensitive(action, in: NSWorkspace.shared.frontmostApplication?.localizedName,
+                                        config: config)
+            },
+            review: { ActionJudge.review($0, config: config) })
         let session = ActionSession(policy: config.actionPolicy, maximumSteps: config.maxAgentSteps,
-                                    initialCapture: capture, hooks: hooks)
-        DispatchQueue.main.sync { self.acting = session }
+                                    initialCapture: capture, hooks: hooks, request: request,
+                                    initialElements: elements)
+        DispatchQueue.main.sync {
+            self.acting = session
+            self.panel.setClickThrough(true)
+        }
         return session
     }
 
     /// The answer has landed: the session's screenshots go, and later tool calls are refused.
-    func endActing() {
-        lastActingSteps = acting?.steps ?? 0
-        acting?.cancel()
-        acting?.cleanUp()
+    /// - Parameter session: the one that answer belonged to. If the user has since asked something
+    ///   else, that question's session is left alone — this one is only tidied away.
+    func endActing(_ session: ActionSession? = nil) {
+        let ending = session ?? acting
+        ending?.cancel()
+        ending?.cleanUp()
+        guard session == nil || ending === acting else { return }
+        lastActingSteps = ending?.steps ?? 0
         acting = nil
+        panel.setClickThrough(false)
     }
 
     /// Esc, a failure, a new question: stop the hands, and let go of anything waiting on a yes.
     func abandonActing() {
-        guard acting != nil else { return }
+        guard acting != nil || pendingDecision != nil else { return }
         decide(false)
         endActing()
         router.cancel()
@@ -62,12 +82,17 @@ extension SessionCoordinator {
     // MARK: - Looking
 
     /// The screen after a step. Runs on the socket queue; the pause is for the app to catch up
-    /// with what was just done to it — a menu still animating open is not the result.
-    private func observe() -> ActionSession.Observation {
-        Thread.sleep(forTimeInterval: 0.6)
+    /// with what was just done to it — a menu still animating open is not the result, and neither
+    /// is a page that has not started loading. A click shows in half a second; a return key, typed
+    /// text or a script usually sets something longer in motion, and a screenshot taken too soon
+    /// shows the old screen, which the model then reads as "nothing happened" and does it again.
+    private func observe(after call: ToolCall) -> ActionSession.Observation {
+        Thread.sleep(forTimeInterval: [.click, .typeText].contains(call.tool) ? 0.6 : 1.5)
         let capture = try? ScreenGrabber.capture(maxEdge: config.screenshotMaxEdge, mode: config.captureMode)
-        let frontmost = NSWorkspace.shared.frontmostApplication?.localizedName
+        let frontmost = [NSWorkspace.shared.frontmostApplication?.localizedName, Actuator.frontWindowTitle()]
+            .compactMap { $0 }.joined(separator: " — ")
         var lines: [String] = []
+        var listed: [AXElementScanner.Element] = []
         if let capture {
             for element in AXElementScanner.scanFrontmostApp().prefix(SessionCoordinator.maximumListedControls) {
                 let centre = CGPoint(x: element.frame.midX, y: element.frame.midY)
@@ -75,9 +100,11 @@ extension SessionCoordinator {
                       pixel.x >= 0, pixel.y >= 0, pixel.x <= capture.pixelSize.width,
                       pixel.y <= capture.pixelSize.height else { continue }
                 lines.append("\(element.asTarget.listing) at \(Int(pixel.x)), \(Int(pixel.y))")
+                listed.append(element)
             }
         }
-        return .init(capture: capture, controls: lines.joined(separator: "\n"), frontmost: frontmost)
+        return .init(capture: capture, controls: lines.joined(separator: "\n"), frontmost: frontmost,
+                     elements: listed)
     }
 
     // MARK: - Asking
@@ -118,13 +145,21 @@ extension SessionCoordinator {
 
     /// …and came up again. Nothing recorded is a tap, and a tap is a yes.
     func finishConfirmRecording() {
+        // The chord was held from before the question was asked, with the live engine hearing
+        // it: letting go is not a yes. The answer is what was said, if anything, and a silence
+        // times out to a no.
+        if finishLiveAsk() { return }
         sounds.play(.heard, config: config)
         guard let wav = audio.stop() else { return decide(true) }
+        guard case .confirming(let what) = machine.state else { return decide(false) }
         work.async { [weak self] in
             guard let self else { return }
             defer { try? FileManager.default.removeItem(at: wav) }
             let heard = (try? self.transcriber.transcribe(wav, config: self.config)) ?? ""
-            DispatchQueue.main.async { self.decide(Confirmation.isYes(heard)) }
+            // Jev reads the reply when it is clear either way; the word list otherwise, and the
+            // list treats anything that is not plainly a yes as a no.
+            let yes = ActionJudge.isYes(heard, to: what, config: self.config) ?? Confirmation.isYes(heard)
+            DispatchQueue.main.async { self.decide(yes) }
         }
     }
 

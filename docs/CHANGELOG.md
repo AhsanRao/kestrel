@@ -9,6 +9,97 @@ code, the reason for it is given here.
 
 ---
 
+## [1.9.0] — 2026-09-21 — it decides what you meant before it starts thinking
+
+**It listens while you talk.** The ask chord used to be a shutter: hold, speak, release, and only
+then did the words go anywhere. Now the same on-device engine that types dictation hears the
+question as it is said, and the first pause — a second — sends it. "Open Spotify" is opening while
+you draw breath for "and play something", which goes next, in turn; a "yes" or "no" said while
+Kestrel is asking whether to go ahead is the answer. Letting go sends whatever is left, and is no
+longer read as a yes to a pending confirmation. `liveAsk: false` brings the shutter back; below
+macOS 26 and under whisper it never left. The ask chord is `⌘⌥` now, not `⌃⌥`.
+
+Before a question reaches Claude or Codex, Kestrel has to decide what kind of request it is: an app
+to open, a job for the hands, or a question for the eyes. That decision used to come from word
+lists — "open …" was a launch, "reply" wanted a draft — and, because the lists could not tell a
+request from a question, every question was handed all six tools just in case, and paid for the tool
+prompt and the MCP handshake whether it needed hands or not.
+
+Now it is decided by **Jev**, TypeSafe AI's decision model, reached through Vercel's AI Gateway
+when a key is set in `jev.apiKey`. Jev is not a language model: it is given the sentence and a few
+typed questions — which of three kinds is this, which installed app is named, is a draft wanted, is
+this about the desktop, does it continue the last question — and answers each with a probability,
+in about half a second, for a hundredth of a cent. "Can you pull up Finder for me" opens Finder with
+no model spawned. "What does this button do" is answered with no tools attached, which is faster and
+cannot act by mistake. "Close these tabs" gets the hands. Only words go to it — the transcript and
+the name of the app in front, never a screenshot — and the endpoint and model are config, so the
+same client can point at TypeSafe directly, or at a local model, when there is one.
+
+**It opens the app itself.** "Open Chrome and search for owls" is a job for the model, but the
+opening is one verb: Jev says which app comes first, Kestrel launches it, reads the new screen and
+hands the model the rest with Chrome already in front. One step and one round-trip fewer; the
+search went from ten steps and a minute to four steps and half of one.
+
+**Clicks land.** The model used to be handed a screenshot and coordinates, and asked for
+coordinates back; estimated from a picture, they missed. `click` now takes the number of a
+control from the list it was shown, and the click goes to where that control is *now*, read off
+the Accessibility tree at the moment of clicking. Coordinates remain for the rare thing that is
+not in the list, with the screenshot's pixel size stated so they can be scaled. Three more things
+that stood between a click and its target: the island is click-through while Kestrel acts (it sits
+exactly where a browser keeps its address bar, and the click landed on it); typed text goes one
+character per key event (Chrome's address bar dropped twenty at a time, whole); and every synthetic
+key and click clears its modifier flags, because the ask chord is held while Kestrel works and a
+typed "g" was arriving as ⌘⌥G. The screenshot after a return key, typed text or a script now waits
+1.5 s rather than 0.6, so a page that has only just started loading is not read as "nothing
+happened".
+
+**Esc means Esc.** Cancelling mid-question used to leave three things behind. The CLI runner's
+cancel flag stuck, so every later question threw before a model was spawned and Kestrel sat in
+"thinking" until relaunched. The cancelled question's late results landed on the next one — ending
+its action session, so every tool call after that was refused as "cancelled", and deleting its
+screenshot. And the next take crashed the app outright: `AVAudioEngine` raised an uncatchable
+format-mismatch exception when the microphone had changed hands since the engine last stopped.
+Now every take carries a generation number and anything arriving with an old one is dropped; the
+cancel belongs to the run it interrupted; and the audio tap names no format, taking whatever the
+hardware is actually at.
+
+**The small jobs need no model.** The same call asks what shape the request is on the screen
+as it stands — one click on a listed control, or words typed into one field and return — and
+which control and which words. "Go to the Extensions tab", "press Send", "search for barn owls":
+when Jev is sure, Kestrel does it in a few seconds with no model, where the act loop — screenshot,
+model, tool call, screenshot — took thirty. Same policy, same spoken confirmation before anything
+that reads as delete, send or pay, same lines in the action log. A search in a browser goes in a
+new tab, never over the page you have open. If the screen does not show the job done afterwards,
+the model picks up from there. "Go to Wikipedia and search for kestrel" names two things and goes
+to the model as before.
+
+**It remembers how.** When the model has had to work a job out, the steps it took are written
+under *Recipes* in that app's file in `~/.kestrel/skills/`, which it reads with every question
+asked in that app. The next search starts from the route rather than rediscovering it.
+
+**You can see it working.** Each step done appears on the island as it happens — "Opened Safari",
+"Clicked Send" — not only in the log afterwards. And after each step, Jev says whether the next one
+can be chosen from the words alone; when it can, the screenshot stays out of the model's turn, which
+is a thousand tokens and a second or two saved per step.
+
+**It understands what it is about to do.** While acting, two calls used to come from word lists:
+whether a step is worth checking with you first, and whether what you said back was a yes. Both
+go to Jev now. The list stopped for "Sort by order" and "Clear search" because *order* and *clear*
+were on it; Jev lets those through and still asks before Send, Delete, Post, Publish and Sign out.
+The list read "yes but not the second one" as a yes because it contained one; Jev reads it as the
+no it is, and "go for it" as the yes it is. The rules stay rules — nothing elevated, only the
+allowlist in a shell, always ask before typing into a terminal — and none of them is put to Jev.
+
+**It knows when it is finished.** After each step, Jev is shown what was asked, what has been
+done and what is now on screen, and asked whether that is the job done. When it is sure, the model
+is told so alongside the screenshot and stops after one sentence instead of spending another step
+checking. "Open Finder and go to my Downloads folder" is one AppleScript and a "Finder's open on
+your Downloads folder", not that plus a look round.
+
+The word lists stay as the fallback: without a key, or when the call fails or is unsure, Kestrel
+decides exactly as it did before. `KESTREL_TRIAGE="open Finder;what is this"` prints the decision
+and timing per phrase.
+
 ## [1.8.0] — 2026-09-15 — it does things now, not just says them
 
 Ask Kestrel to *do* something — "open Safari and search for kestrels", "reply to this", "close these

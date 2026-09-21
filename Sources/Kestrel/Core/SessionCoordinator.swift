@@ -57,6 +57,14 @@ final class SessionCoordinator {
     /// Everything this take has already put into the app. Empty also means nothing has been typed
     /// yet, which is what decides whether the next phrase needs a space in front of it.
     var liveText = ""
+    /// The engine's running guess at the phrase still being said, kept so a phrase cut by the
+    /// chord's release is not lost if its final result has not landed yet.
+    var liveGuess = ""
+    /// Questions heard while one was still being answered, in the order they were said.
+    var phrases: [String] = []
+    /// Where the streaming engine comes from. The probe swaps in one that says scripted phrases,
+    /// which is how the live-ask flow is exercised without a microphone.
+    var makeLiveEngine: (Config) -> LiveDictating? = { LiveDictation.make(for: $0) }
     /// The tools `claude -p` is offered, served from inside the app (spec §8.18).
     let toolServer = MCPSocketServer(path: Paths.mcpSocket)
     /// The hands behind the question in flight, if it was allowed any.
@@ -65,6 +73,13 @@ final class SessionCoordinator {
     var pendingDecision: ((Bool) -> Void)?
     /// Steps the last question took, kept for the probe's report after the session is gone.
     var lastActingSteps = 0
+    /// Which take the work in flight belongs to. Bumped by every new take and every Esc, on the
+    /// main thread; a result that comes back carrying an older number is for a question the user
+    /// has already walked away from, and is dropped. Without this, an answer cancelled with Esc
+    /// landed on the *next* question — ending its action session, so every tool call after that
+    /// was refused as "cancelled" and the model ground round to the step cap, and deleting its
+    /// screenshot from under it.
+    var generation = 0
     private var accessibilityRetry: Timer?
 
     var config: Config { ConfigStore.shared.current }
@@ -72,6 +87,7 @@ final class SessionCoordinator {
     // MARK: - Lifecycle
 
     func start() {
+        Jev.warmUp(config: config.jev)
         panel.onOpenPermission = { NSWorkspace.shared.open($0) }
         speech.onFinish = { [weak self] in self?.scheduleAutoHide() }
         audio.onAutoStop = { [weak self] url in self?.audioStoppedOnItsOwn(url) }
@@ -111,7 +127,7 @@ final class SessionCoordinator {
         audio.stop()
     }
 
-    /// The modifiers turned out to be the start of a real shortcut — ⌃⌥ plus a letter — so the
+    /// The modifiers turned out to be the start of a real shortcut — ⌘⌥ plus a letter — so the
     /// recording that the chord began is thrown away without a word.
     private func chordAborted() {
         guard machine.state == .listening else { return }
@@ -143,7 +159,14 @@ final class SessionCoordinator {
 
     // MARK: - Hotkeys
 
-    private func handle(_ action: HotkeyService.Action, _ phase: HotkeyService.Phase) {
+    func handle(_ action: HotkeyService.Action, _ phase: HotkeyService.Phase) {
+        // The chord let go after its first phrase already went off: the engine has outlived the
+        // listening state, and this is where it stops. Listening and confirming stop it on their
+        // own release paths.
+        if action == .ask, phase == .released,
+           ![.listening, .dictating].contains(machine.state), !isConfirming, finishLiveAsk() {
+            return
+        }
         let event: SessionEvent?
         switch (action, phase) {
         case (.ask, .pressed): event = .askPressed
@@ -164,6 +187,11 @@ final class SessionCoordinator {
         updateEscapeWatch()
     }
 
+    private var isConfirming: Bool {
+        if case .confirming = machine.state { return true }
+        return false
+    }
+
     /// Esc takes back whatever Kestrel is doing, from wherever the user is.
     ///
     /// It used to reach only the marks, and only while they were drawn — so an answer the user had
@@ -176,12 +204,17 @@ final class SessionCoordinator {
             annotations.hide()
             return
         }
+        generation += 1
+        phrases = []
         cancelLiveDictation()
         abandonActing()
         audio.stop()
+        speech.stop()
+        discardCapture()
         panel.hideImmediately()
         apply(.cancelled)
     }
+
 
     /// The tap runs while Kestrel has something on the screen and not a moment longer: an event tap
     /// left listening after the last mark has faded is a tap for no reason.

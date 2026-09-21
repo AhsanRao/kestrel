@@ -11,6 +11,7 @@ extension SessionCoordinator {
         streamingDraft = false
         panel.model.draft = nil
         panel.model.aside = nil
+        panel.model.steps = []
         cancelAcknowledgement()
         spokeAcknowledgement = false
     }
@@ -102,6 +103,7 @@ extension SessionCoordinator {
         panel.model.answer = answer.text
         apply(.answered)
         render()
+        askNextPhrase()
         // Only when Kestrel is not about to read it out: two voices saying the same sentence is
         // worse than one.
         if !config.speakAnswers { panel.announce(answer.text) }
@@ -121,10 +123,11 @@ extension SessionCoordinator {
     /// Deliberately not a plan and not a confirmation: opening an app is a single, obvious,
     /// harmless act, and asking permission for it would be theatre. Once it is open, the answer is
     /// spoken like any other — and the next question will be about the app that is now in front.
-    func openApp(_ app: (bundleID: String, name: String), asked: String) {
+    func openApp(_ app: (bundleID: String, name: String), asked: String, stamp: Int) {
         discardCapture()
         let opened = AppLauncher.launch(bundleID: app.bundleID)
         DispatchQueue.main.async {
+            guard self.isCurrent(stamp) else { return }
             let line = opened ? "Opening \(app.name)." : "\(app.name) won't open — is it installed?"
             self.conversation.record(question: asked, answer: line, at: Date(),
                                      appBundleID: app.bundleID)
@@ -132,7 +135,7 @@ extension SessionCoordinator {
         }
     }
 
-    func runDictation(_ text: String) {
+    func runDictation(_ text: String, stamp: Int) {
         var output = text
         if config.cleanupDictation {
             // Local rules first: punctuation, capitals and spoken commands do not need a model, and
@@ -150,6 +153,8 @@ extension SessionCoordinator {
             }
         }
         DispatchQueue.main.async {
+            // Esc during the cleanup: the words are not typed into whatever is in front now.
+            guard self.isCurrent(stamp) else { return }
             do {
                 try TextInjector.inject(output, mode: self.config.injectMode)
                 self.panel.model.transcript = output

@@ -27,7 +27,7 @@ struct WelcomeStep: View {
         VStack(alignment: .leading, spacing: 20) {
             AppIconMark(size: 60)
             StepHeading(title: "Hey — I'm Kestrel.",
-                        detail: "Hold ⌃⌥, ask about whatever's on your screen, and I'll answer out "
+                        detail: "Hold ⌘⌥, ask about whatever's on your screen, and I'll answer out "
                               + "loud. Let go and I'm gone again.")
             VStack(alignment: .leading, spacing: 12) {
                 point("waveform", "Ask out loud", "Your voice becomes text right here on this Mac.")
@@ -149,7 +149,7 @@ struct ReadyStep: View {
         VStack(alignment: .leading, spacing: 22) {
             StepHeading(title: model.readyToUse ? "That's us — ready." : "Good enough to start.",
                         detail: model.readyToUse
-                            ? "Hold ⌃⌥ anywhere and ask me something. I'm in the menu bar when you need me."
+                            ? "Hold ⌘⌥ anywhere and ask me something. I'm in the menu bar when you need me."
                             : "You can use me now. The rest is waiting whenever you want it.")
             if model.unfinishedTools.isEmpty {
                 HotkeyCard()

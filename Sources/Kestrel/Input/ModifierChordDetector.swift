@@ -1,6 +1,6 @@
 import AppKit
 
-/// Decides when a bare modifier chord — ⌃⌥ held on its own, with no letter — counts as a press.
+/// Decides when a bare modifier chord — ⌘⌥ held on its own, with no letter — counts as a press.
 ///
 /// Pure logic so the awkward parts can be tested: the chord is also the prefix of every shortcut
 /// built on the same modifiers, so it must not fire the instant those go down. It waits out a short

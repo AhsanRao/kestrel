@@ -44,6 +44,10 @@ final class DragTracker {
 
     static func swallows(_ type: CGEventType) -> Bool { swallowed.contains(type) }
 
+    /// Armed: mouse buttons are being swallowed for the circle. Anything that moves the session
+    /// on has to end this, or the user can draw on the screen but not click on it.
+    var isTracking: Bool { tap != nil || !monitors.isEmpty }
+
     func begin() {
         end()
         points = []

@@ -30,6 +30,11 @@ struct Query {
     var tools: Bool
     /// The step budget, quoted to the model so it can plan inside it.
     var maximumSteps: Int
+    /// Carry the `DRAFT:` rules: the user wants words to send, not an explanation.
+    var wantsDraft: Bool
+    /// What Kestrel did before asking — "Google Chrome is open and in front" — so the model
+    /// carries on from there rather than doing it again.
+    var alreadyDone: String?
 
     init(text: String, screenshot: URL? = nil, focusCrop: URL? = nil,
          mode: QueryMode = .ask, maxTokensHint: Int? = nil,
@@ -37,7 +42,8 @@ struct Query {
          screenText: String? = nil, pageURL: String? = nil, document: String? = nil,
          history: [Conversation.Exchange] = [], skills: String? = nil,
          desktop: String? = nil, workingDirectory: URL? = nil,
-         tools: Bool = false, maximumSteps: Int = 10) {
+         tools: Bool = false, maximumSteps: Int = 10, wantsDraft: Bool? = nil,
+         alreadyDone: String? = nil) {
         self.text = text
         self.screenshot = screenshot
         self.focusCrop = focusCrop
@@ -53,6 +59,8 @@ struct Query {
         self.workingDirectory = workingDirectory
         self.tools = tools
         self.maximumSteps = maximumSteps
+        self.wantsDraft = wantsDraft ?? AskIntent.wantsDraft(text)
+        self.alreadyDone = alreadyDone
     }
 
     /// The page or document in front of the user, named for the model.

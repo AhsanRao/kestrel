@@ -10,7 +10,7 @@ import Foundation
 extension SessionCoordinator {
     /// Starts a live take. False when this Mac cannot stream — the caller then records a WAV.
     func beginLiveDictation() -> Bool {
-        guard let engine = LiveDictation.make(for: config) else { return false }
+        guard let engine = makeLiveEngine(config) else { return false }
         live = engine
         liveText = ""
         engine.onVolatile = { [weak self] text in self?.showLive(guess: text) }

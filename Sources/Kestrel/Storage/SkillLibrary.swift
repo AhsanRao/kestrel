@@ -58,6 +58,31 @@ enum SkillLibrary {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// What worked, kept for next time: "- search for owls: click “Address and search bar”;
+    /// type “owls”; press return" under a Recipes heading in the app's own skill file. The model
+    /// reads the file with every question asked in that app, so the next search starts from the
+    /// route rather than rediscovering it.
+    static let maximumRecipes = 20
+
+    static func remember(request: String, steps: [String], bundleID: String?) {
+        guard let bundleID, steps.count >= 2 else { return }
+        let url = Paths.skills.appendingPathComponent("\(bundleID).md")
+        var text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        let heading = "## Recipes"
+        if !text.contains(heading) {
+            text += (text.isEmpty ? "" : "\n\n") + heading + "\nWhat worked here before, step by step. Follow one when it fits.\n"
+        }
+        let line = "- \(request.prefix(80)): " + steps.joined(separator: "; ")
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        // The newest at the end, the oldest dropped: twenty recipes is a page, not a manual.
+        let recipes = lines.indices.filter { lines[$0].hasPrefix("- ") && lines[..<$0].contains(heading) }
+        if recipes.count >= maximumRecipes, let first = recipes.first { lines.remove(at: first) }
+        lines.append(line)
+        try? FileManager.default.createDirectory(at: Paths.skills, withIntermediateDirectories: true)
+        try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        log.info("remembered a recipe for \(bundleID, privacy: .public)")
+    }
+
     static func invalidate() {
         cacheLock.lock()
         cache.removeAll()

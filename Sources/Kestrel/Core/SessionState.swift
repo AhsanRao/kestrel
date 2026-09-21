@@ -28,6 +28,9 @@ enum SessionState: Equatable {
 enum SessionEvent: Equatable {
     case askPressed
     case askReleased
+    /// A phrase settled while the ask chord is still held (spec §5.2): a question in its own
+    /// right, before the key is let go.
+    case phraseHeard
     case dictateToggled
     case transcribed(SessionIntent)
     case transcriptionEmpty
@@ -88,6 +91,19 @@ struct SessionMachine {
         case (.listening, .askReleased):
             state = .transcribing(.ask)
             return [.finishListening]
+
+        // Heard mid-hold: the phrase goes off as a question while the microphone stays open. From
+        // an answer or an error, it is the next question in a run of them.
+        case (.listening, .phraseHeard):
+            state = .transcribing(.ask)
+            return []
+        case (.answering, .phraseHeard), (.error, .phraseHeard):
+            state = .transcribing(.ask)
+            return [.clearOverlay, .interruptSpeech]
+        // The last answer was dismissed while this phrase was being said.
+        case (.idle, .phraseHeard):
+            state = .transcribing(.ask)
+            return []
 
         case (.idle, .dictateToggled), (.error, .dictateToggled):
             state = .dictating

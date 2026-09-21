@@ -1,21 +1,24 @@
-# Kestrel
+# Kestrel — a personal AI assistant for your Mac
 
-**Ask. Look. Point.** — a voice-first, screen-aware assistant for macOS that runs on *your* Claude
-and ChatGPT subscriptions.
+**Ask. Look. Point. Do.** A voice-first, screen-aware AI assistant for macOS that runs on *your own*
+Claude Pro/Max or ChatGPT Plus/Pro subscription — a personal Claude for the desktop, with hands.
 
-Hold a key, ask about what is on screen, hear the answer. Tap another key and talk, and the words appear in whatever app you are in as you say them.
-Speech-to-text is local. There is no Kestrel backend, no account, and no telemetry: the only things
-that leave your Mac are the transcribed question and one screenshot, sent by the vendors' own CLIs,
-only while you are holding the key.
+Hold a key and talk. Kestrel looks at what is on your screen and answers out loud, draws on the
+thing it is talking about, types what you dictate into any app, and carries out what you ask —
+"open Chrome and search for owls", "reply to this", "close these tabs" — checking with you before
+anything it can't undo. Speech-to-text is on-device. There is no Kestrel backend, no account and
+no telemetry: what leaves your Mac is the transcribed question and one screenshot, sent by the
+vendors' own CLIs, only while you are holding the key — and, if you turn on [Jev](#deciding-faster-with-jev),
+the words alone.
 
 | | |
 |---|---|
-| **Ask** | Hold `⌃⌥`, speak, release. Kestrel screenshots the display your mouse is on, transcribes it on this Mac, asks Claude or Codex, then shows and speaks the answer. |
+| **Ask** | Hold `⌘⌥` and speak. Kestrel hears you as you talk, screenshots the front window, asks Claude or Codex at the first pause, then shows and speaks the answer. Keep talking and the next thing you say is the next question. |
 | **Dictate** | Tap `⌃⌘K` and talk. The words appear in the frontmost app as you say them, a phrase at a time, and the take ends itself once you have been quiet for a couple of seconds — or on another tap. Newlines are collapsed in terminals so dictation can never run a command. |
 | **Show** | Kestrel draws on the real screen while it talks — a pencil rings the thing the answer is about, one mark after another. Ask *"how do I upload a file?"* and the button gets circled while the sentence is spoken. Esc clears it. |
 | **Write** | Ask for a reply, an email or a paragraph and you get it as text with a **Copy** button, not read aloud. |
 | **Point** | Circle something with the mouse while holding the ask key, then ask about it. |
-| **Do** | Ask it to open an app, run a search, close some tabs — it acts, checks the result, and asks before anything it can't undo. |
+| **Do** | Ask it to open an app, run a search, close some tabs — it acts, checks the result, and asks before anything it can't undo. Small jobs are done in seconds without a model; what the model works out is remembered for next time. |
 | **Follow up** | Ask again within 90 seconds and it continues the same thread. |
 | **Switch** | Claude ↔ Codex from the menu bar. |
 | **Remember** | `~/.kestrel/KESTREL.md` is loaded by both CLIs on every request. |
@@ -57,7 +60,7 @@ Settings ticks the row without coming back to press anything. Reopen it any time
 |---|---|---|
 | Microphone | hearing the question | required |
 | Screen Recording | seeing the screen you ask about | required, **applies after a relaunch** — the window offers one |
-| Accessibility | the `⌃⌥` hotkey, reading the screen's contents, circling a region, pasting dictation | required for the default hotkey |
+| Accessibility | the `⌘⌥` hotkey, reading the screen's contents, circling a region, pasting dictation | required for the default hotkey |
 | Speech to text | hearing what you said | built into macOS 26; below that, `brew install whisper-cpp` and `./scripts/download-whisper-model.sh` |
 | Claude Code CLI | answering | required |
 | Codex CLI | second backend | optional |
@@ -73,8 +76,11 @@ Privacy pane whenever something turns out to be missing mid-use.
 
 ## Using it
 
-- **Ask:** hold `⌃⌥`, say *"what is this window for?"* or *"how could this page look better?"*,
-  release. The island opens out of the notch and the answer is spoken — and a pencil draws on the
+- **Ask:** hold `⌘⌥`, say *"what is this window for?"* or *"how could this page look better?"*.
+  You do not have to let go: the question is heard as you say it and goes off at the first pause,
+  so *"open Spotify"* is opening while you draw breath for *"and play something"* — which is asked
+  next, in turn. Say "yes" or "no" the same way when it asks before doing something. The island
+  opens out of the notch and the answer is spoken — and a pencil draws on the
   thing the answer is about while it says it. Not just buttons: the section, the card, the heading,
   whatever it is talking about. It points instead of saying "in the top right", and if it names
   something without marking it, Kestrel works out what it meant and marks it anyway. Your real
@@ -90,8 +96,8 @@ Privacy pane whenever something turns out to be missing mid-use.
 - Both hotkeys are rebindable in Settings ▸ Shortcuts.
 
 **Why these keys.** Asking is held down for as long as you are talking, so it is a bare chord —
-`⌃⌥` is one shape the hand already makes, macOS claims nothing on it, and with no letter it cannot
-collide with an app's shortcut. It fires after a short dwell so `⌃⌥` on its way to some other
+`⌘⌥` is one shape the hand already makes, macOS claims nothing on it, and with no letter it cannot
+collide with an app's shortcut. It fires after a short dwell so `⌘⌥` on its way to some other
 shortcut is not mistaken for a question, and any key pressed while it is held cancels it. Because
 Carbon cannot register a bare chord it is watched through an event tap, which is why the ask hotkey
 needs Accessibility.
@@ -109,6 +115,7 @@ you save. The Settings window writes the same file.
 |---|---|---|
 | `backend` | `"claude"` | or `"codex"` |
 | `claudeModel` / `codexModel` | `null` | `null` uses the CLI's own default |
+| `claudeActModel` | `null` | a different model for requests that act, e.g. `"sonnet"`; `null` uses `claudeModel` |
 | `autoRoute` | `false` | send short, screenshot-free questions to Codex |
 | `transcriptionEngine` | `"apple"` | `"whisper"` to use whisper.cpp instead; `"apple"` falls back to it below macOS 26 |
 | `whisperBinary` | `/opt/homebrew/bin/whisper-cli` | only read by the whisper engine |
@@ -119,8 +126,10 @@ you save. The Settings window writes the same file.
 | `voiceIdentifier` / `voiceRate` | `null` / `0.52` | `system` engine only; your Personal Voice is preferred when you have one, then premium voices |
 | `cleanupDictation` | `true` | punctuation, capitals and the ums, fixed locally |
 | `dictationSilenceSeconds` | `2.5` | how long a pause ends a live dictation; `0` means only the hotkey does |
+| `liveAsk` | `true` | hear the question as it is said and send it at the first pause, without waiting for the key |
+| `askSilenceSeconds` | `1.0` | the pause that sends a phrase off |
 | `injectMode` | `"paste"` | `"type"` for apps that reject synthetic ⌘V |
-| `hotkeys.ask` / `hotkeys.dictate` | `⌃⌥` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
+| `hotkeys.ask` / `hotkeys.dictate` | `⌘⌥` / `⌃⌘K` | `{keyCode, modifiers}`; omit `keyCode` for a bare chord |
 | `answerAnnotations` | `true` | draw on what a spoken answer is pointing at |
 | `followUpSeconds` | `90` | how long a conversation stays warm; 0 disables |
 | `sounds` | `true` | short cues for each state change |
@@ -137,6 +146,8 @@ you save. The Settings window writes the same file.
 | `panelAutoHideSeconds` | `20` | hovering the panel pauses the timer |
 | `screenshotMaxEdge` | `2048` | smaller is faster and cheaper |
 | `apiKeys.anthropic` / `apiKeys.openai` | `null` | pay-as-you-go override |
+| `jev.apiKey` | `null` | a Vercel AI Gateway key; turns on Jev, below |
+| `jev.endpoint` / `jev.model` | Vercel's TypeSafe endpoint / `typesafe-ai/jev` | to point at TypeSafe directly, or a local model, later |
 
 **Speech to text.** On macOS 26 Kestrel uses Apple's own on-device engine — the one system
 dictation runs on. There is nothing to install and no model to download, it is roughly six times
@@ -209,6 +220,35 @@ Turn it off with menu bar ▸ **Act on the Mac**, or `agentTools: false` in the 
 "open Spotify" still opens Spotify — one verb, nothing to undo — and anything more is described
 rather than done. A plain question about the screen is answered the same either way.
 
+## Deciding faster, with Jev
+
+Before any of that, Kestrel has to decide what kind of request it heard: open an app, do something,
+or just answer. It used to guess from word lists — "open …" was a launch, "reply" wanted a draft —
+and offered the tools to every question just in case. With a key in `jev.apiKey`, that decision
+goes to [Jev](https://docs.typesafe.ai/), TypeSafe AI's decision model, through Vercel's AI Gateway:
+it is asked a few typed questions about the sentence and answers each with a probability in about
+half a second, for a hundredth of a cent. "Can you pull up Finder for me" opens Finder with no model
+involved; "open Chrome and search for owls" opens Chrome itself and hands the model the rest with
+Chrome already in front; "what does this button do" is answered without the tools attached, which
+makes it faster and means it cannot act by mistake; "go to the Extensions tab" is one click and
+"search for barn owls" is a new tab, the words and return — and when Jev is sure of the shape, the
+control and the words, it is done in a few seconds with no model at all, through the same checks
+and the same action log as anything the model does. When the model does have to work a job out,
+the steps it took are written under *Recipes* in that app's file in `~/.kestrel/skills/`, so next
+time it starts from the route. It also makes the two calls the word lists used to
+make while Kestrel acts: whether a step is worth asking you about first ("Sort by order" no longer
+stops for the word *order*; Send, Delete and Publish still do) and whether what you said back was a
+yes ("yes but not the second one" is now, correctly, a no). Only the words go — the transcript, the name of the app
+in front, the labels of the controls on screen — never a screenshot. Without a key nothing changes;
+the word lists carry on.
+
+Get a key at [vercel.com/ai-gateway](https://vercel.com/ai-gateway) (a card on file is required,
+even for the free credits) and put it in the config:
+
+```json
+{ "jev": { "apiKey": "vck_…" } }
+```
+
 ## Teaching it your own vocabulary
 
 Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every question;
@@ -218,6 +258,7 @@ Drop a markdown file in `~/.kestrel/skills/`. `default.md` is sent with every qu
 
 - Read, store, or forward OAuth tokens from `~/.claude`, `~/.codex`, or the Keychain
 - Call `api.anthropic.com` or `api.openai.com` directly (unless *you* set an API key)
+- Send a screenshot anywhere but the CLI you chose. Jev, when you turn it on, gets words only
 - Capture the screen or the microphone unless a hotkey is held
 - Write anywhere outside `~/.kestrel`
 - Phone home. There is nowhere to phone.

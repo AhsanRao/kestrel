@@ -93,7 +93,7 @@ final class ModifierChordTests: XCTestCase {
     /// already makes, with no letter to collide with an app's shortcut. Dictation is a tap, so it
     /// stays an ordinary keyed hotkey and needs no permission of its own.
     func testAskIsABareChordAndDictateIsKeyed() {
-        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌃⌥")
+        XCTAssertEqual(Config.Hotkeys.defaults.ask.display, "⌘⌥")
         XCTAssertTrue(Config.Hotkeys.defaults.ask.isModifierOnly)
         XCTAssertTrue(Config.Hotkeys.defaults.ask.isValid, "a chord needs two modifiers to be valid")
 

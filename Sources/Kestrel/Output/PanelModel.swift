@@ -6,7 +6,7 @@ final class PanelModel: ObservableObject {
     @Published var transcript: String = ""
     @Published var answer: String = ""
     @Published var backend: BackendKind = .claude
-    @Published var askHint: String = "⌃⌥"
+    @Published var askHint: String = "⌘⌥"
     @Published var permissionURL: URL?
     /// A piece of writing the user asked for — an email, a reply, a paragraph. Shown with a copy
     /// button instead of being read out, because the only thing anyone does with a draft is take it
@@ -21,6 +21,9 @@ final class PanelModel: ObservableObject {
     @Published var aside: String?
     /// Live input level, 0…1, while recording.
     @Published var level: Double = 0
+    /// The steps taken so far while acting — "Opened Safari", "Clicked Send" — so what Kestrel
+    /// is doing to the screen can be seen as it happens, not only in the log afterwards.
+    @Published var steps: [String] = []
     /// The notch on the screen the panel is about to appear on. Set by `PanelWindow` before it
     /// positions itself, so the view can lay its content out around the camera housing.
     @Published var notch: NotchMetrics = .none
@@ -31,7 +34,7 @@ final class PanelModel: ObservableObject {
     /// Collapsed, the island is a bar around the notch; it opens only once there is something to
     /// read. A transcript alone counts: that is the question being heard back.
     var isExpanded: Bool {
-        !answer.isEmpty || !transcript.isEmpty || isError || draft != nil || aside != nil
+        !answer.isEmpty || !transcript.isEmpty || isError || draft != nil || aside != nil || !steps.isEmpty
     }
 
     /// The island's width in each of its two sizes. Always wider than the housing, so the housing

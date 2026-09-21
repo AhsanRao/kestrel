@@ -19,6 +19,9 @@ protocol LiveDictating: AnyObject {
 
     var isRunning: Bool { get }
     func start(config: Config)
+    /// Arms the pause again after `onSilence`, for an engine that is kept running: the next
+    /// stretch of speech will end with its own `onSilence`.
+    func listenAgain()
     /// Settles whatever is still in flight, then calls back on the main thread.
     func stop(completion: @escaping () -> Void)
 }

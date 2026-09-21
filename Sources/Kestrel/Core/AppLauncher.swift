@@ -49,6 +49,28 @@ enum AppLauncher {
         return [" and ", " then ", " to ", " for "].contains { rest.contains($0) }
     }
 
+    /// Everything that could be opened, by display name, running apps first. What Jev picks from
+    /// when a question might be a launch (spec §8.19); capped well under its 255 options.
+    static func installedNames(limit: Int = 200) -> [String] {
+        var seen = Set<String>()
+        var names: [String] = []
+        func add(_ name: String) {
+            guard seen.insert(name.lowercased()).inserted else { return }
+            names.append(name)
+        }
+        for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
+            if let name = app.localizedName { add(name) }
+        }
+        for directory in applicationDirectories {
+            let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
+            for entry in contents.sorted() where entry.hasSuffix(".app") { add(String(entry.dropLast(4))) }
+        }
+        return Array(names.prefix(limit))
+    }
+
+    private static let applicationDirectories = ["/Applications", "/System/Applications",
+                                                 NSHomeDirectory() + "/Applications"]
+
     /// Matches the spoken name against what is installed, by display name.
     static func installedApp(named name: String) -> (bundleID: String, name: String)? {
         let wanted = name.lowercased()
@@ -57,8 +79,7 @@ enum AppLauncher {
             guard let bundleID = app.bundleIdentifier, let localized = app.localizedName else { continue }
             if localized.lowercased() == wanted { return (bundleID, localized) }
         }
-        for directory in ["/Applications", "/System/Applications",
-                          NSHomeDirectory() + "/Applications"] {
+        for directory in applicationDirectories {
             let contents = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
             for entry in contents where entry.hasSuffix(".app") {
                 let display = String(entry.dropLast(4))

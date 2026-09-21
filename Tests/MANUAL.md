@@ -26,12 +26,12 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 - [ ] First hotkey press prompts for Microphone; denying shows the panel error with a working link
 - [ ] First question prompts for Screen Recording; after granting and relaunching, capture works
-- [ ] Without Accessibility the `⌃⌥` hotkey cannot fire at all — the error says so and links to the pane
+- [ ] Without Accessibility the `⌘⌥` hotkey cannot fire at all — the error says so and links to the pane
 - [ ] After a rebuild, both grants still hold (they do not, if `make-signing-cert.sh` was never run)
 
 ## 2. Ask
 
-- [ ] Hold `⌃⌥`, ask "what app is this?", release → correct spoken answer
+- [ ] Hold `⌘⌥`, ask "what app is this?", release → correct spoken answer
 - [ ] The screenshot never contains the Kestrel panel
 - [ ] Question about the display the mouse is on, with two displays connected
 - [ ] Press the hotkey while the answer is being spoken → speech stops, recording restarts
@@ -142,8 +142,8 @@ permissions. Run it after any change to input, audio, screen capture or injectio
 
 ## 6. Settings and config
 
-- [ ] Holding `⌃⌥` starts listening; a quick tap of it does not
-- [ ] `⌃⌥` on the way to another shortcut (press a key while held) does not start a question
+- [ ] Holding `⌘⌥` starts listening; a quick tap of it does not
+- [ ] `⌘⌥` on the way to another shortcut (press a key while held) does not start a question
 - [ ] `⌃⌘K` starts dictation on a machine where Accessibility has never been granted
 - [ ] `⌃⌘Space`, `⌃⌘D`, `⌃⌘F`, `⌃⌘Q` still do their macOS jobs
 - [ ] Recording a bare `⌥⌘` chord in Settings works, prompts for Accessibility, and cancels cleanly

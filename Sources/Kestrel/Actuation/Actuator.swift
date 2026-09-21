@@ -12,7 +12,9 @@ enum Actuator {
     static let outputLimit = 8_000
 
     /// Blocking; call from a background queue. Returns what the model is told.
-    static func perform(_ call: ToolCall, screenshot: ScreenCapture?, config: Config) throws -> String {
+    /// - Parameter controls: the numbered list the model was last shown, for `click` by number.
+    static func perform(_ call: ToolCall, screenshot: ScreenCapture?, config: Config,
+                        controls: [AXElementScanner.Element] = []) throws -> String {
         switch call.tool {
         case .openApp:
             let name = call.string("name") ?? ""
@@ -40,8 +42,28 @@ enum Actuator {
             return report(result, label: "Command")
 
         case .click:
+            // By number: the control's frame is read live off the Accessibility tree, so the click
+            // lands on it wherever it is now. Coordinates estimated from a picture are the fallback.
+            if let number = call.number("control") {
+                guard let element = controls.first(where: { $0.id == Int(number) }) else {
+                    throw KestrelError.actionFailed("find control \(Int(number)) in the last list")
+                }
+                // A menu item has no place on screen until its menu is open; the Accessibility
+                // press reaches it either way, and is what the menu itself would have done.
+                if [kAXMenuItemRole, kAXMenuBarItemRole].contains(element.role), let ref = element.ref {
+                    guard AXUIElementPerformAction(ref, kAXPressAction as CFString) == .success else {
+                        throw KestrelError.actionFailed("choose “\(element.label)”")
+                    }
+                    return "Chose “\(element.label)”."
+                }
+                guard let frame = AXElementScanner.currentFrame(of: element) ?? (AXElementScanner.isOnScreen(element.frame) ? element.frame : nil) else {
+                    throw KestrelError.actionFailed("click “\(element.label)”: it is no longer on screen")
+                }
+                try click(at: cgPoint(CGPoint(x: frame.midX, y: frame.midY)))
+                return "Clicked “\(element.label)”."
+            }
             guard let x = call.number("x"), let y = call.number("y") else {
-                throw KestrelError.actionFailed("click without coordinates")
+                throw KestrelError.actionFailed("click without a control number or coordinates")
             }
             guard let point = screenshot?.screenPoint(forPixel: CGPoint(x: x, y: y)) else {
                 throw KestrelError.actionFailed("click: there is no screenshot to measure against")
@@ -76,6 +98,24 @@ enum Actuator {
         return lines.joined(separator: "\n")
     }
 
+    /// The title of the front window — "eagle owl - Google Search" — the one line that says
+    /// what a page or document has become after a step.
+    static func frontWindowTitle() -> String? {
+        guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
+        var window: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedWindowAttribute as CFString, &window) == .success,
+              let window else { return nil }
+        var title: CFTypeRef?
+        AXUIElementCopyAttributeValue(window as! AXUIElement, kAXTitleAttribute as CFString, &title)
+        return (title as? String).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// A global AppKit point (up from the bottom-left) as CoreGraphics posts events (down from
+    /// the top-left of the primary display).
+    static func cgPoint(_ appKit: CGPoint) -> CGPoint {
+        CGPoint(x: appKit.x, y: ScreenGrabber.primaryDisplayHeight - appKit.y)
+    }
+
     // MARK: - Events
 
     /// A real click: the pointer moves there, presses and releases. The user sees it happen, which
@@ -87,6 +127,9 @@ enum Actuator {
               let down = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left),
               let up = CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
         else { throw KestrelError.actionFailed("make a click event") }
+        // A plain click whatever is physically held: the ask chord stays down while the user
+        // talks, and ⌥-click in a browser downloads the link instead of following it.
+        for event in [move, down, up] { event.flags = [] }
         move.post(tap: .cghidEventTap)
         usleep(60_000)
         down.post(tap: .cghidEventTap)
